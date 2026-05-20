@@ -156,6 +156,7 @@ export default function LeagueClient() {
   const [player, setPlayer] = useState("All Players");
   const [type, setType] = useState<"Blind" | "Swap">("Blind");
   const [week, setWeek] = useState("");
+  const [dashboardWeek, setDashboardWeek] = useState("All Weeks");
   const [profilePlayer, setProfilePlayer] = useState("");
   const [profileSeason, setProfileSeason] = useState("");
   const [profileWeek, setProfileWeek] = useState("All Weeks");
@@ -228,6 +229,55 @@ export default function LeagueClient() {
   useEffect(() => {
     if (!week || !weeks.includes(week)) setWeek(weeks[0] || "");
   }, [weeks, week]);
+
+  const dashboardWeekOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        (data?.weekly || [])
+          .filter((row) => !season || getSeason(row, season) === season)
+          .map(getWeek)
+          .filter(Boolean)
+      )
+    ).sort(weekSort);
+  }, [data, season]);
+
+  useEffect(() => {
+    if (dashboardWeek !== "All Weeks" && !dashboardWeekOptions.includes(dashboardWeek)) {
+      setDashboardWeek("All Weeks");
+    }
+  }, [dashboardWeek, dashboardWeekOptions]);
+
+  const dashboardWeekStandingRows = useMemo(() => {
+    if (dashboardWeek === "All Weeks") return [];
+
+    const totals = new Map<string, { name: string; points: number }>();
+
+    for (const row of data?.weekly || []) {
+      if (!isStandingRow(row)) continue;
+      if (season && getSeason(row, season) !== season) continue;
+      if (getWeek(row) !== dashboardWeek) continue;
+      if (player !== "All Players" && getPlayer(row) !== player) continue;
+
+      const name = getPlayer(row) || "Unknown";
+      const current = totals.get(name) || { name, points: 0 };
+      current.points += pointValue(row);
+      totals.set(name, current);
+    }
+
+    return Array.from(totals.values()).sort((a, b) => b.points - a.points);
+  }, [data, season, player, dashboardWeek]);
+
+  const dashboardWeekStats = useMemo(() => {
+    if (dashboardWeek === "All Weeks") return [];
+    return (data?.weekly || [])
+      .filter((row) => isStatsRow(row))
+      .filter((row) => !season || getSeason(row, season) === season)
+      .filter((row) => getWeek(row) === dashboardWeek)
+      .filter((row) => player === "All Players" || getPlayer(row) === player)
+      .sort((a, b) => getStatNumber(b, ["PPR", "ptsPerRnd"]) - getStatNumber(a, ["PPR", "ptsPerRnd"]));
+  }, [data, season, player, dashboardWeek]);
+
+  const dashboardTopRows = dashboardWeek === "All Weeks" ? standings : dashboardWeekStandingRows;
 
   const visibleStandingRows = weekEventRows.filter((row) => getWeek(row) === week && isStandingRow(row));
   const visibleStatRows = weekEventRows.filter((row) => getWeek(row) === week && isStatsRow(row));
@@ -364,6 +414,20 @@ export default function LeagueClient() {
               </select>
             </div>
 
+            <div>
+              <label className="text-xs font-bold uppercase text-[#f04a22]">Dashboard Week</label>
+              <select
+                className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white"
+                value={dashboardWeek}
+                onChange={(e) => setDashboardWeek(e.target.value)}
+              >
+                <option>All Weeks</option>
+                {dashboardWeekOptions.map((w) => (
+                  <option key={w}>{w}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="text-sm text-neutral-400">
               Last updated: {data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : "No upload date found"}
             </div>
@@ -374,11 +438,11 @@ export default function LeagueClient() {
       <section className="mx-auto max-w-7xl space-y-6 p-4">
         {tab === "dashboard" && (
           <>
-            <Card title="Top Standings">
+            <Card title={dashboardWeek === "All Weeks" ? "Top Standings" : `Top Standings - ${dashboardWeek}`}>
               <div className="grid gap-4 lg:grid-cols-[1.55fr_1fr]">
                 <div className="h-[430px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={standings.slice(0, 10)} margin={{ top: 28, right: 8, left: 0, bottom: 110 }}>
+                    <BarChart data={dashboardTopRows.slice(0, 10)} margin={{ top: 28, right: 8, left: 0, bottom: 110 }}>
                       <XAxis dataKey="name" interval={0} angle={-35} textAnchor="end" height={115} tick={{ fontSize: 11 }} />
                       <YAxis />
                       <Tooltip />
@@ -389,7 +453,7 @@ export default function LeagueClient() {
                   </ResponsiveContainer>
                 </div>
                 <div className="space-y-2">
-                  {standings.slice(0, 10).map((row, index) => (
+                  {dashboardTopRows.slice(0, 10).map((row, index) => (
                     <div key={row.name} className="flex items-center justify-between rounded-lg bg-[#202020] px-3 py-2">
                       <span className="font-bold">{index + 1}. {row.name}</span>
                       <span className="font-black text-[#f04a22]">{formatValue(row.points, 0)}</span>
@@ -399,22 +463,26 @@ export default function LeagueClient() {
               </div>
             </Card>
 
-            <Card title={player === "All Players" ? "Season Stats" : `${player} Season Stats`}>
-              {player === "All Players" ? (
-                <StatsTable
-                  rows={seasonStats}
-                  sortKey={sortKey}
-                  sortDirection={sortDirection}
-                  onSort={(key) => {
-                    if (sortKey === key) setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-                    else {
-                      setSortKey(key);
-                      setSortDirection("desc");
-                    }
-                  }}
-                />
+            <Card title={dashboardWeek === "All Weeks" ? (player === "All Players" ? "Season Stats" : `${player} Season Stats`) : `Weekly Stats - ${dashboardWeek}`}>
+              {dashboardWeek === "All Weeks" ? (
+                player === "All Players" ? (
+                  <StatsTable
+                    rows={seasonStats}
+                    sortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={(key) => {
+                      if (sortKey === key) setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+                      else {
+                        setSortKey(key);
+                        setSortDirection("desc");
+                      }
+                    }}
+                  />
+                ) : (
+                  <PlayerStatsSummary row={seasonStats[0]} />
+                )
               ) : (
-                <PlayerStatsSummary row={seasonStats[0]} />
+                <WeeklyStatsTable rows={dashboardWeekStats} />
               )}
             </Card>
           </>
