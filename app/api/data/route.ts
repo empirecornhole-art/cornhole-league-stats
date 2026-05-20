@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadLeagueData } from '@/lib/blob';
+import { loadLeagueData } from "../../../lib/blob";
 
 export async function GET() {
   const data = await loadLeagueData();
