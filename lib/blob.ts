@@ -17,9 +17,15 @@ export async function loadLeagueData(): Promise<LeagueData | null> {
 
   if (!blob) return null;
 
-  const res = await fetch(blob.url, { cache: "no-store" });
+  const url = (blob as any).downloadUrl || blob.url;
 
-  if (!res.ok) return null;
+  const res = await fetch(url, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Could not load league data. Status: ${res.status}`);
+  }
 
   return await res.json();
 }
