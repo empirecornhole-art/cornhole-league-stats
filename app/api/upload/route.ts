@@ -30,11 +30,11 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({
-      ok: true,
-      message: "Workbook uploaded successfully.",
-      url: blob.url,
-      size: file.size,
-    });
+  ok: true,
+  message: `Workbook uploaded successfully. Size: ${file.size} bytes.`,
+  url: blob.url,
+  size: file.size,
+});
   } catch (error: any) {
     return NextResponse.json(
       {
