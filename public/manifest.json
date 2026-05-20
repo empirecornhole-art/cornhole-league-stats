@@ -1,1 +1,21 @@
-{"name":"League Stats","short_name":"League Stats","start_url":"/","display":"standalone","background_color":"#080808","theme_color":"#080808","icons":[]}
+{
+  "name": "League Stats",
+  "short_name": "League Stats",
+  "description": "Empire Cornhole League Stats",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070707",
+  "theme_color": "#f04a22",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
