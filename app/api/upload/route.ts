@@ -18,5 +18,11 @@ export async function POST(req: Request) {
   const parsed = await parseWorkbook(buffer.buffer as ArrayBuffer);
   
   await saveLeagueData(parsed);
-  return NextResponse.json({ ok: true, summary: { seasons: parsed.seasons.length, players: parsed.players.length, lastUpdated: parsed.lastUpdated } });
+  return NextResponse.json({
+  ok: true,
+  summary: {
+    seasons: parsed.seasons.length,
+    players: parsed.players.length
+  }
+});
 }
