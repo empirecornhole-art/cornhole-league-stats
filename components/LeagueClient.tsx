@@ -89,6 +89,33 @@ function pointValue(row: any) {
   );
 }
 
+function getOverallWeekPoints(row: any, weekLabel: string) {
+  const target = norm(weekLabel);
+
+  // Most workbook columns are named exactly like "Week 1", "Week 2", etc.
+  if (row?.[weekLabel] !== undefined && row?.[weekLabel] !== "") {
+    return numberVal(row[weekLabel]);
+  }
+
+  // Fallback: find a column whose header matches the selected week after cleanup.
+  const matchedKey = Object.keys(row || {}).find((key) => norm(key) === target);
+  if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== "") {
+    return numberVal(row[matchedKey]);
+  }
+
+  // Fallback for headers like "Week 1 Points" or "Week 1 Total".
+  const looseKey = Object.keys(row || {}).find((key) => {
+    const cleaned = norm(key);
+    return cleaned.startsWith(target) || cleaned.includes(`${target} `);
+  });
+
+  if (looseKey && row[looseKey] !== undefined && row[looseKey] !== "") {
+    return numberVal(row[looseKey]);
+  }
+
+  return 0;
+}
+
 function getStatValue(row: any, keys: string[]) {
   for (const key of keys) {
     if (row?.[key] !== undefined && row?.[key] !== "") return row[key];
@@ -250,21 +277,16 @@ export default function LeagueClient() {
   const dashboardWeekStandingRows = useMemo(() => {
     if (dashboardWeek === "All Weeks") return [];
 
-    const totals = new Map<string, { name: string; points: number }>();
-
-    for (const row of data?.weekly || []) {
-      if (!isStandingRow(row)) continue;
-      if (season && getSeason(row, season) !== season) continue;
-      if (getWeek(row) !== dashboardWeek) continue;
-      if (player !== "All Players" && getPlayer(row) !== player) continue;
-
-      const name = getPlayer(row) || "Unknown";
-      const current = totals.get(name) || { name, points: 0 };
-      current.points += pointValue(row);
-      totals.set(name, current);
-    }
-
-    return Array.from(totals.values()).sort((a, b) => b.points - a.points);
+    return (data?.standings || [])
+      .filter((row) => !season || getSeason(row, season) === season)
+      .filter((row) => player === "All Players" || getPlayer(row) === player)
+      .map((row) => ({
+        name: getPlayer(row) || "Unknown",
+        points: getOverallWeekPoints(row, dashboardWeek),
+        raw: row,
+      }))
+      .filter((row) => row.name !== "Unknown" && row.points > 0)
+      .sort((a, b) => b.points - a.points);
   }, [data, season, player, dashboardWeek]);
 
   const dashboardWeekStats = useMemo(() => {
@@ -438,7 +460,7 @@ export default function LeagueClient() {
       <section className="mx-auto max-w-7xl space-y-6 p-4">
         {tab === "dashboard" && (
           <>
-            <Card title={dashboardWeek === "All Weeks" ? "Top Standings" : `Top Standings - ${dashboardWeek}`}>
+            <Card title={dashboardWeek === "All Weeks" ? "Top Standings" : `Top Weekly Scores - ${dashboardWeek}`}>
               <div className="grid gap-4 lg:grid-cols-[1.55fr_1fr]">
                 <div className="h-[430px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -463,7 +485,7 @@ export default function LeagueClient() {
               </div>
             </Card>
 
-            <Card title={dashboardWeek === "All Weeks" ? (player === "All Players" ? "Season Stats" : `${player} Season Stats`) : `Weekly Stats - ${dashboardWeek}`}>
+            <Card title={dashboardWeek === "All Weeks" ? (player === "All Players" ? "Season Stats" : `${player} Season Stats`) : `Player Event Stats - ${dashboardWeek}`}>
               {dashboardWeek === "All Weeks" ? (
                 player === "All Players" ? (
                   <StatsTable
