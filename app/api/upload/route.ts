@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { parseWorkbook } from '@/lib/parseWorkbook';
-import { saveLeagueData } from '@/lib/blob';
+import { parseWorkbook } from "../../../lib/parseWorkbook";
+import { saveLeagueData } from "../../../lib/blob";
 
 export async function POST(req: Request) {
   const form = await req.formData();
