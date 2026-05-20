@@ -1,2 +1,5 @@
 import LeagueClient from "../components/LeagueClient";
-export default function Home() { return <LeagueClient />; }
+
+export default function Home() {
+  return <LeagueClient />;
+}
