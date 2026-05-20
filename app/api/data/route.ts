@@ -9,6 +9,7 @@ export async function GET() {
 
     if (!data) {
       return NextResponse.json({
+        debug: "No league data found in Blob",
         seasons: [],
         players: [],
         standings: [],
@@ -17,18 +18,19 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({
+      ...data,
+      debug: "League data loaded successfully",
+    });
   } catch (error: any) {
-    return NextResponse.json(
-      {
-        error: error?.message || "Failed to load league data",
-        seasons: [],
-        players: [],
-        standings: [],
-        weekly: [],
-        stats: [],
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      debug: "Error loading league data",
+      error: error?.message || "Unknown error",
+      seasons: [],
+      players: [],
+      standings: [],
+      weekly: [],
+      stats: [],
+    });
   }
 }
