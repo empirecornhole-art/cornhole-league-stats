@@ -1,4 +1,4 @@
-import { put, list } from "@vercel/blob";
+import { put, head } from "@vercel/blob";
 import { LeagueData } from "./types";
 
 const DATA_KEY = "league-data.json";
@@ -12,14 +12,12 @@ export async function saveLeagueData(data: LeagueData) {
 }
 
 export async function loadLeagueData(): Promise<LeagueData | null> {
-  const blobs = await list({ prefix: DATA_KEY, limit: 1 });
-  const blob = blobs.blobs.find((b) => b.pathname === DATA_KEY);
-
+  const blob = await head(DATA_KEY);
   if (!blob) return null;
 
-  const url = (blob as any).downloadUrl || blob.url;
+  const downloadUrl = (blob as any).downloadUrl || blob.url;
 
-  const res = await fetch(url, {
+  const res = await fetch(downloadUrl, {
     cache: "no-store",
   });
 
