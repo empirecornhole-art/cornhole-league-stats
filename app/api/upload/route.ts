@@ -1,28 +1,32 @@
-import { NextResponse } from 'next/server';
-import { parseWorkbook } from "../../../lib/parseWorkbook";
-import { saveLeagueData } from "../../../lib/blob";
+import { put } from "@vercel/blob";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  const form = await req.formData();
-  const password = String(form.get('password') ?? '');
-  const file = form.get('file');
+  try {
+    const formData = await req.formData();
+    const file = formData.get("file") as File;
 
-  if (!process.env.ADMIN_PASSWORD || password !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: 'Invalid admin password.' }, { status: 401 });
-  }
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'No workbook uploaded.' }, { status: 400 });
-  }
+    if (!file) {
+      return NextResponse.json(
+        { error: "No file uploaded" },
+        { status: 400 }
+      );
+    }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const parsed = await parseWorkbook(buffer.buffer as ArrayBuffer);
-  
-  await saveLeagueData(parsed);
-  return NextResponse.json({
-  ok: true,
-  summary: {
-    seasons: parsed.seasons.length,
-    players: parsed.players.length
+    const blob = await put(file.name, file, {
+      access: "public",
+    });
+
+    return NextResponse.json({
+      success: true,
+      uploaded: blob.url,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        error: error.message || "Upload failed",
+      },
+      { status: 500 }
+    );
   }
-});
 }
