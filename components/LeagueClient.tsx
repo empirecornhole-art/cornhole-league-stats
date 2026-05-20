@@ -90,15 +90,22 @@ function weekSort(a: string, b: string) {
 }
 
 const statColumns = [
-  { label: "Rank", keys: ["Ranking", "Rank", "ranking"] },
-  { label: "Skill", keys: ["Skill Level", "Skill", "skillLevel"] },
-  { label: "Rounds", keys: ["Rounds", "rounds"] },
-  { label: "Total Points", keys: ["Total Points", "Points", "points"] },
-  { label: "PPR", keys: ["PPR", "Points Per Round", "pointsPerRound"] },
-  { label: "Opp Pts", keys: ["Opponent Points", "Opp Points", "OPP Points"] },
-  { label: "Opp PPR", keys: ["OPPR", "Opponent PPR", "Opponent Points Per Round"] },
-  { label: "DPR", keys: ["DPR", "Diff Per Round", "diffPerRound"] },
-  { label: "4 Baggers", keys: ["4 Baggers", "Four Baggers", "totalFourBaggers"] },
+  { label: "Total Rounds", keys: ["Total Rounds"] },
+  { label: "Total Pts", keys: ["Total Pts"] },
+  { label: "Average PPR", keys: ["Average PPR"] },
+  { label: "Opp Avg PPR", keys: ["Opponents Avg PPR"] },
+  { label: "Average DPR", keys: ["Average DPR"] },
+  { label: "Opp Pts", keys: ["Opponents Pts"] },
+  { label: "Avg Bags In", keys: ["Avg Bags In"] },
+  { label: "Total Bags In", keys: ["Total Bags In"] },
+  { label: "Avg Bags In/Rd", keys: ["Avg Bags In per Rd"] },
+  { label: "Bags On %", keys: ["Bags On %"] },
+  { label: "Bags Off %", keys: ["Bags Off %"] },
+  { label: "Total Bags", keys: ["Total Bags Thrown"] },
+  { label: "Avg 4-Bagger %", keys: ["Avg 4-Bagger %"] },
+  { label: "Total 4-Baggers", keys: ["Total 4-Baggers"] },
+  { label: "1st in Stats", keys: ["1st in Stats"] },
+  { label: "Avg Rounds/Swap", keys: ["Avg Rounds/Swap Game"] },
 ];
 
 export default function LeagueClient() {
