@@ -4,8 +4,11 @@ import { LeagueData } from './types';
 const DATA_KEY = 'league-data.json';
 
 export async function saveLeagueData(data: LeagueData) {
-  await put(DATA_KEY, JSON.stringify(data), { access: 'public', contentType: 'application/json', allowOverwrite: true });
-}
+  await put(DATA_KEY, JSON.stringify(data), {
+  access: "private",
+  contentType: "application/json",
+  allowOverwrite: true,
+});
 
 export async function loadLeagueData(): Promise<LeagueData | null> {
   const blobs = await list({ prefix: DATA_KEY, limit: 1 });
