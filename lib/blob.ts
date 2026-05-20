@@ -5,7 +5,7 @@ const DATA_KEY = "league-data.json";
 
 export async function saveLeagueData(data: LeagueData) {
   await put(DATA_KEY, JSON.stringify(data), {
-    access: "private",
+    access: "public",
     contentType: "application/json",
     allowOverwrite: true,
   });
@@ -15,9 +15,7 @@ export async function loadLeagueData(): Promise<LeagueData | null> {
   const blob = await head(DATA_KEY);
   if (!blob) return null;
 
-  const downloadUrl = (blob as any).downloadUrl || blob.url;
-
-  const res = await fetch(downloadUrl, {
+  const res = await fetch(blob.url, {
     cache: "no-store",
   });
 
