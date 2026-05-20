@@ -4,4 +4,5 @@ export type LeagueData = {
   standings: Record<string, any>[];
   weekly: Record<string, any>[];
   stats: Record<string, any>[];
+  lastUpdated?: string;
 };
