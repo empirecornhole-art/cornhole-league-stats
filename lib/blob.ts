@@ -5,7 +5,7 @@ const DATA_KEY = "league-data.json";
 
 export async function saveLeagueData(data: LeagueData) {
   await put(DATA_KEY, JSON.stringify(data), {
-    access: "public",
+    access: "private",
     contentType: "application/json",
     allowOverwrite: true,
   });
