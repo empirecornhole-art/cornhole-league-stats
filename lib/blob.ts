@@ -86,23 +86,36 @@ export function mergeSeasonData(existing: LeagueData, incoming: LeagueData): Lea
   ];
 
   return {
-    lastUpdated: new Date().toISOString(),
-    seasons: uniqueSorted([
-      ...(existing.seasons || []),
-      ...(incoming.seasons || []),
-      ...standings.map((row) => row.Season),
-      ...weekly.map((row) => row.Season),
-      ...stats.map((row) => row.Season),
-    ]),
-    players: uniqueSorted([
-      ...(existing.players || []),
-      ...(incoming.players || []),
-      ...standings.map((row) => row.Player || row.playerName),
-      ...weekly.map((row) => row.Player || row.playerName),
-      ...stats.map((row) => row.Player || row.playerName),
-    ]),
-    standings,
-    weekly,
-    stats,
-  };
+  lastUpdated: new Date().toISOString(),
+
+  seasons: uniqueSorted([
+    ...(existing.seasons || []),
+    ...(seasonData.seasons || []),
+  ]),
+
+  players: uniqueSorted([
+    ...(existing.players || []),
+    ...(seasonData.players || []),
+  ]),
+
+  standings: [
+    ...(existing.standings || []),
+    ...(seasonData.standings || []),
+  ],
+
+  weekly: [
+    ...(existing.weekly || []),
+    ...(seasonData.weekly || []),
+  ],
+
+  eventStats: [
+    ...(existing.eventStats || []),
+    ...(seasonData.eventStats || []),
+  ],
+
+  stats: [
+    ...(existing.stats || []),
+    ...(seasonData.stats || []),
+  ],
+};
 }
