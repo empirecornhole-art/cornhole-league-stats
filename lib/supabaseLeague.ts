@@ -242,19 +242,31 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
 
   const seasonRows = seasonStatsPayload(parsed, season.id, playerMap);
   if (seasonRows.length) {
-    const { error } = await supabase.from("season_stats").insert(seasonRows as any[]);
+    const { error } = await supabase
+  .from("season_stats")
+  .upsert(seasonStatsRows, {
+    onConflict: "season_id,player_id",
+  });
     if (error) throw error;
   }
 
   const resultRows = resultPayload(parsed.weekly || [], eventMap, playerMap);
   if (resultRows.length) {
-    const { error } = await supabase.from("event_results").insert(resultRows as any[]);
+    const { error } = await supabase
+  .from("season_stats")
+  .upsert(seasonStatsRows, {
+    onConflict: "season_id,player_id",
+  });
     if (error) throw error;
   }
 
   const statRows = eventStatsPayload(parsed.eventStats || [], eventMap, playerMap);
   if (statRows.length) {
-    const { error } = await supabase.from("event_stats").insert(statRows as any[]);
+    const { error } = await supabase
+  .from("event_stats")
+  .upsert(eventStatsRows, {
+    onConflict: "event_id,player_id",
+  });
     if (error) throw error;
   }
 
