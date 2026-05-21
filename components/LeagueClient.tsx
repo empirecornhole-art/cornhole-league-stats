@@ -2,16 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  LabelList,
-  LineChart,
-  Line,
-  CartesianGrid,
   Legend,
 } from "recharts";
 
@@ -25,7 +21,7 @@ type Data = {
   stats: any[];
 };
 
-type Tab = "dashboard" | "standings" | "weeks" | "players" | "compare";
+type Tab = "dashboard" | "standings" | "weeks" | "stats" | "players" | "compare";
 type EventFilter = "All" | "Blind" | "Swap";
 type SortDirection = "asc" | "desc";
 
@@ -37,52 +33,6 @@ function compact(value: any) {
   return clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function normalizeText(value: any) {
-  return clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function normalizeName(value: any) {
-  return clean(value).toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
-}
-
-function getSeason(row: any, fallback = "") {
-  return clean(row?.Season || row?.season || row?.SEASON || fallback);
-}
-
-function seasonSortValue(season: string) {
-  const text = clean(season);
-  const yearMatch = text.match(/(\d{2,4})/);
-  const rawYear = yearMatch ? Number(yearMatch[1]) : 0;
-  const year = rawYear < 100 ? 2000 + rawYear : rawYear;
-  const lower = text.toLowerCase();
-  const seasonOrder = lower.includes("spring")
-    ? 1
-    : lower.includes("summer")
-    ? 2
-    : lower.includes("fall")
-    ? 3
-    : lower.includes("winter")
-    ? 4
-    : 9;
-  return year * 10 + seasonOrder;
-}
-
-function sortSeasons(values: string[]) {
-  return [...values].sort((a, b) => seasonSortValue(a) - seasonSortValue(b));
-}
-
-function getPlayer(row: any) {
-  return clean(
-    row?.Player ||
-      row?.playerName ||
-      row?.["Row Labels"] ||
-      row?.["Player Name"] ||
-      row?.["PLAYER NAME"] ||
-      row?.Name ||
-      row?.name
-  );
-}
-
 function isValidPlayerName(value: any) {
   const name = clean(value);
   const id = compact(name);
@@ -90,71 +40,74 @@ function isValidPlayerName(value: any) {
   if (!name) return false;
   if (/^\d+$/.test(name)) return false;
 
-  if (
-    [
-      "standings",
-      "overall",
-      "grandtotal",
-      "totalplayers",
-      "ghostplayer",
-      "player",
-      "players",
-      "playername",
-      "name",
-    ].includes(id)
-  ) {
-    return false;
-  }
+  return ![
+    "standings",
+    "overall",
+    "grandtotal",
+    "totalplayers",
+    "ghostplayer",
+    "player",
+    "players",
+    "playername",
+    "name",
+  ].includes(id);
+}
 
-  return true;
+function getSeason(row: any, fallback = "") {
+  return clean(row.Season || row.season || row.SEASON || fallback);
+}
+
+function getPlayer(row: any) {
+  return clean(
+    row.Player ||
+      row.playerName ||
+      row["Row Labels"] ||
+      row["Player Name"] ||
+      row["PLAYER NAME"] ||
+      row.Name ||
+      row.name
+  );
 }
 
 function getWeek(row: any) {
-  const raw = clean(row?.Week || row?.week || row?.WEEK || row?.["Week "]);
-  if (!raw) return "";
-  const num = raw.match(/\d+/)?.[0];
-  return num ? `Week ${num}` : raw;
-}
-
-function normalizeWeek(value: any) {
-  const text = clean(value);
-  return text.match(/\d+/)?.[0] || normalizeText(text);
+  return clean(row.Week || row.week || row.WEEK);
 }
 
 function getType(row: any) {
-  const raw = clean(row?.Type || row?.type || row?.TYPE || row?.Event || row?.event);
-  const lower = raw.toLowerCase();
-  if (lower.includes("blind")) return "Blind";
-  if (lower.includes("swap")) return "Swap";
-  return raw;
+  return clean(row.Type || row.type || row.TYPE);
 }
 
 function numberVal(value: any) {
-  const n = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+  if (value === null || value === undefined || value === "") return 0;
+  const n = Number(String(value).replace(/[^0-9.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
+}
+
+function getValue(row: any, keys: string[]) {
+  for (const key of keys) {
+    if (row?.[key] !== undefined && row?.[key] !== "" && row?.[key] !== null) return row[key];
+  }
+
+  const wanted = keys.map(compact);
+  const found = Object.keys(row || {}).find((key) => wanted.includes(compact(key)));
+  return found ? row[found] : "";
+}
+
+function getStatValue(row: any, keys: string[]) {
+  return getValue(row || {}, keys);
 }
 
 function pointValue(row: any) {
   return numberVal(
-    row?.Points ||
-      row?.points ||
-      row?.["Overall Points"] ||
-      row?.Overall ||
-      row?.Total ||
-      row?.["Total Points"] ||
-      row?.["Total POINTS"]
+    getValue(row, [
+      "Overall",
+      "Standing Points",
+      "standing_points",
+      "Points",
+      "Total Points",
+      "Total Pts",
+    ])
   );
-}
-
-function getStatValue(row: any, keys: string[]) {
-  for (const key of keys) {
-    if (row?.[key] !== undefined && row?.[key] !== "") return row[key];
-  }
-  return "";
-}
-
-function getStatNumber(row: any, keys: string[]) {
-  return numberVal(getStatValue(row, keys));
 }
 
 function formatValue(value: any, decimals = 2) {
@@ -162,8 +115,8 @@ function formatValue(value: any, decimals = 2) {
   const n = numberVal(value);
   if (!Number.isFinite(n)) return String(value);
   if (String(value).includes("%")) return `${n.toFixed(2)}%`;
-  if (Math.abs(n) >= 100 || Number.isInteger(n) || decimals === 0) return String(Math.round(n));
-  return n.toFixed(decimals);
+  if (Number.isInteger(n) || decimals === 0) return String(Math.round(n));
+  return n.toFixed(decimals).replace(/\.00$/, "");
 }
 
 function weekSort(a: string, b: string) {
@@ -172,116 +125,132 @@ function weekSort(a: string, b: string) {
   return an - bn;
 }
 
+const seasonOrder: Record<string, number> = {
+  spring: 1,
+  summer: 2,
+  fall: 3,
+  winter: 4,
+};
+
+function seasonSort(a: string, b: string) {
+  const parse = (season: string) => {
+    const value = clean(season).toLowerCase();
+    const yearMatch = value.match(/(\d{2,4})/);
+    const year = yearMatch ? Number(yearMatch[1].slice(-2)) : 0;
+    const label = Object.keys(seasonOrder).find((word) => value.includes(word)) || "spring";
+    return { year, order: seasonOrder[label] || 99 };
+  };
+
+  const av = parse(a);
+  const bv = parse(b);
+  if (av.year !== bv.year) return av.year - bv.year;
+  return av.order - bv.order;
+}
+
 const statColumns = [
+  { label: "Finish", keys: ["Finish", "Rank"], decimals: 0 },
   { label: "Total Rounds", keys: ["Total Rounds"], decimals: 0 },
-  { label: "Total Pts", keys: ["Total Pts"], decimals: 0 },
-  { label: "Average PPR", keys: ["Average PPR"], decimals: 2 },
-  { label: "Opp Avg PPR", keys: ["Opponents Avg PPR"], decimals: 2 },
-  { label: "Average DPR", keys: ["Average DPR"], decimals: 2 },
-  { label: "Opp Pts", keys: ["Opponents Pts"], decimals: 0 },
+  { label: "Total Pts", keys: ["Total Pts", "Total Points"], decimals: 0 },
+  { label: "Average PPR", keys: ["Average PPR", "PPR"], decimals: 2 },
+  { label: "Opp Avg PPR", keys: ["Opponents Avg PPR", "OPPR", "Opp Avg PPR"], decimals: 2 },
+  { label: "Average DPR", keys: ["Average DPR", "DPR"], decimals: 2 },
+  { label: "Opp Pts", keys: ["Opponents Pts", "Opp Pts"], decimals: 0 },
   { label: "Avg Bags In", keys: ["Avg Bags In"], decimals: 2 },
   { label: "Total Bags In", keys: ["Total Bags In"], decimals: 0 },
-  { label: "Avg Bags In/Rd", keys: ["Avg Bags In per Rd"], decimals: 2 },
+  { label: "Avg Bags In/Rd", keys: ["Avg Bags In per Rd", "Avg Bags In/Rd"], decimals: 2 },
   { label: "Bags On %", keys: ["Bags On %"], decimals: 2 },
   { label: "Bags Off %", keys: ["Bags Off %"], decimals: 2 },
-  { label: "Total Bags", keys: ["Total Bags Thrown"], decimals: 0 },
+  { label: "Total Bags", keys: ["Total Bags Thrown", "Total Bags"], decimals: 0 },
   { label: "Avg 4-Bagger %", keys: ["Avg 4-Bagger %"], decimals: 2 },
-  { label: "Total 4-Baggers", keys: ["Total 4-Baggers"], decimals: 0 },
+  { label: "Total 4-Baggers", keys: ["Total 4-Baggers", "4 Baggers"], decimals: 0 },
   { label: "1st in Stats", keys: ["1st in Stats"], decimals: 0 },
-  { label: "Avg Rounds/Swap", keys: ["Avg Rounds/Swap Game"], decimals: 2 },
+  { label: "Avg Rounds/Swap", keys: ["Avg Rounds/Swap Game", "Avg Rounds/Swap"], decimals: 2 },
 ];
 
-const eventStatColumns = [
-  { label: "PPR", keys: ["PPR", "ppr"], decimals: 2 },
-  { label: "Rounds", keys: ["Rounds", "rounds", "ROUNDS"], decimals: 0 },
-  { label: "Points", keys: ["Points", "points", "Total Points", "POINTS"], decimals: 0 },
-  { label: "OPPR", keys: ["OPPR", "Opponent PPR", "Opp PPR"], decimals: 2 },
-  { label: "Opp Pts", keys: ["Opp Pts", "Opponent Points", "Opp Points"], decimals: 0 },
-  { label: "DPR", keys: ["DPR", "dpr"], decimals: 2 },
-  { label: "4 Baggers", keys: ["4 Baggers", "Four Baggers", "4-Baggers"], decimals: 0 },
+const weeklyStatColumns = [
+  { label: "PPR", keys: ["PPR"], decimals: 2 },
+  { label: "Rounds", keys: ["Rounds"], decimals: 0 },
+  { label: "Points", keys: ["Points"], decimals: 0 },
+  { label: "OPPR", keys: ["OPPR"], decimals: 2 },
+  { label: "Opp Pts", keys: ["Opp Pts"], decimals: 0 },
+  { label: "DPR", keys: ["DPR"], decimals: 2 },
+  { label: "4 Baggers", keys: ["4 Baggers"], decimals: 0 },
 ];
 
-function rowMatchesSeason(row: any, season: string) {
-  if (!season) return true;
-  const rowSeason = getSeason(row);
-  return !rowSeason || rowSeason === season;
+function eventIdentity(row: any) {
+  return `${compact(getSeason(row))}|${compact(getWeek(row))}|${compact(getType(row))}|${compact(getPlayer(row))}`;
 }
 
-function matchEventStatRows(eventStats: any[], params: { season?: string; week?: string; type?: string; player?: string }) {
-  const season = clean(params.season);
-  const week = normalizeWeek(params.week);
-  const type = normalizeText(params.type);
-  const playerName = normalizeName(params.player);
+function mergeWeeklyRows(weeklyRows: any[], eventStatsRows: any[]) {
+  const statMap = new Map<string, any>();
+  for (const stat of eventStatsRows || []) {
+    if (!isValidPlayerName(getPlayer(stat))) continue;
+    statMap.set(eventIdentity(stat), stat);
+  }
 
-  let rows = eventStats.filter((row) => {
-    const seasonOk = !season || rowMatchesSeason(row, season);
-    const weekOk = !week || normalizeWeek(getWeek(row)) === week;
-    const typeOk = !type || normalizeText(getType(row)) === type;
-    const playerOk = !playerName || normalizeName(getPlayer(row)) === playerName;
-    return seasonOk && weekOk && typeOk && playerOk;
-  });
-
-  // Some older saved rows may not have Type correctly tagged. Fall back to Season + Week + Player.
-  if (!rows.length && playerName) {
-    rows = eventStats.filter((row) => {
-      const seasonOk = !season || rowMatchesSeason(row, season);
-      const weekOk = !week || normalizeWeek(getWeek(row)) === week;
-      const playerOk = normalizeName(getPlayer(row)) === playerName;
-      return seasonOk && weekOk && playerOk;
+  return (weeklyRows || [])
+    .filter((row) => isValidPlayerName(getPlayer(row)))
+    .map((row) => {
+      const stat = statMap.get(eventIdentity(row)) || {};
+      return {
+        ...row,
+        PPR: getValue(stat, ["PPR"]),
+        Rounds: getValue(stat, ["Rounds"]),
+        StatPoints: getValue(stat, ["Points"]),
+        OPPR: getValue(stat, ["OPPR"]),
+        "Opp Pts": getValue(stat, ["Opp Pts"]),
+        DPR: getValue(stat, ["DPR"]),
+        "4 Baggers": getValue(stat, ["4 Baggers"]),
+      };
     });
-  }
-
-  // Some older saved rows may not have Week correctly tagged. Fall back to Season + Type + Player.
-  if (!rows.length && playerName && type) {
-    rows = eventStats.filter((row) => {
-      const seasonOk = !season || rowMatchesSeason(row, season);
-      const typeOk = normalizeText(getType(row)) === type;
-      const playerOk = normalizeName(getPlayer(row)) === playerName;
-      return seasonOk && typeOk && playerOk;
-    });
-  }
-
-  const bestByPlayer = new Map<string, any>();
-
-  for (const row of rows) {
-    const key = [normalizeName(getPlayer(row)), normalizeWeek(getWeek(row)), normalizeText(getType(row))].join("|");
-    const current = bestByPlayer.get(key);
-    const score = eventStatColumns.reduce((total, col) => total + (getStatValue(row, col.keys) !== "" && getStatValue(row, col.keys) !== null && getStatValue(row, col.keys) !== undefined ? 1 : 0), 0);
-    const currentScore = current
-      ? eventStatColumns.reduce((total, col) => total + (getStatValue(current, col.keys) !== "" && getStatValue(current, col.keys) !== null && getStatValue(current, col.keys) !== undefined ? 1 : 0), 0)
-      : -1;
-
-    if (!current || score >= currentScore) bestByPlayer.set(key, row);
-  }
-
-  return Array.from(bestByPlayer.values());
 }
 
-function summarizeEventStats(rows: any[]) {
-  const valuesFor = (keys: string[]) =>
-    rows.map((row) => getStatNumber(row, keys)).filter((n) => Number.isFinite(n) && n !== 0);
-
+function summarizeSeasonStats(rows: any[]) {
+  const valid = rows.filter((row) => isValidPlayerName(getPlayer(row)));
   const avg = (keys: string[], decimals = 2) => {
-    const values = valuesFor(keys);
+    const values = valid.map((row) => numberVal(getStatValue(row, keys))).filter((n) => Number.isFinite(n));
     if (!values.length) return "-";
     return formatValue(values.reduce((a, b) => a + b, 0) / values.length, decimals);
   };
-
   const sum = (keys: string[], decimals = 0) => {
-    const total = rows.reduce((acc, row) => acc + getStatNumber(row, keys), 0);
+    const total = valid.reduce((acc, row) => acc + numberVal(getStatValue(row, keys)), 0);
     return total ? formatValue(total, decimals) : "-";
   };
 
-  return {
-    players: rows.length,
-    totalRounds: sum(["Rounds", "rounds", "ROUNDS"], 0),
-    totalPoints: sum(["Points", "points", "POINTS", "Total Points"], 0),
-    avgPPR: avg(["PPR", "ppr"], 2),
-    avgOPPR: avg(["OPPR", "Opponent PPR", "Opp PPR"], 2),
-    avgDPR: avg(["DPR", "dpr"], 2),
-    oppPoints: sum(["Opp Pts", "Opponent Points", "Opp Points"], 0),
-    fourBaggers: sum(["4 Baggers", "Four Baggers", "4-Baggers"], 0),
+  return [
+    { label: "Players", value: valid.length },
+    { label: "Total Rounds", value: sum(["Total Rounds"], 0) },
+    { label: "Total Points", value: sum(["Total Pts", "Total Points"], 0) },
+    { label: "Avg PPR", value: avg(["Average PPR", "PPR"], 2) },
+    { label: "Avg OPPR", value: avg(["Opponents Avg PPR", "OPPR"], 2) },
+    { label: "Avg DPR", value: avg(["Average DPR", "DPR"], 2) },
+    { label: "Total 4-Baggers", value: sum(["Total 4-Baggers", "4 Baggers"], 0) },
+    { label: "Avg Bags On %", value: avg(["Bags On %"], 2) },
+  ];
+}
+
+function summarizeEvent(rows: any[]) {
+  const valid = rows.filter((row) => isValidPlayerName(getPlayer(row)));
+  const avg = (key: string) => {
+    const values = valid.map((row) => numberVal(row[key])).filter((n) => n !== 0);
+    if (!values.length) return "-";
+    return formatValue(values.reduce((a, b) => a + b, 0) / values.length, 2);
   };
+  const sum = (key: string) => {
+    const total = valid.reduce((acc, row) => acc + numberVal(row[key]), 0);
+    return total ? formatValue(total, 0) : "-";
+  };
+
+  return [
+    { label: "Players", value: valid.length },
+    { label: "Total Rounds", value: sum("Rounds") },
+    { label: "Total Points", value: sum("StatPoints") },
+    { label: "Avg PPR", value: avg("PPR") },
+    { label: "Avg OPPR", value: avg("OPPR") },
+    { label: "Avg DPR", value: avg("DPR") },
+    { label: "Opp Points", value: sum("Opp Pts") },
+    { label: "4 Baggers", value: sum("4 Baggers") },
+  ];
 }
 
 export default function LeagueClient() {
@@ -299,160 +268,180 @@ export default function LeagueClient() {
   const [compareB, setCompareB] = useState("");
   const [sortKey, setSortKey] = useState("Total Pts");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [selectedStatsPlayers, setSelectedStatsPlayers] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch("/api/data")
+    fetch("/api/data", { cache: "no-store" })
       .then((res) => res.json())
       .then((loaded) => {
-        const cleaned = {
-          ...loaded,
-          players: (loaded.players || []).filter(isValidPlayerName),
-          standings: (loaded.standings || []).filter((row: any) => isValidPlayerName(getPlayer(row))),
-          weekly: (loaded.weekly || []).filter((row: any) => isValidPlayerName(getPlayer(row))),
-          eventStats: (loaded.eventStats || []).filter((row: any) => isValidPlayerName(getPlayer(row))),
-          stats: (loaded.stats || []).filter((row: any) => isValidPlayerName(getPlayer(row))),
-        };
-        const sortedSeasons = sortSeasons(cleaned.seasons || []);
-        setData({ ...cleaned, seasons: sortedSeasons });
-        setSeason(sortedSeasons[0] || "");
-        setProfileSeason("All Seasons");
+        setData(loaded);
+        const firstSeason = [...(loaded.seasons || [])].sort(seasonSort)[0] || "";
+        setSeason(firstSeason);
       });
   }, []);
 
-  const seasons = data?.seasons || [];
-  const players = data?.players || [];
-  const selectedPlayer = player !== "All Players" ? player : "";
-  const allEventStats = data?.eventStats || [];
+  const seasons = useMemo(() => [...(data?.seasons || [])].sort(seasonSort), [data]);
+  const players = useMemo(
+    () => (data?.players || []).filter(isValidPlayerName).sort((a, b) => a.localeCompare(b)),
+    [data]
+  );
+
+  const eventStats = data?.eventStats || [];
+
+  const allWeeklyMerged = useMemo(
+    () => mergeWeeklyRows(data?.weekly || [], eventStats),
+    [data, eventStats]
+  );
+
+  const seasonStatsAll = useMemo(
+    () => (data?.stats || []).filter((row) => isValidPlayerName(getPlayer(row))),
+    [data]
+  );
+
+  const selectedSeasonStats = useMemo(
+    () => seasonStatsAll.filter((row) => !season || getSeason(row) === season),
+    [seasonStatsAll, season]
+  );
+
+  const dashboardStandings = useMemo(() => {
+    if (dashboardWeek === "All Weeks") {
+      return (data?.standings || [])
+        .filter((row) => isValidPlayerName(getPlayer(row)))
+        .filter((row) => !season || getSeason(row, season) === season)
+        .filter((row) => player === "All Players" || getPlayer(row) === player)
+        .map((row) => ({ name: getPlayer(row), points: pointValue(row), raw: row }))
+        .filter((row) => row.name && row.points > 0)
+        .sort((a, b) => b.points - a.points);
+    }
+
+    const totals = new Map<string, number>();
+    for (const row of allWeeklyMerged) {
+      if (getSeason(row) !== season) continue;
+      if (getWeek(row) !== dashboardWeek) continue;
+      if (player !== "All Players" && getPlayer(row) !== player) continue;
+      totals.set(getPlayer(row), (totals.get(getPlayer(row)) || 0) + numberVal(row.Points));
+    }
+
+    return Array.from(totals.entries())
+      .map(([name, points]) => ({ name, points, raw: {} }))
+      .filter((row) => isValidPlayerName(row.name) && row.points > 0)
+      .sort((a, b) => b.points - a.points);
+  }, [data, season, player, dashboardWeek, allWeeklyMerged]);
 
   const dashboardWeeks = useMemo(() => {
-    const seasonWeekly = (data?.weekly || []).filter((row) => rowMatchesSeason(row, season));
-    return ["All Weeks", ...Array.from(new Set(seasonWeekly.map(getWeek).filter(Boolean))).sort(weekSort)];
-  }, [data, season]);
+    const values = Array.from(
+      new Set(allWeeklyMerged.filter((row) => getSeason(row) === season).map(getWeek).filter(Boolean))
+    ).sort(weekSort);
+    return ["All Weeks", ...values];
+  }, [allWeeklyMerged, season]);
 
-  const standings = useMemo(() => {
-    const base = (data?.standings || [])
-      .filter((row) => rowMatchesSeason(row, season))
-      .filter((row) => player === "All Players" || getPlayer(row) === player)
-      .map((row) => {
-        const weekValue = dashboardWeek === "All Weeks" ? pointValue(row) : numberVal(row[dashboardWeek]);
-        return { name: getPlayer(row) || "Unknown", points: weekValue, raw: row };
-      })
-      .filter((row) => row.name !== "Unknown" && isValidPlayerName(row.name))
-      .filter((row) => dashboardWeek === "All Weeks" || row.points !== 0)
-      .sort((a, b) => b.points - a.points);
-    return base;
-  }, [data, season, player, dashboardWeek]);
+  const weeksRowsForType = useMemo(
+    () =>
+      allWeeklyMerged.filter((row) => {
+        return getSeason(row) === season && getType(row) === type;
+      }),
+    [allWeeklyMerged, season, type]
+  );
 
-  const seasonStats = useMemo(() => {
-    const rows = (data?.stats || [])
-      .filter((row) => rowMatchesSeason(row, season))
-      .filter((row) => player === "All Players" || getPlayer(row) === player)
-      .filter((row) => isValidPlayerName(getPlayer(row)));
-
-    const selectedColumn = statColumns.find((col) => col.label === sortKey);
-    return rows.sort((a, b) => {
-      if (!selectedColumn) return getPlayer(a).localeCompare(getPlayer(b));
-      const av = getStatNumber(a, selectedColumn.keys);
-      const bv = getStatNumber(b, selectedColumn.keys);
-      if (av === bv) return getPlayer(a).localeCompare(getPlayer(b));
-      return sortDirection === "asc" ? av - bv : bv - av;
-    });
-  }, [data, season, player, sortKey, sortDirection]);
-
-  const weekRows = useMemo(() => {
-    return (data?.weekly || []).filter((row) => rowMatchesSeason(row, season) && getType(row) === type);
-  }, [data, season, type]);
-
-  const weeks = useMemo(() => Array.from(new Set(weekRows.map(getWeek).filter(Boolean))).sort(weekSort), [weekRows]);
+  const weeks = useMemo(
+    () => Array.from(new Set(weeksRowsForType.map(getWeek).filter(Boolean))).sort(weekSort),
+    [weeksRowsForType]
+  );
 
   useEffect(() => {
     if (!week || !weeks.includes(week)) setWeek(weeks[0] || "");
   }, [weeks, week]);
 
-  const visibleWeekRows = weekRows.filter((row) => (!week || getWeek(row) === week) && (player === "All Players" || getPlayer(row) === player));
+  const visibleWeekRows = useMemo(
+    () =>
+      weeksRowsForType
+        .filter((row) => getWeek(row) === week)
+        .filter((row) => player === "All Players" || getPlayer(row) === player)
+        .sort((a, b) => numberVal(a.Rank) - numberVal(b.Rank) || getPlayer(a).localeCompare(getPlayer(b))),
+    [weeksRowsForType, week, player]
+  );
 
-  const visibleEventStatsRows = useMemo(() => {
-    return matchEventStatRows(allEventStats, { season, week, type }).sort((a, b) => getPlayer(a).localeCompare(getPlayer(b)));
-  }, [allEventStats, season, week, type]);
+  const statsTabRows = useMemo(() => {
+    const selected = selectedStatsPlayers.length
+      ? selectedStatsPlayers
+      : player !== "All Players"
+      ? [player]
+      : [];
 
-  const playerSeasonFilter = profileSeason === "All Seasons" ? "" : profileSeason;
+    const selectedColumn = statColumns.find((col) => col.label === sortKey);
 
-  const playerSeasonStats = useMemo(() => {
-    if (!selectedPlayer) return null;
-    return (data?.stats || []).find((row) => getPlayer(row) === selectedPlayer && (!playerSeasonFilter || rowMatchesSeason(row, playerSeasonFilter))) || null;
-  }, [data, selectedPlayer, playerSeasonFilter]);
+    return selectedSeasonStats
+      .filter((row) => !selected.length || selected.includes(getPlayer(row)))
+      .sort((a, b) => {
+        if (!selectedColumn) return getPlayer(a).localeCompare(getPlayer(b));
+        const av = numberVal(getStatValue(a, selectedColumn.keys));
+        const bv = numberVal(getStatValue(b, selectedColumn.keys));
+        if (av === bv) return getPlayer(a).localeCompare(getPlayer(b));
+        return sortDirection === "asc" ? av - bv : bv - av;
+      });
+  }, [selectedSeasonStats, selectedStatsPlayers, player, sortKey, sortDirection]);
 
-  const playerAllSeasonStats = useMemo(() => {
-    if (!selectedPlayer) return [];
-    return (data?.stats || [])
-      .filter((row) => getPlayer(row) === selectedPlayer)
-      .sort((a, b) => seasonSortValue(getSeason(a)) - seasonSortValue(getSeason(b)));
-  }, [data, selectedPlayer]);
+  const selectedProfilePlayer = player !== "All Players" ? player : "";
 
-  const playerWeeks = useMemo(() => {
-    if (!selectedPlayer) return [];
+  const profileSeasonStats = useMemo(() => {
+    if (!selectedProfilePlayer) return [];
+    return seasonStatsAll
+      .filter((row) => getPlayer(row) === selectedProfilePlayer)
+      .filter((row) => profileSeason === "All Seasons" || getSeason(row) === profileSeason)
+      .sort((a, b) => seasonSort(getSeason(a), getSeason(b)));
+  }, [seasonStatsAll, selectedProfilePlayer, profileSeason]);
+
+  const profileWeeks = useMemo(() => {
+    if (!selectedProfilePlayer) return [];
     return Array.from(
       new Set(
-        (data?.weekly || [])
-          .filter((row) => getPlayer(row) === selectedPlayer)
-          .filter((row) => !playerSeasonFilter || rowMatchesSeason(row, playerSeasonFilter))
+        allWeeklyMerged
+          .filter((row) => getPlayer(row) === selectedProfilePlayer)
+          .filter((row) => profileSeason === "All Seasons" || getSeason(row) === profileSeason)
           .map(getWeek)
           .filter(Boolean)
       )
     ).sort(weekSort);
-  }, [data, selectedPlayer, playerSeasonFilter]);
+  }, [allWeeklyMerged, selectedProfilePlayer, profileSeason]);
 
-  const playerWeeklyRows = useMemo(() => {
-    if (!selectedPlayer) return [];
-    return (data?.weekly || [])
-      .filter((row) => getPlayer(row) === selectedPlayer)
-      .filter((row) => !playerSeasonFilter || rowMatchesSeason(row, playerSeasonFilter))
+  const profileWeeklyRows = useMemo(() => {
+    if (!selectedProfilePlayer) return [];
+    return allWeeklyMerged
+      .filter((row) => getPlayer(row) === selectedProfilePlayer)
+      .filter((row) => profileSeason === "All Seasons" || getSeason(row) === profileSeason)
       .filter((row) => profileWeek === "All Weeks" || getWeek(row) === profileWeek)
       .filter((row) => profileType === "All" || getType(row) === profileType)
-      .sort((a, b) => {
-        const seasonCompare = seasonSortValue(getSeason(a)) - seasonSortValue(getSeason(b));
-        if (seasonCompare !== 0) return seasonCompare;
-        const weekCompare = weekSort(getWeek(a), getWeek(b));
-        if (weekCompare !== 0) return weekCompare;
-        return getType(a).localeCompare(getType(b));
-      });
-  }, [data, selectedPlayer, playerSeasonFilter, profileWeek, profileType]);
+      .sort((a, b) => seasonSort(getSeason(a), getSeason(b)) || weekSort(getWeek(a), getWeek(b)) || getType(a).localeCompare(getType(b)));
+  }, [allWeeklyMerged, selectedProfilePlayer, profileSeason, profileWeek, profileType]);
 
-  const groupedPlayerWeeks = useMemo(() => {
-    const groups: Record<string, Record<string, any[]>> = {};
-    for (const row of playerWeeklyRows) {
-      const key = `${getSeason(row)} - ${getWeek(row) || "No Week"}`;
-      const t = getType(row) || "Other";
-      if (!groups[key]) groups[key] = {};
-      if (!groups[key][t]) groups[key][t] = [];
-      groups[key][t].push(row);
+  const groupedProfileWeeks = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    for (const row of profileWeeklyRows) {
+      const key = `${getSeason(row)} - ${getWeek(row)} - ${getType(row)}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(row);
     }
-    return Object.entries(groups).sort(([a], [b]) => {
-      const seasonA = a.split(" - ")[0];
-      const seasonB = b.split(" - ")[0];
-      const seasonCompare = seasonSortValue(seasonA) - seasonSortValue(seasonB);
-      if (seasonCompare !== 0) return seasonCompare;
-      return weekSort(a, b);
-    });
-  }, [playerWeeklyRows]);
+    return Object.entries(groups);
+  }, [profileWeeklyRows]);
 
-  const progressData = useMemo(() => {
-    return playerAllSeasonStats.map((row) => ({
-      season: getSeason(row),
-      PPR: getStatNumber(row, ["Average PPR"]),
-      DPR: getStatNumber(row, ["Average DPR"]),
-    }));
-  }, [playerAllSeasonStats]);
+  const progressData = profileSeasonStats.map((row) => ({
+    season: getSeason(row),
+    PPR: numberVal(getStatValue(row, ["Average PPR", "PPR"])),
+    DPR: numberVal(getStatValue(row, ["Average DPR", "DPR"])),
+  }));
 
-  const statA = (data?.stats || []).find((row) => getPlayer(row) === compareA && rowMatchesSeason(row, season));
-  const statB = (data?.stats || []).find((row) => getPlayer(row) === compareB && rowMatchesSeason(row, season));
+  const statA = seasonStatsAll.find((row) => getPlayer(row) === compareA && getSeason(row) === season);
+  const statB = seasonStatsAll.find((row) => getPlayer(row) === compareB && getSeason(row) === season);
 
-  if (!data) return <main className="min-h-screen bg-black p-6 text-white">Loading League Stats...</main>;
+  if (!data) {
+    return <main className="min-h-screen bg-black p-6 text-white">Loading League Stats...</main>;
+  }
 
   const navItems: { id: Tab; label: string }[] = [
     { id: "dashboard", label: "Dashboard" },
     { id: "standings", label: "Standings" },
     { id: "weeks", label: "Weeks" },
+    { id: "stats", label: "Stats" },
     { id: "players", label: "Players" },
     { id: "compare", label: "Compare" },
   ];
@@ -468,9 +457,16 @@ export default function LeagueClient() {
               <p className="text-sm text-neutral-300">Empire Cornhole standings, weekly results, and player stats.</p>
             </div>
           </div>
+
           <div className="hidden gap-2 md:flex">
             {navItems.map((item) => (
-              <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-full px-4 py-2 text-sm font-bold ${tab === item.id ? "bg-[#f04a22] text-white" : "bg-neutral-900 text-neutral-300 hover:bg-neutral-800"}`}>{item.label}</button>
+              <button
+                key={item.id}
+                onClick={() => setTab(item.id)}
+                className={`rounded-full px-4 py-2 text-sm font-bold ${tab === item.id ? "bg-[#f04a22] text-white" : "bg-neutral-900 text-neutral-300 hover:bg-neutral-800"}`}
+              >
+                {item.label}
+              </button>
             ))}
           </div>
         </div>
@@ -479,10 +475,44 @@ export default function LeagueClient() {
       <section className="mx-auto max-w-7xl p-4">
         <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
-            <Select label="Season" value={season} onChange={(v) => { setSeason(v); setDashboardWeek("All Weeks"); }} options={seasons} />
-            <Select label="Player" value={player} onChange={(v) => setPlayer(v)} options={["All Players", ...players]} />
-            <Select label="Dashboard Week" value={dashboardWeek} onChange={(v) => setDashboardWeek(v)} options={dashboardWeeks} />
-            <div className="text-sm text-neutral-400">Last updated: {data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : "No upload date found"}</div>
+            <div>
+              <label className="text-xs font-bold uppercase text-[#f04a22]">Season</label>
+              <select
+                className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white"
+                value={season}
+                onChange={(e) => {
+                  setSeason(e.target.value);
+                  setDashboardWeek("All Weeks");
+                }}
+              >
+                {seasons.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase text-[#f04a22]">Player</label>
+              <select className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white" value={player} onChange={(e) => setPlayer(e.target.value)}>
+                <option>All Players</option>
+                {players.map((p) => (
+                  <option key={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase text-[#f04a22]">Dashboard Week</label>
+              <select className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
+                {dashboardWeeks.map((w) => (
+                  <option key={w}>{w}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="text-sm text-neutral-400">
+              Last updated: {data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : "No upload date found"}
+            </div>
           </div>
         </div>
       </section>
@@ -490,84 +520,149 @@ export default function LeagueClient() {
       <section className="mx-auto max-w-7xl space-y-6 p-4">
         {tab === "dashboard" && (
           <>
-            <Card title={dashboardWeek === "All Weeks" ? "Top Standings" : `Top Standings - ${dashboardWeek}`}>
-              <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={standings.slice(0, 12)} margin={{ top: 20, right: 20, left: 0, bottom: 80 }}>
-                      <XAxis dataKey="name" interval={0} angle={-25} textAnchor="end" height={90} />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="points" fill="#f04a22"><LabelList dataKey="points" position="top" fill="#fff" /></Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <RankedList rows={standings.slice(0, 12)} />
-              </div>
+            <Card title="Top Standings">
+              <RankedList rows={dashboardStandings.slice(0, 20)} />
             </Card>
-            <Card title={player === "All Players" ? "Season Stats" : `${player} Season Stats`}>
-              {player === "All Players" ? <StatsTable rows={seasonStats} sortKey={sortKey} sortDirection={sortDirection} onSort={(key) => { if (sortKey === key) setSortDirection(sortDirection === "asc" ? "desc" : "asc"); else { setSortKey(key); setSortDirection("desc"); } }} /> : <PlayerStatsSummary row={seasonStats[0]} />}
+
+            <Card title={`${season} League Overview`}>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {summarizeSeasonStats(selectedSeasonStats).map((item) => (
+                  <MiniStat key={item.label} label={item.label} value={item.value} />
+                ))}
+              </div>
+              <p className="mt-4 text-sm text-neutral-400">Individual player stat tables are now under the Stats tab.</p>
             </Card>
           </>
         )}
 
-        {tab === "standings" && <Card title="Season Standings"><Table rows={standings} /></Card>}
+        {tab === "standings" && (
+          <Card title="Season Standings">
+            <StandingsTable rows={dashboardStandings} />
+          </Card>
+        )}
 
         {tab === "weeks" && (
           <Card title="Weekly Results">
             <div className="mb-4 flex flex-wrap gap-3">
-              <select className="rounded-lg bg-[#242424] p-2" value={type} onChange={(e) => { setType(e.target.value as "Blind" | "Swap"); setWeek(""); }}><option>Blind</option><option>Swap</option></select>
-              <select className="rounded-lg bg-[#242424] p-2" value={week} onChange={(e) => setWeek(e.target.value)}>{weeks.map((w) => <option key={w}>{w}</option>)}</select>
+              <select className="rounded-lg bg-[#242424] p-2" value={type} onChange={(e) => { setType(e.target.value as "Blind" | "Swap"); setWeek(""); }}>
+                <option>Blind</option>
+                <option>Swap</option>
+              </select>
+
+              <select className="rounded-lg bg-[#242424] p-2" value={week} onChange={(e) => setWeek(e.target.value)}>
+                {weeks.map((w) => (
+                  <option key={w}>{w}</option>
+                ))}
+              </select>
             </div>
+
             <h3 className="mb-2 text-lg font-black text-[#f04a22]">Standings</h3>
-            <WeeklyStandingsTable rows={visibleWeekRows} eventStats={allEventStats} />
-            <EventSummary rows={visibleEventStatsRows} />
+            <WeeklyTable rows={visibleWeekRows} />
+            <EventSummary rows={visibleWeekRows} />
+          </Card>
+        )}
+
+        {tab === "stats" && (
+          <Card title="Season Stats">
+            <div className="mb-4 space-y-3">
+              <div>
+                <div className="mb-2 text-sm font-bold text-neutral-300">Multi-select players for this tab</div>
+                <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-neutral-800 bg-[#101010] p-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {players.map((p) => (
+                    <label key={p} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedStatsPlayers.includes(p)}
+                        onChange={(e) => {
+                          setSelectedStatsPlayers((current) =>
+                            e.target.checked ? [...current, p] : current.filter((name) => name !== p)
+                          );
+                        }}
+                      />
+                      <span>{p}</span>
+                    </label>
+                  ))}
+                </div>
+                {selectedStatsPlayers.length > 0 && (
+                  <button className="mt-2 rounded-lg bg-[#242424] px-3 py-2 text-sm font-bold" onClick={() => setSelectedStatsPlayers([])}>
+                    Clear multi-select
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <StatsTable
+              rows={statsTabRows}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSort={(key) => {
+                if (sortKey === key) setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+                else {
+                  setSortKey(key);
+                  setSortDirection("desc");
+                }
+              }}
+            />
           </Card>
         )}
 
         {tab === "players" && (
-          <Card title={selectedPlayer ? `${selectedPlayer} Profile` : "Player Profile"}>
-            {!selectedPlayer ? <p className="text-neutral-400">Use the Player dropdown above to select a player.</p> : (
+          <Card title={selectedProfilePlayer ? `${selectedProfilePlayer} Profile` : "Player Profile"}>
+            {!selectedProfilePlayer ? (
+              <p className="text-neutral-400">Choose a player from the top Player dropdown to view their profile.</p>
+            ) : (
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-3">
-                  <select className="rounded-lg bg-[#242424] p-2" value={profileSeason} onChange={(e) => { setProfileSeason(e.target.value); setProfileWeek("All Weeks"); }}><option>All Seasons</option>{seasons.map((s) => <option key={s}>{s}</option>)}</select>
-                  <select className="rounded-lg bg-[#242424] p-2" value={profileWeek} onChange={(e) => setProfileWeek(e.target.value)}><option>All Weeks</option>{playerWeeks.map((w) => <option key={w}>{w}</option>)}</select>
-                  <select className="rounded-lg bg-[#242424] p-2" value={profileType} onChange={(e) => setProfileType(e.target.value as EventFilter)}><option>All</option><option>Blind</option><option>Swap</option></select>
+                  <select className="rounded-lg bg-[#242424] p-2" value={profileSeason} onChange={(e) => { setProfileSeason(e.target.value); setProfileWeek("All Weeks"); }}>
+                    <option>All Seasons</option>
+                    {seasons.map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                  <select className="rounded-lg bg-[#242424] p-2" value={profileWeek} onChange={(e) => setProfileWeek(e.target.value)}>
+                    <option>All Weeks</option>
+                    {profileWeeks.map((w) => <option key={w}>{w}</option>)}
+                  </select>
+                  <select className="rounded-lg bg-[#242424] p-2" value={profileType} onChange={(e) => setProfileType(e.target.value as EventFilter)}>
+                    <option>All</option>
+                    <option>Blind</option>
+                    <option>Swap</option>
+                  </select>
                 </div>
 
-                {profileSeason === "All Seasons" ? (
-                  <>
-                    <h3 className="text-lg font-black text-[#f04a22]">Season Finishes</h3>
-                    <SeasonHistoryTable rows={playerAllSeasonStats} standings={data.standings || []} />
-                    <h3 className="text-lg font-black text-[#f04a22]">Progress Over Time</h3>
-                    <div className="h-80 rounded-xl border border-neutral-800 bg-[#141414] p-3">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={progressData} margin={{ top: 20, right: 20, left: 0, bottom: 30 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                          <XAxis dataKey="season" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="DPR" stroke="#ffffff" strokeWidth={3} dot />
-                          <Line type="monotone" dataKey="PPR" stroke="#f04a22" strokeWidth={3} dot />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </>
-                ) : <PlayerStatsSummary row={playerSeasonStats} />}
+                <PlayerStatsSummary row={profileSeasonStats[profileSeasonStats.length - 1]} />
 
-                <h3 className="text-lg font-black text-[#f04a22]">Weekly Breakdown</h3>
-                {groupedPlayerWeeks.length === 0 ? <p className="text-neutral-400">No weekly records found for this selection.</p> : groupedPlayerWeeks.map(([weekLabel, byType]) => (
-                  <div key={weekLabel} className="rounded-xl border border-neutral-800 bg-[#1c1c1c] p-4">
-                    <h4 className="mb-3 text-xl font-black">{weekLabel}</h4>
-                    {Object.entries(byType).map(([eventType, rows]) => (
-                      <div key={eventType} className="mb-6">
-                        <div className="mb-2 inline-block rounded-full bg-[#f04a22] px-3 py-1 text-xs font-black uppercase">{eventType}</div>
-                        <WeeklyStandingsTable rows={rows} eventStats={allEventStats} />
+                <div>
+                  <h3 className="mb-3 text-lg font-black text-[#f04a22]">Season Finishes</h3>
+                  <SeasonFinishesTable rows={profileSeasonStats} />
+                </div>
+
+                <div>
+                  <h3 className="mb-3 text-lg font-black text-[#f04a22]">Progress Over Time</h3>
+                  <div className="h-72 rounded-xl border border-neutral-800 p-3">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={progressData}>
+                        <XAxis dataKey="season" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="DPR" stroke="#ffffff" strokeWidth={3} />
+                        <Line type="monotone" dataKey="PPR" stroke="#f04a22" strokeWidth={3} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="mb-3 text-lg font-black text-[#f04a22]">Weekly Breakdown</h3>
+                  <div className="space-y-4">
+                    {groupedProfileWeeks.map(([label, rows]) => (
+                      <div key={label} className="rounded-xl border border-neutral-800 bg-[#1c1c1c] p-4">
+                        <h4 className="mb-3 text-xl font-black">{label}</h4>
+                        <WeeklyTable rows={rows} />
+                        <EventSummary rows={rows} />
                       </div>
                     ))}
                   </div>
-                ))}
+                </div>
               </div>
             )}
           </Card>
@@ -576,8 +671,14 @@ export default function LeagueClient() {
         {tab === "compare" && (
           <Card title="Compare Players">
             <div className="mb-4 flex flex-wrap gap-3">
-              <select className="rounded-lg bg-[#242424] p-2" value={compareA} onChange={(e) => setCompareA(e.target.value)}><option value="">Player A</option>{players.map((p) => <option key={p}>{p}</option>)}</select>
-              <select className="rounded-lg bg-[#242424] p-2" value={compareB} onChange={(e) => setCompareB(e.target.value)}><option value="">Player B</option>{players.map((p) => <option key={p}>{p}</option>)}</select>
+              <select className="rounded-lg bg-[#242424] p-2" value={compareA} onChange={(e) => setCompareA(e.target.value)}>
+                <option value="">Player A</option>
+                {players.map((p) => <option key={p}>{p}</option>)}
+              </select>
+              <select className="rounded-lg bg-[#242424] p-2" value={compareB} onChange={(e) => setCompareB(e.target.value)}>
+                <option value="">Player B</option>
+                {players.map((p) => <option key={p}>{p}</option>)}
+              </select>
             </div>
             <CompareTable statA={statA} statB={statB} />
           </Card>
@@ -585,59 +686,179 @@ export default function LeagueClient() {
       </section>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-black/95 p-2 md:hidden">
-        <div className="grid grid-cols-5 gap-1">{navItems.map((item) => <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-lg px-2 py-3 text-xs font-bold ${tab === item.id ? "bg-[#f04a22]" : "bg-[#1d1d1d]"}`}>{item.label}</button>)}</div>
+        <div className="grid grid-cols-6 gap-1">
+          {navItems.map((item) => (
+            <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-lg px-1 py-3 text-[10px] font-bold ${tab === item.id ? "bg-[#f04a22]" : "bg-[#1d1d1d]"}`}>
+              {item.label}
+            </button>
+          ))}
+        </div>
       </nav>
     </main>
   );
 }
 
-function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
-  return <div><label className="text-xs font-bold uppercase text-[#f04a22]">{label}</label><select className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white" value={value} onChange={(e) => onChange(e.target.value)}>{options.map((o) => <option key={o}>{o}</option>)}</select></div>;
-}
-
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl"><h2 className="mb-4 text-xl font-black">{title}</h2>{children}</section>;
+  return (
+    <section className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
+      <h2 className="mb-4 text-xl font-black">{title}</h2>
+      {children}
+    </section>
+  );
 }
 
-function RankedList({ rows }: { rows: any[] }) {
-  return <div className="space-y-2">{rows.map((row, index) => <div key={row.name} className="flex items-center justify-between rounded-lg bg-[#202020] px-3 py-2"><span className="font-bold">{index + 1}. {row.name}</span><span className="font-black text-[#f04a22]">{formatValue(row.points, 0)}</span></div>)}</div>;
+function MiniStat({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="rounded-xl border border-neutral-800 bg-[#101010] p-4">
+      <div className="text-xs font-bold uppercase text-neutral-400">{label}</div>
+      <div className="mt-1 text-3xl font-black text-[#f04a22]">{value}</div>
+    </div>
+  );
 }
 
-function Table({ rows }: { rows: any[] }) {
-  return <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-neutral-400"><th className="p-2">#</th><th className="p-2">Player</th><th className="p-2">Points</th></tr></thead><tbody>{rows.map((row, index) => <tr key={`${row.name}-${index}`} className="border-t border-neutral-800"><td className="p-2">{index + 1}</td><td className="p-2 font-bold">{row.name}</td><td className="p-2 text-[#f04a22]">{formatValue(row.points, 0)}</td></tr>)}</tbody></table></div>;
+function RankedList({ rows }: { rows: { name: string; points: number }[] }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {rows.map((row, index) => (
+        <div key={`${row.name}-${index}`} className="flex items-center justify-between rounded-xl bg-[#202020] px-4 py-3">
+          <span className="font-black">{index + 1}. {row.name}</span>
+          <span className="text-xl font-black text-[#f04a22]">{formatValue(row.points, 0)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StandingsTable({ rows }: { rows: { name: string; points: number }[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead><tr className="text-left text-neutral-400"><th className="p-2">#</th><th className="p-2">Player</th><th className="p-2">Points</th></tr></thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={`${row.name}-${index}`} className="border-t border-neutral-800"><td className="p-2">{index + 1}</td><td className="p-2 font-bold text-[#f04a22]">{row.name}</td><td className="p-2">{formatValue(row.points, 0)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function WeeklyTable({ rows }: { rows: any[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[12px]">
+        <thead>
+          <tr className="text-left text-neutral-400">
+            <th className="p-2">Rank</th><th className="p-2">Player</th><th className="p-2">Team</th><th className="p-2">Finish Pts</th><th className="p-2">+/-</th>
+            {weeklyStatColumns.map((col) => <th key={col.label} className="p-2">{col.label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={`${getPlayer(row)}-${getSeason(row)}-${getWeek(row)}-${getType(row)}-${index}`} className="border-t border-neutral-800">
+              <td className="p-2">{formatValue(row.Rank, 0)}</td>
+              <td className="p-2 font-bold text-[#f04a22]">{getPlayer(row)}</td>
+              <td className="p-2">{clean(row.Team) || "-"}</td>
+              <td className="p-2">{formatValue(row.Points, 0)}</td>
+              <td className="p-2">{formatValue(row["+/-"], 0)}</td>
+              {weeklyStatColumns.map((col) => (
+                <td key={col.label} className="p-2">{formatValue(getStatValue(row, col.label === "Points" ? ["StatPoints"] : col.keys), col.decimals)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EventSummary({ rows }: { rows: any[] }) {
+  return (
+    <div className="mt-6 rounded-xl border border-neutral-800 bg-[#202020] p-4">
+      <h3 className="mb-3 text-lg font-black text-[#f04a22]">Event Totals / Averages</h3>
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+        {summarizeEvent(rows).map((item) => <MiniStat key={item.label} label={item.label} value={item.value} />)}
+      </div>
+    </div>
+  );
 }
 
 function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sortKey: string; sortDirection: SortDirection; onSort: (key: string) => void }) {
-  return <><div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[1100px] text-[12px]"><thead><tr className="text-left text-neutral-400"><th className="sticky left-0 z-10 bg-[#141414] p-2">Player</th>{statColumns.map((col) => <th key={col.label} className="cursor-pointer whitespace-nowrap p-2 hover:text-[#f04a22]" onClick={() => onSort(col.label)}>{col.label}{sortKey === col.label ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={`${getPlayer(row)}-${index}`} className="border-t border-neutral-800"><td className="sticky left-0 z-10 bg-[#141414] p-2 font-bold text-white">{getPlayer(row)}</td>{statColumns.map((col) => <td key={col.label} className="whitespace-nowrap p-2 text-neutral-300">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}</tr>)}</tbody></table></div><div className="grid gap-3 md:hidden">{rows.map((row) => <div key={getPlayer(row)} className="rounded-xl border border-neutral-800 bg-[#202020] p-4"><h3 className="mb-2 font-black text-[#f04a22]">{getPlayer(row)}</h3><div className="grid grid-cols-2 gap-2 text-sm">{statColumns.map((col) => <div key={col.label}><div className="text-xs text-neutral-500">{col.label}</div><div className="font-bold">{formatValue(getStatValue(row, col.keys), col.decimals)}</div></div>)}</div></div>)}</div></>;
+  return (
+    <>
+      <div className="grid gap-3 md:hidden">
+        {rows.map((row, index) => (
+          <div key={`${getPlayer(row)}-${index}`} className="rounded-xl border border-neutral-800 bg-[#202020] p-4">
+            <div className="mb-3 text-lg font-black text-[#f04a22]">{getPlayer(row)}</div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              {statColumns.map((col) => <div key={col.label}><div className="text-xs uppercase text-neutral-500">{col.label}</div><div className="font-bold">{formatValue(getStatValue(row, col.keys), col.decimals)}</div></div>)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[1150px] text-[12px]">
+          <thead>
+            <tr className="text-left text-neutral-400">
+              <th className="sticky left-0 z-10 bg-[#141414] p-2">Player</th>
+              {statColumns.map((col) => (
+                <th key={col.label} className="cursor-pointer whitespace-nowrap p-2 hover:text-[#f04a22]" onClick={() => onSort(col.label)}>
+                  {col.label}{sortKey === col.label ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={`${getPlayer(row)}-${index}`} className="border-t border-neutral-800">
+                <td className="sticky left-0 z-10 bg-[#141414] p-2 font-bold text-[#f04a22]">{getPlayer(row)}</td>
+                {statColumns.map((col) => <td key={col.label} className="whitespace-nowrap p-2">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
 }
 
 function PlayerStatsSummary({ row }: { row: any }) {
   if (!row) return <p className="text-neutral-400">No season stats found for this player.</p>;
-  return <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">{statColumns.map((col) => <div key={col.label} className="rounded-xl border border-neutral-800 bg-[#202020] p-4"><div className="text-xs font-bold uppercase text-neutral-400">{col.label}</div><div className="mt-1 text-2xl font-black text-[#f04a22]">{formatValue(getStatValue(row, col.keys), col.decimals)}</div></div>)}</div>;
+  return (
+    <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
+      {statColumns.slice(1).map((col) => (
+        <MiniStat key={col.label} label={col.label} value={formatValue(getStatValue(row, col.keys), col.decimals)} />
+      ))}
+    </div>
+  );
 }
 
-function WeeklyStandingsTable({ rows, eventStats }: { rows: any[]; eventStats: any[] }) {
-  return <div className="overflow-x-auto"><table className="w-full text-[12px]"><thead><tr className="text-left text-neutral-400"><th className="p-2">Rank</th><th className="p-2">Player</th><th className="p-2">Team</th><th className="p-2">Points</th><th className="p-2">+/-</th>{eventStatColumns.map((col) => <th key={col.label} className="p-2">{col.label}</th>)}</tr></thead><tbody>{rows.map((row, index) => { const matched = matchEventStatRows(eventStats, { season: getSeason(row), week: getWeek(row), type: getType(row), player: getPlayer(row) })[0] || {}; return <tr key={index} className="border-t border-neutral-800"><td className="p-2">{clean(row.RANK || row.Rank || row.rank) || "-"}</td><td className="p-2 font-bold text-[#f04a22]">{getPlayer(row)}</td><td className="p-2">{clean(row.TEAM || row.Team || row.team) || "-"}</td><td className="p-2">{formatValue(row.POINTS || row.Points || row.points, 0)}</td><td className="p-2">{clean(row["+/-"] || row["+ / -"] || row["+ /-"]) || "-"}</td>{eventStatColumns.map((col) => <td key={col.label} className="p-2">{formatValue(getStatValue(matched, col.keys), col.decimals)}</td>)}</tr>; })}</tbody></table></div>;
-}
-
-function EventStatsTable({ rows }: { rows: any[] }) {
-  if (!rows.length) return <p className="mb-4 text-sm text-neutral-500">No stat rows found for this event.</p>;
-  return <div className="mb-4 overflow-x-auto"><table className="w-full text-[12px]"><thead><tr className="text-left text-neutral-400"><th className="p-2">Player</th>{eventStatColumns.map((col) => <th key={col.label} className="p-2">{col.label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index} className="border-t border-neutral-800"><td className="p-2 font-bold text-[#f04a22]">{getPlayer(row)}</td>{eventStatColumns.map((col) => <td key={col.label} className="p-2">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}</tr>)}</tbody></table></div>;
-}
-
-function EventSummary({ rows }: { rows: any[] }) {
-  const s = summarizeEventStats(rows);
-  return <div className="mt-4 rounded-xl border border-neutral-800 bg-[#202020] p-4"><h3 className="mb-3 text-lg font-black text-[#f04a22]">Event Totals / Averages</h3><div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4"><MiniStat label="Players" value={s.players} /><MiniStat label="Total Rounds" value={s.totalRounds} /><MiniStat label="Total Points" value={s.totalPoints} /><MiniStat label="Avg PPR" value={s.avgPPR} /><MiniStat label="Avg OPPR" value={s.avgOPPR} /><MiniStat label="Avg DPR" value={s.avgDPR} /><MiniStat label="Opp Points" value={s.oppPoints} /><MiniStat label="4 Baggers" value={s.fourBaggers} /></div></div>;
-}
-
-function MiniStat({ label, value }: { label: string; value: any }) {
-  return <div className="rounded-lg bg-[#151515] p-3"><div className="text-xs font-bold uppercase text-neutral-400">{label}</div><div className="text-2xl font-black text-[#f04a22]">{value}</div></div>;
-}
-
-function SeasonHistoryTable({ rows, standings }: { rows: any[]; standings: any[] }) {
-  return <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-neutral-400"><th className="p-2">Season</th><th className="p-2">Finish</th><th className="p-2">PPR</th><th className="p-2">DPR</th><th className="p-2">OPPR</th><th className="p-2">Points</th><th className="p-2">Rounds</th><th className="p-2">4 Baggers</th></tr></thead><tbody>{rows.map((row) => { const season = getSeason(row); const sorted = standings.filter((s) => getSeason(s) === season).map((s) => ({ name: getPlayer(s), points: pointValue(s) })).sort((a, b) => b.points - a.points); const finish = sorted.findIndex((s) => normalizeName(s.name) === normalizeName(getPlayer(row))) + 1; return <tr key={season} className="border-t border-neutral-800"><td className="p-2 font-bold">{season}</td><td className="p-2 text-[#f04a22]">{finish || "-"}</td><td className="p-2">{formatValue(getStatValue(row, ["Average PPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average DPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Opponents Avg PPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Pts"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Rounds"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total 4-Baggers"]), 0)}</td></tr>; })}</tbody></table></div>;
+function SeasonFinishesTable({ rows }: { rows: any[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead><tr className="text-left text-neutral-400"><th className="p-2">Season</th><th className="p-2">Finish</th><th className="p-2">PPR</th><th className="p-2">DPR</th><th className="p-2">OPPR</th><th className="p-2">Points</th><th className="p-2">Rounds</th><th className="p-2">4 Baggers</th></tr></thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={getSeason(row)} className="border-t border-neutral-800"><td className="p-2 font-bold">{getSeason(row)}</td><td className="p-2 text-[#f04a22]">{formatValue(getStatValue(row, ["Finish"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average PPR", "PPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average DPR", "DPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Opponents Avg PPR", "OPPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Pts", "Total Points"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Rounds"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total 4-Baggers", "4 Baggers"]), 0)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function CompareTable({ statA, statB }: { statA: any; statB: any }) {
-  return <div className="overflow-x-auto"><table className="w-full text-sm"><tbody>{statColumns.map((col) => <tr key={col.label} className="border-t border-neutral-800"><td className="p-2 text-neutral-400">{col.label}</td><td className="p-2">{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td className="p-2">{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>)}</tbody></table></div>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <tbody>
+          {statColumns.map((col) => (
+            <tr key={col.label} className="border-t border-neutral-800"><td className="p-2 text-neutral-400">{col.label}</td><td className="p-2">{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td className="p-2">{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
