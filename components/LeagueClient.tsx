@@ -33,6 +33,10 @@ function clean(value: any) {
   return String(value ?? "").trim();
 }
 
+function compact(value: any) {
+  return clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function normalizeText(value: any) {
   return clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
