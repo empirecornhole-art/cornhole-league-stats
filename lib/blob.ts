@@ -13,14 +13,21 @@ const emptyLeagueData: LeagueData = {
   lastUpdated: "",
 };
 
-function clean(value: any) {
-  return String(value ?? "").trim();
-}
-
 function uniqueSorted(values: string[]) {
-  return Array.from(new Set(values.map(clean).filter(Boolean))).sort((a, b) =>
+  return Array.from(new Set(values.filter(Boolean))).sort((a, b) =>
     a.localeCompare(b)
   );
+}
+
+function removeSeason(data: LeagueData, seasonName: string): LeagueData {
+  return {
+    ...data,
+    seasons: (data.seasons || []).filter((s) => s !== seasonName),
+    standings: (data.standings || []).filter((row) => row.Season !== seasonName),
+    weekly: (data.weekly || []).filter((row) => row.Season !== seasonName),
+    eventStats: (data.eventStats || []).filter((row) => row.Season !== seasonName),
+    stats: (data.stats || []).filter((row) => row.Season !== seasonName),
+  };
 }
 
 export async function saveLeagueData(data: LeagueData) {
@@ -35,7 +42,9 @@ export async function loadLeagueData(): Promise<LeagueData> {
   try {
     const blob = await head(DATA_KEY);
 
-    if (!blob) return emptyLeagueData;
+    if (!blob) {
+      return emptyLeagueData;
+    }
 
     const res = await fetch(blob.url, {
       cache: "no-store",
@@ -44,78 +53,69 @@ export async function loadLeagueData(): Promise<LeagueData> {
       },
     });
 
-    if (!res.ok) return emptyLeagueData;
+    if (!res.ok) {
+      return emptyLeagueData;
+    }
 
-    const loaded = await res.json();
+    const data = await res.json();
 
     return {
       ...emptyLeagueData,
-      ...loaded,
-      seasons: loaded.seasons || [],
-      players: loaded.players || [],
-      standings: loaded.standings || [],
-      weekly: loaded.weekly || [],
-      stats: loaded.stats || [],
+      ...data,
+      seasons: data.seasons || [],
+      players: data.players || [],
+      standings: data.standings || [],
+      weekly: data.weekly || [],
+      eventStats: data.eventStats || [],
+      stats: data.stats || [],
+      lastUpdated: data.lastUpdated || "",
     };
   } catch {
     return emptyLeagueData;
   }
 }
 
-export function mergeSeasonData(existing: LeagueData, incoming: LeagueData): LeagueData {
-  const incomingSeasons = new Set(incoming.seasons.map(clean));
+export function mergeSeasonData(
+  existingData: LeagueData,
+  newSeasonData: LeagueData
+): LeagueData {
+  const seasonName = newSeasonData.seasons?.[0] || "";
 
-  const keepDifferentSeason = (row: Record<string, any>) => {
-    const rowSeason = clean(row.Season || row.season || row.SEASON);
-    return !incomingSeasons.has(rowSeason);
-  };
-
-  const standings = [
-    ...(existing.standings || []).filter(keepDifferentSeason),
-    ...(incoming.standings || []),
-  ];
-
-  const weekly = [
-    ...(existing.weekly || []).filter(keepDifferentSeason),
-    ...(incoming.weekly || []),
-  ];
-
-  const stats = [
-    ...(existing.stats || []).filter(keepDifferentSeason),
-    ...(incoming.stats || []),
-  ];
+  const cleanedExisting = seasonName
+    ? removeSeason(existingData || emptyLeagueData, seasonName)
+    : existingData || emptyLeagueData;
 
   return {
-  lastUpdated: new Date().toISOString(),
+    lastUpdated: new Date().toISOString(),
 
-  seasons: uniqueSorted([
-    ...(existing.seasons || []),
-    ...(seasonData.seasons || []),
-  ]),
+    seasons: uniqueSorted([
+      ...(cleanedExisting.seasons || []),
+      ...(newSeasonData.seasons || []),
+    ]),
 
-  players: uniqueSorted([
-    ...(existing.players || []),
-    ...(seasonData.players || []),
-  ]),
+    players: uniqueSorted([
+      ...(cleanedExisting.players || []),
+      ...(newSeasonData.players || []),
+    ]),
 
-  standings: [
-    ...(existing.standings || []),
-    ...(seasonData.standings || []),
-  ],
+    standings: [
+      ...(cleanedExisting.standings || []),
+      ...(newSeasonData.standings || []),
+    ],
 
-  weekly: [
-    ...(existing.weekly || []),
-    ...(seasonData.weekly || []),
-  ],
+    weekly: [
+      ...(cleanedExisting.weekly || []),
+      ...(newSeasonData.weekly || []),
+    ],
 
-  eventStats: [
-    ...(existing.eventStats || []),
-    ...(seasonData.eventStats || []),
-  ],
+    eventStats: [
+      ...(cleanedExisting.eventStats || []),
+      ...(newSeasonData.eventStats || []),
+    ],
 
-  stats: [
-    ...(existing.stats || []),
-    ...(seasonData.stats || []),
-  ],
-};
+    stats: [
+      ...(cleanedExisting.stats || []),
+      ...(newSeasonData.stats || []),
+    ],
+  };
 }
