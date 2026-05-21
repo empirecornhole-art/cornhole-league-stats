@@ -305,14 +305,17 @@ export default function LeagueClient() {
   const [scenarioInputs, setScenarioInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch("/api/data", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((loaded) => {
-        setData(loaded);
-        const firstSeason = [...(loaded.seasons || [])].sort(seasonSort)[0] || "";
-        setSeason(firstSeason);
-      });
-  }, []);
+  fetch("/api/data")
+    .then((res) => res.json())
+    .then((loaded) => {
+      const seasons = loaded.seasons || [];
+      const latestSeason = seasons[seasons.length - 1] || "";
+
+      setData(loaded);
+      setSeason(latestSeason);
+      setProfileSeason(latestSeason);
+    });
+}, []);
 
   const seasons = useMemo(() => [...(data?.seasons || [])].sort(seasonSort), [data]);
   const players = useMemo(
