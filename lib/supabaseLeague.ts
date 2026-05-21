@@ -73,6 +73,20 @@ function eventKey(week: any, type: any) {
   return `${clean(week)}|${clean(type)}`;
 }
 
+function dedupeBy<T>(rows: T[], getKey: (row: T) => string) {
+  const map = new Map<string, T>();
+
+  for (const row of rows) {
+    const key = getKey(row);
+    if (!key) continue;
+
+    // Keep the later row because it may have more complete data
+    map.set(key, row);
+  }
+
+  return Array.from(map.values());
+}
+
 function findStandingForPlayer(parsed: LeagueData, playerName: string) {
   const target = normalizeName(playerName);
   return (
@@ -320,38 +334,50 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
     (dbEvents || []).map((e) => [eventKey(e.week, e.event_type), e.id])
   );
 
-  const seasonRows = seasonStatsPayload(parsed, season.id, playerMap);
-  if (seasonRows.length) {
-    const { error } = await supabase
-      .from("season_stats")
-      .upsert(seasonRows, {
-        onConflict: "season_id,player_id",
-      });
+  const seasonRows = dedupeBy(
+  seasonStatsPayload(parsed, season.id, playerMap),
+  (row: any) => `${row.season_id}|${row.player_id}`
+);
 
-    if (error) throw error;
-  }
+if (seasonRows.length) {
+  const { error } = await supabase
+    .from("season_stats")
+    .upsert(seasonRows, {
+      onConflict: "season_id,player_id",
+    });
 
-  const resultRows = resultPayload(parsed.weekly || [], eventMap, playerMap);
-  if (resultRows.length) {
-    const { error } = await supabase
-      .from("event_results")
-      .upsert(resultRows, {
-        onConflict: "event_id,player_id",
-      });
+  if (error) throw error;
+}
 
-    if (error) throw error;
-  }
+  const resultRows = dedupeBy(
+  resultPayload(parsed.weekly || [], eventMap, playerMap),
+  (row: any) => `${row.event_id}|${row.player_id}`
+);
 
-  const statRows = eventStatsPayload(parsed.eventStats || [], eventMap, playerMap);
-  if (statRows.length) {
-    const { error } = await supabase
-      .from("event_stats")
-      .upsert(statRows, {
-        onConflict: "event_id,player_id",
-      });
+if (resultRows.length) {
+  const { error } = await supabase
+    .from("event_results")
+    .upsert(resultRows, {
+      onConflict: "event_id,player_id",
+    });
 
-    if (error) throw error;
-  }
+  if (error) throw error;
+}
+
+  const statRows = dedupeBy(
+  eventStatsPayload(parsed.eventStats || [], eventMap, playerMap),
+  (row: any) => `${row.event_id}|${row.player_id}`
+);
+
+if (statRows.length) {
+  const { error } = await supabase
+    .from("event_stats")
+    .upsert(statRows, {
+      onConflict: "event_id,player_id",
+    });
+
+  if (error) throw error;
+}
 
   return {
     season: seasonName,
