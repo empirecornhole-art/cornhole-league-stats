@@ -1,7 +1,6 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { parseWorkbook } from "../../../lib/parseWorkbook";
-import { loadLeagueData, mergeSeasonData, saveLeagueData } from "../../../lib/blob";
+import { importLeagueDataToSupabase } from "../../../lib/supabaseLeague";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -21,36 +20,20 @@ export async function POST(req: Request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    await put(`workbooks/${file.name}`, buffer, {
-      access: "private",
-      allowOverwrite: true,
-      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
     const parsed = await parseWorkbook(arrayBuffer, file.name);
-    const existing = await loadLeagueData();
-    const merged = mergeSeasonData(existing, parsed);
-    await saveLeagueData(merged);
+    const summary = await importLeagueDataToSupabase(parsed);
 
     return NextResponse.json({
       ok: true,
-      message: `Workbook uploaded and parsed successfully. Season: ${parsed.seasons[0]}. Players: ${parsed.players.length}. Weekly standings: ${parsed.weekly.length}. Event stats: ${parsed.eventStats.length}.`,
+      message: `Imported ${summary.season} into Supabase. Players: ${summary.players}. Events: ${summary.events}. Season stats: ${summary.seasonStats}. Event results: ${summary.eventResults}. Event stats: ${summary.eventStats}.`,
       size: file.size,
-      summary: {
-        season: parsed.seasons[0],
-        seasons: merged.seasons.length,
-        players: merged.players.length,
-        standings: merged.standings.length,
-        weekly: merged.weekly.length,
-        stats: merged.stats.length,
-        eventStats: merged.eventStats.length,
-      },
+      summary,
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || "Upload and parsing failed" },
+      {
+        error: error?.message || "Upload/import failed",
+      },
       { status: 500 }
     );
   }
