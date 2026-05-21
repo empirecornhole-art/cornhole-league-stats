@@ -5,14 +5,6 @@ function clean(value: any): string {
   return String(value ?? "").trim();
 }
 
-function normalizeKey(value: any): string {
-  return clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function uniqueSorted(values: string[]) {
-  return Array.from(new Set(values.filter(Boolean))).sort(compareSeasonAware);
-}
-
 function sheetToObjects(workbook: XLSX.WorkBook, sheetName: string) {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return [];
@@ -25,92 +17,111 @@ function sheetToArrays(workbook: XLSX.WorkBook, sheetName: string): any[][] {
   return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as any[][];
 }
 
-function seasonFromFilename(fileName?: string) {
-  const base = clean(fileName || "Spring26").replace(/\.[^/.]+$/, "");
-  const compact = base.replace(/[_-]+/g, " ").trim();
-  const match = compact.match(/(Fall|Winter|Spring|Summer)\s*(\d{2,4})/i);
-  if (!match) return compact || "Spring 26";
-  const name = match[1][0].toUpperCase() + match[1].slice(1).toLowerCase();
-  const year = match[2].slice(-2);
-  return `${name} ${year}`;
+function uniqueSorted(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean))).sort(compareSeasonsOrNames);
 }
 
-function seasonParts(season: string) {
-  const match = clean(season).match(/(Fall|Winter|Spring|Summer)\s*(\d{2,4})/i);
-  const order: Record<string, number> = { spring: 1, summer: 2, fall: 3, winter: 4 };
-  if (!match) return { year: 9999, order: 99 };
-  return { year: Number(match[2].slice(-2)), order: order[match[1].toLowerCase()] ?? 99 };
-}
-
-function compareSeasonAware(a: string, b: string) {
-  const ap = seasonParts(a);
-  const bp = seasonParts(b);
-  if (ap.year !== bp.year) return ap.year - bp.year;
-  if (ap.order !== bp.order) return ap.order - bp.order;
+function compareSeasonsOrNames(a: string, b: string) {
+  const sa = seasonSortValue(a);
+  const sb = seasonSortValue(b);
+  if (sa !== null && sb !== null) return sa - sb;
   return a.localeCompare(b);
 }
 
-function getAny(row: Record<string, any>, names: string[]) {
-  const lookup = new Map<string, string>();
-  Object.keys(row).forEach((key) => lookup.set(normalizeKey(key), key));
-  for (const name of names) {
-    const key = lookup.get(normalizeKey(name));
-    if (key && row[key] !== undefined && row[key] !== "") return row[key];
-  }
-  return "";
+function seasonSortValue(value: string): number | null {
+  const text = clean(value).replace(/[_-]/g, " ");
+  const match = text.match(/(Fall|Winter|Spring|Summer)\s*(\d{2,4})/i);
+  if (!match) return null;
+  const season = match[1].toLowerCase();
+  const yearRaw = Number(match[2]);
+  const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
+  const seasonOrder: Record<string, number> = { spring: 1, summer: 2, fall: 3, winter: 4 };
+  return year * 10 + (seasonOrder[season] || 9);
 }
 
-function getPlayerName(row: Record<string, any>) {
-  const direct = getAny(row, [
-    "Player",
-    "playerName",
-    "PLAYER NAME",
-    "Player Name",
-    "Name",
-    "Row Labels",
-  ]);
-  if (direct) return clean(direct);
-
-  const first = clean(getAny(row, ["First", "First Name", "playerFirstName"]));
-  const last = clean(getAny(row, ["Last", "Last Name", "playerLastName"]));
-  return `${first} ${last}`.trim();
+function seasonFromFilename(filename = "Spring26.xlsx") {
+  const base = filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+  const match = base.match(/(Fall|Winter|Spring|Summer)\s*(\d{2,4})/i);
+  if (!match) return base || "Unknown Season";
+  const season = match[1][0].toUpperCase() + match[1].slice(1).toLowerCase();
+  const year = match[2].slice(-2);
+  return `${season} ${year}`;
 }
 
-function getWeek(row: Record<string, any>) {
-  const raw = clean(getAny(row, ["Week", "WEEK", "week"]));
-  if (!raw) return "";
-  if (/^\d+$/.test(raw)) return `Week ${raw}`;
-  return raw.replace(/week\s*/i, "Week ").replace(/\s+/g, " ").trim();
+function playerFromRow(row: Record<string, any>) {
+  const first = clean(row.playerFirstName || row.PlayerFirstName || row.First || row["First Name"]);
+  const last = clean(row.playerLastName || row.PlayerLastName || row.Last || row["Last Name"]);
+  if (first || last) return `${first} ${last}`.trim();
+  return clean(row.Player || row.playerName || row["Row Labels"] || row["PLAYER NAME"] || row["Player Name"] || row.Name || row.name);
 }
 
-function getType(row: Record<string, any>, fallback = "") {
-  const raw = clean(getAny(row, ["Type", "TYPE", "Event", "League Type", "Format"]));
-  const combined = `${raw} ${fallback}`.toLowerCase();
-  if (combined.includes("blind")) return "Blind";
-  if (combined.includes("swap")) return "Swap";
+function weekFromRow(row: Record<string, any>) {
+  const value = clean(row.Week || row.week || row.WEEK);
+  if (!value) return "";
+  const n = value.match(/\d+/)?.[0];
+  return n ? `Week ${n}` : value;
+}
+
+function typeFromRow(row: Record<string, any>, fallback = "") {
+  const raw = clean(row.Type || row.type || row.TYPE || fallback);
+  if (/blind/i.test(raw)) return "Blind";
+  if (/swap/i.test(raw)) return "Swap";
   return raw || fallback;
+}
+
+function numberVal(value: any) {
+  const n = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeEventStatRow(row: Record<string, any>, season: string) {
+  const player = playerFromRow(row);
+  const week = weekFromRow(row);
+  const type = typeFromRow(row);
+  if (!player || !week || !type) return null;
+
+  return {
+    ...row,
+    Season: season,
+    Player: player,
+    Week: week,
+    Type: type,
+    Rank: row.Rank || row.RANK || row.Ranking || row.rank || "",
+    PPR: row.PPR || row.ppr || row["Average PPR"] || "",
+    Rounds: row.Rounds || row.rounds || row["Total Rounds"] || "",
+    Points: row.Points || row.points || row["Total Pts"] || "",
+    OPPR: row.OPPR || row.oppr || row["Opp Avg PPR"] || row["Opponents Avg PPR"] || "",
+    "Opp Pts": row["Opp Pts"] || row["Opp Points"] || row["Opponent Points"] || row["Opponents Pts"] || "",
+    DPR: row.DPR || row.dpr || row["Average DPR"] || "",
+    "4 Baggers": row["4 Baggers"] || row["4-Baggers"] || row["Total 4-Baggers"] || row["totalFourBaggers"] || "",
+  };
+}
+
+function parseEventStats(workbook: XLSX.WorkBook, season: string) {
+  const statsRows = sheetToObjects(workbook, "Stats")
+    .map((row) => normalizeEventStatRow(row, season))
+    .filter(Boolean) as Record<string, any>[];
+
+  const oldStatsRows = sheetToObjects(workbook, "Old Stats")
+    .map((row) => normalizeEventStatRow(row, season))
+    .filter(Boolean) as Record<string, any>[];
+
+  return [...statsRows, ...oldStatsRows];
 }
 
 function parseOverallStandings(workbook: XLSX.WorkBook, season: string) {
   const rows = sheetToArrays(workbook, "Overall");
-  const headers = rows[0]?.slice(0, 16).map(clean) || [];
+  const headers = rows[0]?.slice(0, 24).map(clean) || [];
 
   return rows
     .slice(1)
     .map((row) => {
       const player = clean(row[0]);
-      if (!player || player === "Grand Total") return null;
-
-      const obj: Record<string, any> = {
-        Season: season,
-        Player: player,
-        Overall: row[2],
-      };
-
+      if (!player || /grand total/i.test(player)) return null;
+      const obj: Record<string, any> = { Season: season, Player: player, Overall: row[2] };
       headers.forEach((header, index) => {
         if (header) obj[header] = row[index];
       });
-
       return obj;
     })
     .filter(Boolean) as Record<string, any>[];
@@ -127,8 +138,7 @@ function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
     .map((row) => {
       const values = row.slice(startCol, endCol);
       const player = clean(values[0]);
-      if (!player || player === "Grand Total") return null;
-
+      if (!player || /grand total/i.test(player)) return null;
       const obj: Record<string, any> = { Season: season, Player: player, playerName: player };
       headers.forEach((header, index) => {
         if (header) obj[header] = values[index];
@@ -139,73 +149,45 @@ function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
 }
 
 function parseWeeklyStandings(workbook: XLSX.WorkBook, season: string) {
-  const make = (sheet: string, type: "Blind" | "Swap") =>
-    sheetToObjects(workbook, sheet)
-      .map((row) => ({
-        ...row,
-        Season: season,
-        Player: getPlayerName(row),
-        Week: getWeek(row),
-        Type: type,
-        rowKind: "standing",
-      }))
-      .filter((row) => row.Player && row.Week);
+  const fromSheet = (sheetName: string, fallbackType: string) =>
+    sheetToObjects(workbook, sheetName)
+      .map((row) => {
+        const player = playerFromRow(row);
+        const week = weekFromRow(row);
+        if (!player || !week) return null;
+        return {
+          ...row,
+          Season: season,
+          Player: player,
+          Week: week,
+          Type: typeFromRow(row, fallbackType),
+          Rank: row.Rank || row.RANK || row.rank || row["Place"] || row["Finish"] || "",
+          Points: row.Points || row.points || row["Weekly Points"] || row["Total Points"] || "",
+          Team: row.Team || row.TEAM || row.team || "",
+          Wins: row.Wins || row.W || row["Wins"] || "",
+          Losses: row.Losses || row.L || row["Losses"] || "",
+          "+/-": row["+/-"] || row["+ / -"] || row["+"] || row["+ -"] || "",
+        };
+      })
+      .filter(Boolean) as Record<string, any>[];
 
-  return [...make("Blind", "Blind"), ...make("Swap", "Swap")];
+  return [...fromSheet("Blind", "Blind"), ...fromSheet("Swap", "Swap")];
 }
 
-function parseEventStats(workbook: XLSX.WorkBook, season: string) {
-  const stats = sheetToObjects(workbook, "Stats")
-    .map((row) => {
-      const player = getPlayerName(row);
-      const week = getWeek(row);
-      const type = getType(row);
-      return {
-        ...row,
-        Season: season,
-        Player: player,
-        playerName: player,
-        Week: week,
-        Type: type,
-        rowKind: "stat",
-      };
-    })
-    .filter((row) => row.Player && row.Week);
-
-  const oldStats = sheetToObjects(workbook, "Old Stats")
-    .map((row) => {
-      const player = getPlayerName(row);
-      const week = getWeek(row);
-      const type = getType(row);
-      return {
-        ...row,
-        Season: season,
-        Player: player,
-        playerName: player,
-        Week: week,
-        Type: type,
-        rowKind: "stat",
-      };
-    })
-    .filter((row) => row.Player && row.Week);
-
-  return [...stats, ...oldStats];
-}
-
-export async function parseWorkbook(buffer: ArrayBuffer, fileName?: string): Promise<LeagueData> {
+export async function parseWorkbook(buffer: ArrayBuffer, filename?: string): Promise<LeagueData> {
   const workbook = XLSX.read(buffer, { type: "array" });
-  const season = seasonFromFilename(fileName);
+  const season = seasonFromFilename(filename);
 
   const standings = parseOverallStandings(workbook, season);
   const stats = parseOverallStatsAndAverages(workbook, season);
-  const weeklyStandings = parseWeeklyStandings(workbook, season);
+  const weekly = parseWeeklyStandings(workbook, season);
   const eventStats = parseEventStats(workbook, season);
-  const weekly = [...weeklyStandings, ...eventStats];
 
   const players = uniqueSorted([
-    ...standings.map((row) => clean(row.Player)),
-    ...stats.map((row) => clean(row.Player)),
-    ...weekly.map((row) => clean(row.Player)),
+    ...standings.map((r) => clean(r.Player)),
+    ...stats.map((r) => clean(r.Player)),
+    ...weekly.map((r) => clean(r.Player)),
+    ...eventStats.map((r) => clean(r.Player)),
   ]);
 
   return {
@@ -213,8 +195,8 @@ export async function parseWorkbook(buffer: ArrayBuffer, fileName?: string): Pro
     players,
     standings,
     weekly,
-    eventStats,
     stats,
+    eventStats,
     lastUpdated: new Date().toISOString(),
   };
 }
