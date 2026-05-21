@@ -19,9 +19,10 @@ type Data = {
   weekly: any[];
   eventStats?: any[];
   stats: any[];
+  weekScores?: any[];
 };
 
-type Tab = "dashboard" | "standings" | "weeks" | "stats" | "players" | "compare";
+type Tab = "dashboard" | "standings" | "weeks" | "stats" | "players" | "scenarios" | "compare";
 type EventFilter = "All" | "Blind" | "Swap";
 type SortDirection = "asc" | "desc";
 
@@ -253,6 +254,37 @@ function summarizeEvent(rows: any[]) {
   ];
 }
 
+function sumBestScores(scores: number[], count = 9) {
+  return [...scores].sort((a, b) => b - a).slice(0, count).reduce((acc, value) => acc + value, 0);
+}
+
+function highestScore(scores: number[]) {
+  return scores.length ? Math.max(...scores) : 0;
+}
+
+function buildPlayerWeekScores(rows: any[], playerName: string, scenarioWeek: string, projectedValue?: string) {
+  const byWeek = new Map<number, number>();
+
+  for (const row of rows) {
+    if (getPlayer(row) !== playerName) continue;
+    const weekNumber = numberVal(row.WeekNumber || getWeek(row));
+    if (!weekNumber) continue;
+    byWeek.set(weekNumber, numberVal(row.Score));
+  }
+
+  const scenarioWeekNumber = numberVal(scenarioWeek);
+  if (scenarioWeekNumber && projectedValue !== undefined && projectedValue !== "") {
+    byWeek.set(scenarioWeekNumber, numberVal(projectedValue));
+  }
+
+  return Array.from(byWeek.values());
+}
+
+function getCurrentRank(standings: { name: string; points: number }[], playerName: string) {
+  const index = standings.findIndex((row) => row.name === playerName);
+  return index >= 0 ? index + 1 : null;
+}
+
 export default function LeagueClient() {
   const [data, setData] = useState<Data | null>(null);
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -269,6 +301,8 @@ export default function LeagueClient() {
   const [sortKey, setSortKey] = useState("Total Pts");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedStatsPlayers, setSelectedStatsPlayers] = useState<string[]>([]);
+  const [scenarioWeek, setScenarioWeek] = useState("Week 12");
+  const [scenarioInputs, setScenarioInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch("/api/data", { cache: "no-store" })
@@ -287,6 +321,7 @@ export default function LeagueClient() {
   );
 
   const eventStats = data?.eventStats || [];
+  const weekScores = data?.weekScores || [];
 
   const allWeeklyMerged = useMemo(
     () => mergeWeeklyRows(data?.weekly || [], eventStats),
@@ -430,6 +465,62 @@ export default function LeagueClient() {
     DPR: numberVal(getStatValue(row, ["Average DPR", "DPR"])),
   }));
 
+
+  const scenarioSeasonScores = useMemo(
+    () => weekScores.filter((row) => getSeason(row) === season && isValidPlayerName(getPlayer(row))),
+    [weekScores, season]
+  );
+
+  const scenarioWeeks = useMemo(() => {
+    const values = Array.from(new Set(scenarioSeasonScores.map((row) => getWeek(row)).filter(Boolean))).sort(weekSort);
+    return values.length ? values : ["Week 12"];
+  }, [scenarioSeasonScores]);
+
+  useEffect(() => {
+    if (!scenarioWeeks.includes(scenarioWeek)) setScenarioWeek(scenarioWeeks[scenarioWeeks.length - 1] || "Week 12");
+  }, [scenarioWeeks, scenarioWeek]);
+
+  const pprByPlayer = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of selectedSeasonStats) map.set(getPlayer(row), numberVal(getStatValue(row, ["Average PPR", "PPR"])));
+    return map;
+  }, [selectedSeasonStats]);
+
+  const scenarioRows = useMemo(() => {
+    return players
+      .map((name) => {
+        const currentScores = buildPlayerWeekScores(scenarioSeasonScores, name, scenarioWeek);
+        const projectedScores = buildPlayerWeekScores(scenarioSeasonScores, name, scenarioWeek, scenarioInputs[name]);
+        const currentTotal = sumBestScores(currentScores, 9);
+        const projectedTotal = sumBestScores(projectedScores, 9);
+        const projectedScore = scenarioInputs[name] ?? "";
+        const ppr = pprByPlayer.get(name) || 0;
+        const currentRank = getCurrentRank(dashboardStandings, name);
+
+        return {
+          name,
+          currentRank,
+          currentTotal,
+          lowestCounted: [...currentScores].sort((a, b) => b - a)[8] ?? 0,
+          projectedScore,
+          netGain: projectedTotal - currentTotal,
+          projectedTotal,
+          highestWeek: highestScore(projectedScores),
+          ppr,
+        };
+      })
+      .filter((row) => row.currentTotal > 0 || row.projectedScore !== "")
+      .sort((a, b) => {
+        if (b.projectedTotal !== a.projectedTotal) return b.projectedTotal - a.projectedTotal;
+        if (b.highestWeek !== a.highestWeek) return b.highestWeek - a.highestWeek;
+        return b.ppr - a.ppr;
+      })
+      .map((row, index) => ({ ...row, projectedRank: index + 1 }));
+  }, [players, scenarioSeasonScores, scenarioWeek, scenarioInputs, pprByPlayer, dashboardStandings]);
+
+  const scenarioSelectedPlayer = player !== "All Players" ? player : scenarioRows[0]?.name || "";
+  const selectedScenario = scenarioRows.find((row) => row.name === scenarioSelectedPlayer);
+
   const statA = seasonStatsAll.find((row) => getPlayer(row) === compareA && getSeason(row) === season);
   const statB = seasonStatsAll.find((row) => getPlayer(row) === compareB && getSeason(row) === season);
 
@@ -443,6 +534,7 @@ export default function LeagueClient() {
     { id: "weeks", label: "Weeks" },
     { id: "stats", label: "Stats" },
     { id: "players", label: "Players" },
+    { id: "scenarios", label: "Scenarios" },
     { id: "compare", label: "Compare" },
   ];
 
@@ -668,6 +760,40 @@ export default function LeagueClient() {
           </Card>
         )}
 
+        {tab === "scenarios" && (
+          <Card title="Final Week Scenarios">
+            <div className="mb-4 rounded-xl border border-neutral-800 bg-[#202020] p-4 text-sm text-neutral-300">
+              Enter a projected combined weekly score for the selected week. The calculator keeps each player's best 9 scores and ranks ties by highest single week, then season PPR.
+            </div>
+
+            <div className="mb-4 flex flex-wrap gap-3">
+              <select className="rounded-lg bg-[#242424] p-2" value={scenarioWeek} onChange={(e) => setScenarioWeek(e.target.value)}>
+                {scenarioWeeks.map((w) => <option key={w}>{w}</option>)}
+              </select>
+              <button className="rounded-lg bg-[#242424] px-3 py-2 text-sm font-bold" onClick={() => setScenarioInputs({})}>
+                Clear projected scores
+              </button>
+            </div>
+
+            {selectedScenario && (
+              <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <MiniStat label="Selected Player" value={selectedScenario.name} />
+                <MiniStat label="Current Rank" value={selectedScenario.currentRank || "-"} />
+                <MiniStat label="Current Points" value={formatValue(selectedScenario.currentTotal, 0)} />
+                <MiniStat label="Projected Rank" value={selectedScenario.projectedRank} />
+                <MiniStat label="Projected Points" value={formatValue(selectedScenario.projectedTotal, 0)} />
+              </div>
+            )}
+
+            <ScenarioTable
+              rows={scenarioRows}
+              inputs={scenarioInputs}
+              setInputs={setScenarioInputs}
+              selectedPlayer={scenarioSelectedPlayer}
+            />
+          </Card>
+        )}
+
         {tab === "compare" && (
           <Card title="Compare Players">
             <div className="mb-4 flex flex-wrap gap-3">
@@ -686,7 +812,7 @@ export default function LeagueClient() {
       </section>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-black/95 p-2 md:hidden">
-        <div className="grid grid-cols-6 gap-1">
+        <div className="grid grid-cols-7 gap-1">
           {navItems.map((item) => (
             <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-lg px-1 py-3 text-[10px] font-bold ${tab === item.id ? "bg-[#f04a22]" : "bg-[#1d1d1d]"}`}>
               {item.label}
@@ -842,6 +968,68 @@ function SeasonFinishesTable({ rows }: { rows: any[] }) {
         <tbody>
           {rows.map((row) => (
             <tr key={getSeason(row)} className="border-t border-neutral-800"><td className="p-2 font-bold">{getSeason(row)}</td><td className="p-2 text-[#f04a22]">{formatValue(getStatValue(row, ["Finish"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average PPR", "PPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average DPR", "DPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Opponents Avg PPR", "OPPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Pts", "Total Points"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Rounds"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total 4-Baggers", "4 Baggers"]), 0)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+
+function ScenarioTable({
+  rows,
+  inputs,
+  setInputs,
+  selectedPlayer,
+}: {
+  rows: any[];
+  inputs: Record<string, string>;
+  setInputs: any;
+  selectedPlayer: string;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[950px] text-sm">
+        <thead>
+          <tr className="text-left text-neutral-400">
+            <th className="p-2">Projected Rank</th>
+            <th className="p-2">Player</th>
+            <th className="p-2">Current Rank</th>
+            <th className="p-2">Current Points</th>
+            <th className="p-2">Lowest Counted</th>
+            <th className="p-2">Projected Score</th>
+            <th className="p-2">Net Gain</th>
+            <th className="p-2">Projected Points</th>
+            <th className="p-2">Highest Week</th>
+            <th className="p-2">PPR</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.name} className={`border-t border-neutral-800 ${row.name === selectedPlayer ? "bg-[#f04a22]/10" : ""}`}>
+              <td className="p-2 font-bold">{row.projectedRank}</td>
+              <td className="p-2 font-bold text-[#f04a22]">{row.name}</td>
+              <td className="p-2">{row.currentRank || "-"}</td>
+              <td className="p-2">{formatValue(row.currentTotal, 0)}</td>
+              <td className="p-2">{formatValue(row.lowestCounted, 0)}</td>
+              <td className="p-2">
+                <input
+                  className="w-24 rounded bg-[#242424] p-2 text-white"
+                  type="number"
+                  min="0"
+                  value={inputs[row.name] ?? ""}
+                  placeholder="score"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setInputs((current) => ({ ...current, [row.name]: value }));
+                  }}
+                />
+              </td>
+              <td className="p-2">{formatValue(row.netGain, 0)}</td>
+              <td className="p-2 font-bold text-[#f04a22]">{formatValue(row.projectedTotal, 0)}</td>
+              <td className="p-2">{formatValue(row.highestWeek, 0)}</td>
+              <td className="p-2">{formatValue(row.ppr, 2)}</td>
+            </tr>
           ))}
         </tbody>
       </table>
