@@ -8,7 +8,9 @@ const emptyLeagueData: LeagueData = {
   players: [],
   standings: [],
   weekly: [],
+  eventStats: [],
   stats: [],
+  lastUpdated: "",
 };
 
 function clean(value: any) {
