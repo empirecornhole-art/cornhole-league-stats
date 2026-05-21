@@ -12,6 +12,7 @@ import {
   LineChart,
   Line,
   CartesianGrid,
+  Legend,
 } from "recharts";
 
 type Data = {
@@ -102,6 +103,42 @@ function weekSort(a: string, b: string) {
   return an - bn;
 }
 
+function seasonSortValue(season: string) {
+  const text = clean(season);
+  const yearMatch = text.match(/(\d{2,4})/);
+  let year = yearMatch ? Number(yearMatch[1]) : 9999;
+  if (year < 100) year += 2000;
+
+  const lower = text.toLowerCase();
+  const seasonOrder: Record<string, number> = {
+    fall: 1,
+    winter: 2,
+    spring: 3,
+    summer: 4,
+  };
+
+  const word = Object.keys(seasonOrder).find((key) => lower.includes(key));
+  const order = word ? seasonOrder[word] : 99;
+
+  return year * 100 + order;
+}
+
+function sortSeasons(values: string[]) {
+  return [...values].sort((a, b) => {
+    const av = seasonSortValue(a);
+    const bv = seasonSortValue(b);
+    if (av !== bv) return av - bv;
+    return clean(a).localeCompare(clean(b));
+  });
+}
+
+function compareSeasonNames(a: string, b: string) {
+  const av = seasonSortValue(a);
+  const bv = seasonSortValue(b);
+  if (av !== bv) return av - bv;
+  return clean(a).localeCompare(clean(b));
+}
+
 const statColumns = [
   { label: "Total Rounds", keys: ["Total Rounds"], decimals: 0 },
   { label: "Total Pts", keys: ["Total Pts"], decimals: 0 },
@@ -190,13 +227,14 @@ export default function LeagueClient() {
     fetch("/api/data")
       .then((res) => res.json())
       .then((loaded) => {
-        setData(loaded);
-        setSeason(loaded.seasons?.[0] || "");
+        const sortedLoadedSeasons = sortSeasons(loaded.seasons || []);
+        setData({ ...loaded, seasons: sortedLoadedSeasons });
+        setSeason(sortedLoadedSeasons[0] || "");
         setProfileSeason("All Seasons");
       });
   }, []);
 
-  const seasons = data?.seasons || [];
+  const seasons = sortSeasons(data?.seasons || []);
   const players = data?.players || [];
 
   const dashboardWeeks = useMemo(() => {
@@ -268,7 +306,7 @@ export default function LeagueClient() {
     return (data?.stats || [])
       .filter((row) => getPlayer(row) === selectedProfilePlayer)
       .filter((row) => profileSeason === "All Seasons" || getSeason(row) === profileSeason)
-      .sort((a, b) => getSeason(a).localeCompare(getSeason(b)));
+      .sort((a, b) => compareSeasonNames(getSeason(a), getSeason(b)));
   }, [data, selectedProfilePlayer, profileSeason]);
 
   const playerWeeklyRows = useMemo(() => {
@@ -279,7 +317,7 @@ export default function LeagueClient() {
       .filter((row) => profileWeek === "All Weeks" || getWeek(row) === profileWeek)
       .filter((row) => profileType === "All" || getType(row) === profileType)
       .sort((a, b) => {
-        const seasonCompare = getSeason(a).localeCompare(getSeason(b));
+        const seasonCompare = compareSeasonNames(getSeason(a), getSeason(b));
         if (seasonCompare !== 0) return seasonCompare;
         const weekCompare = weekSort(getWeek(a), getWeek(b));
         if (weekCompare !== 0) return weekCompare;
@@ -309,7 +347,13 @@ export default function LeagueClient() {
       if (!groups[label][t]) groups[label][t] = [];
       groups[label][t].push(row);
     }
-    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+    return Object.entries(groups).sort(([a], [b]) => {
+      const [seasonA, weekA = ""] = a.split(" - ");
+      const [seasonB, weekB = ""] = b.split(" - ");
+      const seasonCompare = compareSeasonNames(seasonA, seasonB);
+      if (seasonCompare !== 0) return seasonCompare;
+      return weekSort(weekA, weekB);
+    });
   }, [playerWeeklyRows]);
 
   const progression = useMemo(() => {
@@ -318,9 +362,6 @@ export default function LeagueClient() {
       .filter((row) => getPlayer(row) === selectedProfilePlayer)
       .map((row) => ({
         season: getSeason(row),
-        ppr: getStatNumber(row, ["Average PPR"]),
-        dpr: getStatNumber(row, ["Average DPR"]),
-        points: getStatNumber(row, ["Total Pts"]),
         finish: (() => {
           const seasonName = getSeason(row);
           const seasonRows = (data?.standings || [])
@@ -330,8 +371,18 @@ export default function LeagueClient() {
           const index = seasonRows.findIndex((r) => r.player === selectedProfilePlayer);
           return index >= 0 ? index + 1 : null;
         })(),
+        points: getStatNumber(row, ["Total Pts"]),
+        ppr: getStatNumber(row, ["Average PPR"]),
+        dpr: getStatNumber(row, ["Average DPR"]),
+        oppr: getStatNumber(row, ["Opponents Avg PPR"]),
+        oppPts: getStatNumber(row, ["Opponents Pts"]),
+        rounds: getStatNumber(row, ["Total Rounds"]),
+        fourBaggers: getStatNumber(row, ["Total 4-Baggers"]),
+        bagsOn: getStatNumber(row, ["Bags On %"]),
+        bagsOff: getStatNumber(row, ["Bags Off %"]),
+        avgBagsIn: getStatNumber(row, ["Avg Bags In"]),
       }))
-      .sort((a, b) => a.season.localeCompare(b.season));
+      .sort((a, b) => compareSeasonNames(a.season, b.season));
   }, [data, selectedProfilePlayer]);
 
   const statA = (data?.stats || []).find((row) => getPlayer(row) === compareA && (!season || getSeason(row) === season));
@@ -523,10 +574,83 @@ function MiniStat({ label, value }: { label: string; value: any }) {
 }
 
 function SeasonFinishTable({ rows }: { rows: any[] }) {
-  return <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-neutral-400"><th className="p-2">Season</th><th className="p-2">Finish</th><th className="p-2">PPR</th><th className="p-2">DPR</th><th className="p-2">Points</th></tr></thead><tbody>{rows.map((row) => <tr key={row.season} className="border-t border-neutral-800"><td className="p-2 font-bold">{row.season}</td><td className="p-2 text-[#f04a22]">{row.finish ? `${row.finish}` : "-"}</td><td className="p-2">{formatValue(row.ppr, 2)}</td><td className="p-2">{formatValue(row.dpr, 2)}</td><td className="p-2">{formatValue(row.points, 0)}</td></tr>)}</tbody></table></div>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-neutral-400">
+            <th className="p-2">Season</th>
+            <th className="p-2">Finish</th>
+            <th className="p-2">Total Pts</th>
+            <th className="p-2">PPR</th>
+            <th className="p-2">DPR</th>
+            <th className="p-2">OPPR</th>
+            <th className="p-2">Opp Pts</th>
+            <th className="p-2">Rounds</th>
+            <th className="p-2">4 Baggers</th>
+            <th className="p-2">Bags On %</th>
+            <th className="p-2">Bags Off %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.season} className="border-t border-neutral-800">
+              <td className="whitespace-nowrap p-2 font-bold">{row.season}</td>
+              <td className="p-2 text-[#f04a22]">{row.finish ? `${row.finish}` : "-"}</td>
+              <td className="p-2">{formatValue(row.points, 0)}</td>
+              <td className="p-2">{formatValue(row.ppr, 2)}</td>
+              <td className="p-2">{formatValue(row.dpr, 2)}</td>
+              <td className="p-2">{formatValue(row.oppr, 2)}</td>
+              <td className="p-2">{formatValue(row.oppPts, 0)}</td>
+              <td className="p-2">{formatValue(row.rounds, 0)}</td>
+              <td className="p-2">{formatValue(row.fourBaggers, 0)}</td>
+              <td className="p-2">{formatValue(row.bagsOn, 2)}</td>
+              <td className="p-2">{formatValue(row.bagsOff, 2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
+
 
 function ProgressionChart({ rows }: { rows: any[] }) {
   if (!rows.length) return <p className="text-neutral-400">No progression data found.</p>;
-  return <div className="h-72"><ResponsiveContainer width="100%" height="100%"><LineChart data={rows}><CartesianGrid strokeDasharray="3 3" stroke="#333" /><XAxis dataKey="season" /><YAxis /><Tooltip /><Line type="monotone" dataKey="ppr" stroke="#f04a22" strokeWidth={3} /><Line type="monotone" dataKey="dpr" stroke="#d9d9d9" strokeWidth={2} /></LineChart></ResponsiveContainer></div>;
+
+  return (
+    <div className="h-80">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={rows} margin={{ top: 12, right: 24, left: 0, bottom: 12 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+          <XAxis dataKey="season" />
+          <YAxis />
+          <Tooltip
+            contentStyle={{ background: "#151515", border: "1px solid #333", color: "#fff" }}
+            labelStyle={{ color: "#fff" }}
+          />
+          <Legend />
+          <Line
+            type="monotone"
+            dataKey="ppr"
+            name="Average PPR"
+            stroke="#f04a22"
+            strokeWidth={3}
+            dot={{ r: 4, stroke: "#f04a22", strokeWidth: 2, fill: "#070707" }}
+            activeDot={{ r: 6 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="dpr"
+            name="Average DPR"
+            stroke="#ffffff"
+            strokeWidth={3}
+            dot={{ r: 4, stroke: "#ffffff", strokeWidth: 2, fill: "#070707" }}
+            activeDot={{ r: 6 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
 }
+
