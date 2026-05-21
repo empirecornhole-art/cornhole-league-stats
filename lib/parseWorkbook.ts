@@ -23,7 +23,23 @@ function sheetToArrays(workbook: XLSX.WorkBook, sheetName: string): any[][] {
   return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as any[][];
 }
 
-function getPlayer(row: Record<string, any>) {
+function seasonFromFileName(fileName?: string) {
+  const base = clean(fileName || "Season").replace(/\.[^.]+$/, "");
+  const spaced = base
+    .replace(/[_-]+/g, " ")
+    .replace(/(Spring|Summer|Fall|Winter)\s*(\d{2,4})/i, (_m, term, year) => `${term} ${String(year).slice(-2)}`)
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return spaced || "Season";
+}
+
+function getSeason(row: Record<string, any>, fallback: string) {
+  const sheetSeason = clean(row.Season || row.season || row.SEASON);
+  return sheetSeason || fallback;
+}
+
+function getPlayerName(row: Record<string, any>) {
   const first = clean(row.playerFirstName || row.First || row["First Name"]);
   const last = clean(row.playerLastName || row.Last || row["Last Name"]);
   if (first || last) return `${first} ${last}`.trim();
@@ -39,41 +55,19 @@ function getPlayer(row: Record<string, any>) {
   );
 }
 
-function seasonFromFileName(fileName?: string) {
-  if (!fileName) return "";
-  const base = fileName.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
-  const match = base.match(/(spring|summer|fall|winter)\s*'?\s*(\d{2,4})/i);
-  if (!match) return "";
-  const term = match[1][0].toUpperCase() + match[1].slice(1).toLowerCase();
-  let year = match[2];
-  if (year.length === 4) year = year.slice(2);
-  return `${term} ${year}`;
+function getWeek(row: Record<string, any>) {
+  return clean(row.Week || row.week || row.WEEK);
 }
 
-function findSeasonInRows(rows: Record<string, any>[]) {
-  for (const row of rows) {
-    const value = clean(row.Season || row.season || row.SEASON);
-    if (value) return value;
-  }
-  return "";
-}
-
-function detectSeason(workbook: XLSX.WorkBook, fileName?: string) {
-  const fromFile = seasonFromFileName(fileName);
-  if (fromFile) return fromFile;
-
-  const sheets = ["Overall", "Stats", "Swap", "Blind", "LB", "Old Stats"];
-  for (const sheet of sheets) {
-    const found = findSeasonInRows(sheetToObjects(workbook, sheet));
-    if (found) return found;
-  }
-
-  return "Unknown Season";
+function getType(row: Record<string, any>) {
+  return clean(row.Type || row.type || row.TYPE);
 }
 
 function parseOverallStandings(workbook: XLSX.WorkBook, season: string) {
   const rows = sheetToArrays(workbook, "Overall");
-  const headers = rows[0]?.slice(0, 16).map(clean) || [];
+  if (!rows.length) return [];
+
+  const headers = rows[0]?.slice(0, 24).map(clean) || [];
 
   return rows
     .slice(1)
@@ -98,8 +92,8 @@ function parseOverallStandings(workbook: XLSX.WorkBook, season: string) {
 
 function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
   const rows = sheetToArrays(workbook, "Overall");
+  if (rows.length < 3) return [];
 
-  // Current workbook has Overall Stats and Averages starting at column Z.
   const startCol = 25;
   const endCol = 42;
   const headers = rows[1]?.slice(startCol, endCol).map(clean) || [];
@@ -109,6 +103,7 @@ function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
     .map((row) => {
       const values = row.slice(startCol, endCol);
       const player = clean(values[0]);
+
       if (!player || player === "Grand Total") return null;
 
       const obj: Record<string, any> = {
@@ -129,59 +124,55 @@ function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
 function parseWeeklyStandings(workbook: XLSX.WorkBook, season: string) {
   const swap = sheetToObjects(workbook, "Swap").map((row) => ({
     ...row,
-    Season: season,
-    Player: clean(row["PLAYER NAME"] || row.Player || row.Name),
-    Week: clean(row.Week || row.week || row.WEEK),
+    Season: getSeason(row, season),
+    Player: getPlayerName(row),
+    Week: getWeek(row),
     Type: "Swap",
-    recordKind: "standing",
+    rowKind: "standing",
   }));
 
   const blind = sheetToObjects(workbook, "Blind").map((row) => ({
     ...row,
-    Season: season,
-    Player: clean(row["PLAYER NAME"] || row.Player || row.Name),
-    Week: clean(row.Week || row.week || row.WEEK),
+    Season: getSeason(row, season),
+    Player: getPlayerName(row),
+    Week: getWeek(row),
     Type: "Blind",
-    recordKind: "standing",
+    rowKind: "standing",
   }));
 
   return [...swap, ...blind].filter((row) => row.Player && row.Week);
 }
 
 function parseEventStats(workbook: XLSX.WorkBook, season: string) {
-  const statsRows = sheetToObjects(workbook, "Stats");
-
-  return statsRows
-    .map((row) => {
-      const player = getPlayer(row);
-      const week = clean(row.Week || row.week || row.WEEK || row["Week"]);
-      const type = clean(row.Type || row.type || row.TYPE || row.Event || row.event);
-
-      return {
-        ...row,
-        Season: season,
-        Player: player,
-        playerName: player,
-        Week: week,
-        Type: type,
-        recordKind: "eventStat",
-      };
-    })
+  return sheetToObjects(workbook, "Stats")
+    .map((row) => ({
+      ...row,
+      Season: getSeason(row, season),
+      Player: getPlayerName(row),
+      Week: getWeek(row),
+      Type: getType(row),
+      rowKind: "eventStat",
+    }))
     .filter((row) => row.Player && row.Week && row.Type);
 }
 
-export async function parseWorkbook(buffer: ArrayBuffer, fileName?: string): Promise<LeagueData> {
+export async function parseWorkbook(
+  buffer: ArrayBuffer,
+  fileName?: string
+): Promise<LeagueData> {
   const workbook = XLSX.read(buffer, { type: "array" });
-  const season = detectSeason(workbook, fileName);
+  const season = seasonFromFileName(fileName);
 
   const standings = parseOverallStandings(workbook, season);
   const stats = parseOverallStatsAndAverages(workbook, season);
-  const weekly = [...parseWeeklyStandings(workbook, season), ...parseEventStats(workbook, season)];
+  const weeklyStandings = parseWeeklyStandings(workbook, season);
+  const eventStats = parseEventStats(workbook, season);
+  const weekly = [...weeklyStandings, ...eventStats];
 
   const players = uniqueSorted([
-    ...standings.map((row) => clean(row.Player)),
-    ...stats.map((row) => clean(row.Player)),
-    ...weekly.map((row) => clean(row.Player)),
+    ...standings.map(getPlayerName),
+    ...stats.map(getPlayerName),
+    ...weekly.map(getPlayerName),
   ]);
 
   return {

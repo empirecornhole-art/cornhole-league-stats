@@ -1,8 +1,10 @@
+export type LeagueRow = Record<string, any>;
+
 export type LeagueData = {
   lastUpdated?: string;
   seasons: string[];
   players: string[];
-  standings: Record<string, any>[];
-  weekly: Record<string, any>[];
-  stats: Record<string, any>[];
+  standings: LeagueRow[];
+  weekly: LeagueRow[];
+  stats: LeagueRow[];
 };

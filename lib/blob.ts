@@ -3,15 +3,22 @@ import { LeagueData } from "./types";
 
 const DATA_KEY = "league-data.json";
 
-export function emptyLeagueData(): LeagueData {
-  return {
-    seasons: [],
-    players: [],
-    standings: [],
-    weekly: [],
-    stats: [],
-    lastUpdated: new Date().toISOString(),
-  };
+const emptyLeagueData: LeagueData = {
+  seasons: [],
+  players: [],
+  standings: [],
+  weekly: [],
+  stats: [],
+};
+
+function clean(value: any) {
+  return String(value ?? "").trim();
+}
+
+function uniqueSorted(values: string[]) {
+  return Array.from(new Set(values.map(clean).filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b)
+  );
 }
 
 export async function saveLeagueData(data: LeagueData) {
@@ -22,10 +29,11 @@ export async function saveLeagueData(data: LeagueData) {
   });
 }
 
-export async function loadLeagueData(): Promise<LeagueData | null> {
+export async function loadLeagueData(): Promise<LeagueData> {
   try {
     const blob = await head(DATA_KEY);
-    if (!blob) return null;
+
+    if (!blob) return emptyLeagueData;
 
     const res = await fetch(blob.url, {
       cache: "no-store",
@@ -34,52 +42,65 @@ export async function loadLeagueData(): Promise<LeagueData | null> {
       },
     });
 
-    if (!res.ok) return null;
-    return await res.json();
+    if (!res.ok) return emptyLeagueData;
+
+    const loaded = await res.json();
+
+    return {
+      ...emptyLeagueData,
+      ...loaded,
+      seasons: loaded.seasons || [],
+      players: loaded.players || [],
+      standings: loaded.standings || [],
+      weekly: loaded.weekly || [],
+      stats: loaded.stats || [],
+    };
   } catch {
-    return null;
+    return emptyLeagueData;
   }
 }
 
-export function mergeSeasonData(existing: LeagueData | null, incoming: LeagueData): LeagueData {
-  const base = existing ?? emptyLeagueData();
-  const incomingSeasons = new Set(incoming.seasons);
+export function mergeSeasonData(existing: LeagueData, incoming: LeagueData): LeagueData {
+  const incomingSeasons = new Set(incoming.seasons.map(clean));
+
+  const keepDifferentSeason = (row: Record<string, any>) => {
+    const rowSeason = clean(row.Season || row.season || row.SEASON);
+    return !incomingSeasons.has(rowSeason);
+  };
 
   const standings = [
-    ...base.standings.filter((row) => !incomingSeasons.has(String(row.Season ?? row.season ?? "").trim())),
-    ...incoming.standings,
+    ...(existing.standings || []).filter(keepDifferentSeason),
+    ...(incoming.standings || []),
   ];
 
   const weekly = [
-    ...base.weekly.filter((row) => !incomingSeasons.has(String(row.Season ?? row.season ?? "").trim())),
-    ...incoming.weekly,
+    ...(existing.weekly || []).filter(keepDifferentSeason),
+    ...(incoming.weekly || []),
   ];
 
   const stats = [
-    ...base.stats.filter((row) => !incomingSeasons.has(String(row.Season ?? row.season ?? "").trim())),
-    ...incoming.stats,
+    ...(existing.stats || []).filter(keepDifferentSeason),
+    ...(incoming.stats || []),
   ];
 
-  const seasons = Array.from(new Set([...base.seasons, ...incoming.seasons]))
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
-
-  const players = Array.from(
-    new Set([
-      ...base.players,
-      ...incoming.players,
-      ...standings.map((row) => String(row.Player ?? row.playerName ?? "").trim()),
-      ...weekly.map((row) => String(row.Player ?? row.playerName ?? "").trim()),
-      ...stats.map((row) => String(row.Player ?? row.playerName ?? "").trim()),
-    ].filter(Boolean))
-  ).sort((a, b) => a.localeCompare(b));
-
   return {
-    seasons,
-    players,
+    lastUpdated: new Date().toISOString(),
+    seasons: uniqueSorted([
+      ...(existing.seasons || []),
+      ...(incoming.seasons || []),
+      ...standings.map((row) => row.Season),
+      ...weekly.map((row) => row.Season),
+      ...stats.map((row) => row.Season),
+    ]),
+    players: uniqueSorted([
+      ...(existing.players || []),
+      ...(incoming.players || []),
+      ...standings.map((row) => row.Player || row.playerName),
+      ...weekly.map((row) => row.Player || row.playerName),
+      ...stats.map((row) => row.Player || row.playerName),
+    ]),
     standings,
     weekly,
     stats,
-    lastUpdated: new Date().toISOString(),
   };
 }
