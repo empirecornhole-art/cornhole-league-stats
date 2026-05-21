@@ -88,8 +88,23 @@ function isValidPlayerName(value: any) {
   const id = compact(name);
 
   if (!name) return false;
-  if (["standings", "overall", "grandtotal", "totalplayers", "ghostplayer", "player"].includes(id)) return false;
-  if (/^[^a-zA-Z0-9]+$/.test(name)) return false;
+  if (/^\d+$/.test(name)) return false;
+
+  if (
+    [
+      "standings",
+      "overall",
+      "grandtotal",
+      "totalplayers",
+      "ghostplayer",
+      "player",
+      "players",
+      "playername",
+      "name",
+    ].includes(id)
+  ) {
+    return false;
+  }
 
   return true;
 }
