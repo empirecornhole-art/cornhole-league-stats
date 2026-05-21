@@ -8,6 +8,7 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
+
     const password = formData.get("password");
     const file = formData.get("file") as File | null;
 
@@ -20,19 +21,27 @@ export async function POST(req: Request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
+
     const parsed = await parseWorkbook(arrayBuffer, file.name);
-    const summary = await importLeagueDataToSupabase(parsed);
+
+    const result = await importLeagueDataToSupabase(parsed);
 
     return NextResponse.json({
       ok: true,
-      message: `Imported ${summary.season} into Supabase. Players: ${summary.players}. Events: ${summary.events}. Season stats: ${summary.seasonStats}. Event results: ${summary.eventResults}. Event stats: ${summary.eventStats}.`,
-      size: file.size,
-      summary,
+      message: `SUPABASE IMPORT SUCCESS: Imported ${parsed.seasons.join(
+        ", "
+      )}. Players: ${result.players}. Events: ${result.events}. Season stats: ${
+        result.seasonStats
+      }. Event results: ${result.eventResults}. Event stats: ${
+        result.eventStats
+      }.`,
+      summary: result,
     });
   } catch (error: any) {
     return NextResponse.json(
       {
-        error: error?.message || "Upload/import failed",
+        ok: false,
+        error: error?.message || "Supabase import failed",
       },
       { status: 500 }
     );
