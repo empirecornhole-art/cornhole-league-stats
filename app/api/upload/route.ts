@@ -1,7 +1,6 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { parseWorkbook } from "../../../lib/parseWorkbook";
-import { loadLeagueData, mergeSeasonData, saveLeagueData } from "../../../lib/blob";
+import { importLeagueDataToSupabase } from "../../../lib/supabaseLeague";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,38 +21,27 @@ export async function POST(req: Request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
 
     const parsed = await parseWorkbook(arrayBuffer, file.name);
-    const existing = await loadLeagueData();
-    const merged = mergeSeasonData(existing, parsed);
 
-    await put(`workbooks/${parsed.seasons[0] || file.name}.xlsx`, buffer, {
-      access: "private",
-      allowOverwrite: true,
-      contentType:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
-    await saveLeagueData(merged);
+    const result = await importLeagueDataToSupabase(parsed);
 
     return NextResponse.json({
       ok: true,
-      message: `Workbook uploaded and merged successfully. Season: ${parsed.seasons[0]}. Total seasons: ${merged.seasons.length}. Players: ${merged.players.length}.`,
-      size: file.size,
-      season: parsed.seasons[0],
-      summary: {
-        seasons: merged.seasons.length,
-        players: merged.players.length,
-        standings: merged.standings.length,
-        weekly: merged.weekly.length,
-        stats: merged.stats.length,
-      },
+      message: `SUPABASE IMPORT SUCCESS: Imported ${parsed.seasons.join(
+        ", "
+      )}. Players: ${result.players}. Events: ${result.events}. Season stats: ${
+        result.seasonStats
+      }. Event results: ${result.eventResults}. Event stats: ${
+        result.eventStats
+      }.`,
+      summary: result,
     });
   } catch (error: any) {
     return NextResponse.json(
       {
-        error: error?.message || "Upload and parsing failed",
+        ok: false,
+        error: error?.message || "Supabase import failed",
       },
       { status: 500 }
     );

@@ -1,35 +1,21 @@
 import { NextResponse } from "next/server";
-import { loadLeagueData } from "../../../lib/blob";
+import { readLeagueDataFromSupabase } from "../../../lib/supabaseLeague";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const data = await loadLeagueData();
-
-    if (!data) {
-      return NextResponse.json({
-        debug: "No league data found in Blob",
-        seasons: [],
-        players: [],
-        standings: [],
-        weekly: [],
-        stats: [],
-      });
-    }
-
-    return NextResponse.json({
-      ...data,
-      debug: "League data loaded successfully",
-    });
+    const data = await readLeagueDataFromSupabase();
+    return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json({
-      debug: "Error loading league data",
-      error: error?.message || "Unknown error",
+      error: error?.message || "Failed to load Supabase league data",
       seasons: [],
       players: [],
       standings: [],
       weekly: [],
+      eventStats: [],
       stats: [],
     });
   }
