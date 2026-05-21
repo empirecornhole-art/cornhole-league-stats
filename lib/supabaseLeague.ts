@@ -216,6 +216,41 @@ function eventStatsPayload(rows: Record<string, any>[], eventMap: Map<string, st
     .filter(Boolean);
 }
 
+
+
+function weekScorePayload(parsed: LeagueData, seasonId: string, playerMap: Map<string, string>) {
+  const rows: any[] = [];
+
+  for (const standing of parsed.standings || []) {
+    const playerName = getPlayer(standing);
+    const playerId = playerMap.get(normalizeName(playerName));
+
+    if (!playerName || !playerId) continue;
+
+    for (const key of Object.keys(standing || {})) {
+      const match = clean(key).match(/^week\s*(\d+)$/i);
+      if (!match) continue;
+
+      const weekNum = Number(match[1]);
+      const score = num(standing[key]);
+
+      if (!weekNum || score === null) continue;
+
+      rows.push({
+        season_id: seasonId,
+        player_id: playerId,
+        player_name: playerName,
+        week_number: weekNum,
+        week_label: `Week ${weekNum}`,
+        score,
+        raw: { sourceColumn: key, value: standing[key] },
+      });
+    }
+  }
+
+  return rows;
+}
+
 export async function importLeagueDataToSupabase(parsed: LeagueData) {
   const supabase = getSupabaseAdmin();
   const seasonName = parsed.seasons?.[0];
@@ -318,6 +353,18 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
     if (error) throw error;
   }
 
+  const weekScoreRows = dedupeBy(
+    weekScorePayload(parsed, season.id, playerMap),
+    (row: any) => `${row.season_id}|${row.player_id}|${row.week_number}`
+  );
+
+  if (weekScoreRows.length) {
+    const { error } = await supabase
+      .from("season_week_scores")
+      .upsert(weekScoreRows, { onConflict: "season_id,player_id,week_number" });
+    if (error) throw error;
+  }
+
   const resultRows = dedupeBy(
     resultPayload(parsed.weekly || [], eventMap, playerMap),
     (row: any) => `${row.event_id}|${row.player_id}`
@@ -349,6 +396,7 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
     seasonStats: seasonRows.length,
     eventResults: resultRows.length,
     eventStats: statRows.length,
+    weekScores: weekScoreRows.length,
   };
 }
 
@@ -476,6 +524,21 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
     };
   });
 
+  const { data: weekScoreRows, error: weekScoreError } = await supabase
+    .from("season_week_scores")
+    .select("*, seasons(name)");
+
+  if (weekScoreError) throw weekScoreError;
+
+  const weekScores = (weekScoreRows || []).map((row: any) => ({
+    Season: row.seasons?.name || seasonById.get(row.season_id) || "",
+    Player: row.player_name,
+    playerName: row.player_name,
+    Week: row.week_label || `Week ${row.week_number}`,
+    WeekNumber: row.week_number,
+    Score: row.score,
+  }));
+
   return {
     seasons: (seasons || []).map((season) => season.name),
     players: (players || []).map((player) => player.name),
@@ -483,6 +546,7 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
     weekly,
     eventStats,
     stats,
+    weekScores,
     lastUpdated: new Date().toISOString(),
   };
 }
