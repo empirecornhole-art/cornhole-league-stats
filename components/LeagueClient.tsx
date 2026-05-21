@@ -79,6 +79,17 @@ function getPlayer(row: any) {
   );
 }
 
+function isValidPlayerName(value: any) {
+  const name = clean(value);
+  const id = compact(name);
+
+  if (!name) return false;
+  if (["standings", "overall", "grandtotal", "totalplayers", "ghostplayer", "player"].includes(id)) return false;
+  if (/^[^a-zA-Z0-9]+$/.test(name)) return false;
+
+  return true;
+}
+
 function getWeek(row: any) {
   const raw = clean(row?.Week || row?.week || row?.WEEK || row?.["Week "]);
   if (!raw) return "";
@@ -211,7 +222,20 @@ function matchEventStatRows(eventStats: any[], params: { season?: string; week?:
     });
   }
 
-  return rows;
+  const bestByPlayer = new Map<string, any>();
+
+  for (const row of rows) {
+    const key = [normalizeName(getPlayer(row)), normalizeWeek(getWeek(row)), normalizeText(getType(row))].join("|");
+    const current = bestByPlayer.get(key);
+    const score = eventStatColumns.reduce((total, col) => total + (getStatValue(row, col.keys) !== "" && getStatValue(row, col.keys) !== null && getStatValue(row, col.keys) !== undefined ? 1 : 0), 0);
+    const currentScore = current
+      ? eventStatColumns.reduce((total, col) => total + (getStatValue(current, col.keys) !== "" && getStatValue(current, col.keys) !== null && getStatValue(current, col.keys) !== undefined ? 1 : 0), 0)
+      : -1;
+
+    if (!current || score >= currentScore) bestByPlayer.set(key, row);
+  }
+
+  return Array.from(bestByPlayer.values());
 }
 
 function summarizeEventStats(rows: any[]) {
@@ -261,8 +285,16 @@ export default function LeagueClient() {
     fetch("/api/data")
       .then((res) => res.json())
       .then((loaded) => {
-        const sortedSeasons = sortSeasons(loaded.seasons || []);
-        setData({ ...loaded, seasons: sortedSeasons, eventStats: loaded.eventStats || [] });
+        const cleaned = {
+          ...loaded,
+          players: (loaded.players || []).filter(isValidPlayerName),
+          standings: (loaded.standings || []).filter((row: any) => isValidPlayerName(getPlayer(row))),
+          weekly: (loaded.weekly || []).filter((row: any) => isValidPlayerName(getPlayer(row))),
+          eventStats: (loaded.eventStats || []).filter((row: any) => isValidPlayerName(getPlayer(row))),
+          stats: (loaded.stats || []).filter((row: any) => isValidPlayerName(getPlayer(row))),
+        };
+        const sortedSeasons = sortSeasons(cleaned.seasons || []);
+        setData({ ...cleaned, seasons: sortedSeasons });
         setSeason(sortedSeasons[0] || "");
         setProfileSeason("All Seasons");
       });
@@ -286,7 +318,7 @@ export default function LeagueClient() {
         const weekValue = dashboardWeek === "All Weeks" ? pointValue(row) : numberVal(row[dashboardWeek]);
         return { name: getPlayer(row) || "Unknown", points: weekValue, raw: row };
       })
-      .filter((row) => row.name !== "Unknown")
+      .filter((row) => row.name !== "Unknown" && isValidPlayerName(row.name))
       .filter((row) => dashboardWeek === "All Weeks" || row.points !== 0)
       .sort((a, b) => b.points - a.points);
     return base;
@@ -296,7 +328,7 @@ export default function LeagueClient() {
     const rows = (data?.stats || [])
       .filter((row) => rowMatchesSeason(row, season))
       .filter((row) => player === "All Players" || getPlayer(row) === player)
-      .filter((row) => getPlayer(row));
+      .filter((row) => isValidPlayerName(getPlayer(row)));
 
     const selectedColumn = statColumns.find((col) => col.label === sortKey);
     return rows.sort((a, b) => {
@@ -470,8 +502,6 @@ export default function LeagueClient() {
             </div>
             <h3 className="mb-2 text-lg font-black text-[#f04a22]">Standings</h3>
             <WeeklyStandingsTable rows={visibleWeekRows} eventStats={allEventStats} />
-            <h3 className="mb-2 mt-6 text-lg font-black text-[#f04a22]">Event Stats</h3>
-            <EventStatsTable rows={visibleEventStatsRows} />
             <EventSummary rows={visibleEventStatsRows} />
           </Card>
         )}
@@ -511,17 +541,12 @@ export default function LeagueClient() {
                 {groupedPlayerWeeks.length === 0 ? <p className="text-neutral-400">No weekly records found for this selection.</p> : groupedPlayerWeeks.map(([weekLabel, byType]) => (
                   <div key={weekLabel} className="rounded-xl border border-neutral-800 bg-[#1c1c1c] p-4">
                     <h4 className="mb-3 text-xl font-black">{weekLabel}</h4>
-                    {Object.entries(byType).map(([eventType, rows]) => {
-                      const eventRows = matchEventStatRows(allEventStats, { season: weekLabel.split(" - ")[0], week: weekLabel, type: eventType, player: selectedPlayer });
-                      return (
-                        <div key={eventType} className="mb-6">
-                          <div className="mb-2 inline-block rounded-full bg-[#f04a22] px-3 py-1 text-xs font-black uppercase">{eventType}</div>
-                          <WeeklyStandingsTable rows={rows} eventStats={allEventStats} />
-                          <EventStatsTable rows={eventRows} />
-                          <EventSummary rows={eventRows} />
-                        </div>
-                      );
-                    })}
+                    {Object.entries(byType).map(([eventType, rows]) => (
+                      <div key={eventType} className="mb-6">
+                        <div className="mb-2 inline-block rounded-full bg-[#f04a22] px-3 py-1 text-xs font-black uppercase">{eventType}</div>
+                        <WeeklyStandingsTable rows={rows} eventStats={allEventStats} />
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
