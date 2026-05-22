@@ -189,39 +189,28 @@ function mergeWeeklyRows(weeklyRows: any[], eventStatsRows: any[]) {
     statMap.set(eventIdentity(stat), stat);
   }
 
-  const merged = (weeklyRows || [])
+  const firstPresent = (...values: any[]) => {
+    for (const value of values) {
+      if (value !== undefined && value !== null && value !== "") return value;
+    }
+    return "";
+  };
+
+  return (weeklyRows || [])
     .filter((row) => isValidPlayerName(getPlayer(row)))
     .map((row) => {
       const stat = statMap.get(eventIdentity(row)) || {};
-      const mergedRow = {
+      return {
         ...row,
-        PPR: getValue(stat, ["PPR"]) || row.PPR,
-        Rounds: getValue(stat, ["Rounds"]) || row.Rounds,
-        StatPoints: getValue(stat, ["Points"]) || row.StatPoints || row.StatPoints,
-        OPPR: getValue(stat, ["OPPR"]) || row.OPPR,
-        "Opp Pts": getValue(stat, ["Opp Pts"]) || row["Opp Pts"],
-        DPR: getValue(stat, ["DPR"]) || row.DPR,
-        "4 Baggers": getValue(stat, ["4 Baggers"]) || row["4 Baggers"],
+        PPR: firstPresent(getValue(row, ["PPR"]), getValue(stat, ["PPR"])),
+        Rounds: firstPresent(getValue(row, ["Rounds"]), getValue(stat, ["Rounds"])),
+        StatPoints: firstPresent(getValue(row, ["StatPoints"]), getValue(stat, ["Points"]), getValue(row, ["Stat Points"])),
+        OPPR: firstPresent(getValue(row, ["OPPR"]), getValue(stat, ["OPPR"])),
+        "Opp Pts": firstPresent(getValue(row, ["Opp Pts"]), getValue(stat, ["Opp Pts"])),
+        DPR: firstPresent(getValue(row, ["DPR"]), getValue(stat, ["DPR"])),
+        "4 Baggers": firstPresent(getValue(row, ["4 Baggers"]), getValue(stat, ["4 Baggers"])),
       };
-      return mergedRow;
     });
-
-  const existingKeys = new Set(merged.map(eventIdentity));
-  for (const stat of eventStatsRows || []) {
-    if (!isValidPlayerName(getPlayer(stat))) continue;
-    const key = eventIdentity(stat);
-    if (existingKeys.has(key)) continue;
-    merged.push({
-      ...stat,
-      Rank: stat.Rank || "",
-      Team: stat.Team || "",
-      Points: stat.FinishPts || "",
-      StatPoints: stat.Points,
-      "+/-": stat["+/-"] || "",
-    });
-  }
-
-  return merged;
 }
 
 function summarizeSeasonStats(rows: any[]) {
