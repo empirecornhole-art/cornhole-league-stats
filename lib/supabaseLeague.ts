@@ -19,6 +19,26 @@ function normalizeName(name: string) {
   return compact(name);
 }
 
+function isValidPlayerName(value: any) {
+  const name = clean(value);
+  const id = normalizeName(name);
+
+  if (!name) return false;
+  if (/^\d+$/.test(name)) return false;
+
+  return ![
+    "standings",
+    "overall",
+    "grandtotal",
+    "totalplayers",
+    "ghostplayer",
+    "player",
+    "players",
+    "playername",
+    "name",
+  ].includes(id);
+}
+
 function getValue(row: Record<string, any> | null | undefined, keys: string[]) {
   if (!row) return "";
 
@@ -287,8 +307,23 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
 
   if (seasonError) throw seasonError;
 
-  const playerNames = Array.from(new Set((parsed.players || []).map(clean).filter(Boolean))).sort();
-  const playerRows = playerNames.map((name) => ({ name, normalized_name: normalizeName(name) }));
+  const playerNameMap = new Map<string, string>();
+
+  for (const name of (parsed.players || []).map(clean)) {
+    if (!isValidPlayerName(name)) continue;
+
+    const normalized = normalizeName(name);
+    const existing = playerNameMap.get(normalized);
+
+    // Prefer the nicest-looking capitalization if duplicate names appear in the workbook.
+    if (!existing || (name !== name.toLowerCase() && existing === existing.toLowerCase())) {
+      playerNameMap.set(normalized, name);
+    }
+  }
+
+  const playerRows = Array.from(playerNameMap.entries())
+    .map(([normalized_name, name]) => ({ name, normalized_name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   if (playerRows.length) {
     const { error: playerError } = await supabase
@@ -541,7 +576,9 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
 
   return {
     seasons: (seasons || []).map((season) => season.name),
-    players: (players || []).map((player) => player.name),
+    players: (players || [])
+      .map((player) => player.name)
+      .filter(isValidPlayerName),
     standings,
     weekly,
     eventStats,
