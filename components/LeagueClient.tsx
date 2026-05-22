@@ -184,49 +184,40 @@ function eventIdentity(row: any) {
 
 function mergeWeeklyRows(weeklyRows: any[], eventStatsRows: any[]) {
   const statMap = new Map<string, any>();
-
   for (const stat of eventStatsRows || []) {
     if (!isValidPlayerName(getPlayer(stat))) continue;
-
-    const idKey = clean(stat.EventId) && clean(stat.PlayerId) ? `${clean(stat.EventId)}|${clean(stat.PlayerId)}` : "";
-    if (idKey) statMap.set(idKey, stat);
-
     statMap.set(eventIdentity(stat), stat);
   }
 
   const merged = (weeklyRows || [])
     .filter((row) => isValidPlayerName(getPlayer(row)))
     .map((row) => {
-      const idKey = clean(row.EventId) && clean(row.PlayerId) ? `${clean(row.EventId)}|${clean(row.PlayerId)}` : "";
-      const stat = (idKey ? statMap.get(idKey) : null) || statMap.get(eventIdentity(row)) || {};
-
-      return {
+      const stat = statMap.get(eventIdentity(row)) || {};
+      const mergedRow = {
         ...row,
-        PPR: getValue(stat, ["PPR"]) || getValue(row, ["PPR"]),
-        Rounds: getValue(stat, ["Rounds"]) || getValue(row, ["Rounds"]),
-        StatPoints: getValue(stat, ["Points", "StatPoints"]) || getValue(row, ["StatPoints"]),
-        OPPR: getValue(stat, ["OPPR"]) || getValue(row, ["OPPR"]),
-        "Opp Pts": getValue(stat, ["Opp Pts"]) || getValue(row, ["Opp Pts"]),
-        DPR: getValue(stat, ["DPR"]) || getValue(row, ["DPR"]),
-        "4 Baggers": getValue(stat, ["4 Baggers"]) || getValue(row, ["4 Baggers"]),
+        PPR: getValue(stat, ["PPR"]) || row.PPR,
+        Rounds: getValue(stat, ["Rounds"]) || row.Rounds,
+        StatPoints: getValue(stat, ["Points"]) || row.StatPoints || row.StatPoints,
+        OPPR: getValue(stat, ["OPPR"]) || row.OPPR,
+        "Opp Pts": getValue(stat, ["Opp Pts"]) || row["Opp Pts"],
+        DPR: getValue(stat, ["DPR"]) || row.DPR,
+        "4 Baggers": getValue(stat, ["4 Baggers"]) || row["4 Baggers"],
       };
+      return mergedRow;
     });
 
-  const existing = new Set(merged.map(eventIdentity));
-
+  const existingKeys = new Set(merged.map(eventIdentity));
   for (const stat of eventStatsRows || []) {
     if (!isValidPlayerName(getPlayer(stat))) continue;
     const key = eventIdentity(stat);
-    if (existing.has(key)) continue;
-
+    if (existingKeys.has(key)) continue;
     merged.push({
       ...stat,
-      Rank: getValue(stat, ["Rank"]),
-      Team: "",
-      Points: "",
-      FinishPts: "",
-      "+/-": "",
-      StatPoints: getValue(stat, ["Points", "StatPoints"]),
+      Rank: stat.Rank || "",
+      Team: stat.Team || "",
+      Points: stat.FinishPts || "",
+      StatPoints: stat.Points,
+      "+/-": stat["+/-"] || "",
     });
   }
 
@@ -393,13 +384,10 @@ export default function LeagueClient() {
 
   const dashboardWeeks = useMemo(() => {
     const values = Array.from(
-      new Set([
-        ...allWeeklyMerged.filter((row) => getSeason(row) === season).map(getWeek),
-        ...(data?.weekScores || []).filter((row) => getSeason(row) === season).map(getWeek),
-      ].filter(Boolean))
+      new Set(allWeeklyMerged.filter((row) => getSeason(row) === season).map(getWeek).filter(Boolean))
     ).sort(weekSort);
     return ["All Weeks", ...values];
-  }, [allWeeklyMerged, data, season]);
+  }, [allWeeklyMerged, season]);
 
   const weeksRowsForType = useMemo(
     () =>
