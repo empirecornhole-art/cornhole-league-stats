@@ -38,13 +38,13 @@ function uniqueSorted(values: string[]) {
 function sheetToObjects(workbook: XLSX.WorkBook, sheetName: string): Record<string, any>[] {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return [];
-  return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true }) as Record<string, any>[];
+  return XLSX.utils.sheet_to_json(sheet, { defval: "" }) as Record<string, any>[];
 }
 
 function sheetToArrays(workbook: XLSX.WorkBook, sheetName: string): any[][] {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return [];
-  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: true }) as any[][];
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as any[][];
 }
 
 function seasonFromFileName(fileName?: string) {
@@ -144,12 +144,14 @@ function parseOverallStandings(workbook: XLSX.WorkBook, season: string) {
 function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
   const rows = sheetToArrays(workbook, "Overall");
 
+  // The Stats and Averages table starts near column Z in the current workbooks.
+  // Search for the header row so this is more tolerant of small workbook layout changes.
   let headerRowIndex = -1;
   let startCol = -1;
 
   for (let r = 0; r < Math.min(rows.length, 10); r++) {
     for (let c = 0; c < (rows[r]?.length || 0); c++) {
-      if (compact(rows[r][c]) === "overallstatsandaverages" || compact(rows[r][c]) === "statsandaverages") {
+      if (compact(rows[r][c]) === "statsandaverages") {
         headerRowIndex = r + 1;
         startCol = c;
         break;
@@ -159,6 +161,7 @@ function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
   }
 
   if (headerRowIndex < 0 || startCol < 0) {
+    // Fallback used by the previous working version.
     headerRowIndex = 1;
     startCol = 25;
   }
@@ -192,7 +195,7 @@ function parseWeeklyStandings(workbook: XLSX.WorkBook, season: string) {
     sheetToObjects(workbook, sheetName)
       .map((row) => {
         const player = getPlayerName(row);
-        const week = weekLabel(getValue(row, ["Week", "WEEK", "week", "Week "]));
+        const week = weekLabel(getValue(row, ["Week", "WEEK", "week"]));
         if (!isValidPlayerName(player) || !week) return null;
 
         const finishPoints = getValue(row, ["POINTS", "Points", "points"]);
@@ -218,13 +221,6 @@ function parseWeeklyStandings(workbook: XLSX.WorkBook, season: string) {
   return [...parseSheet("Blind"), ...parseSheet("Swap")];
 }
 
-function statCompleteness(row: Record<string, any>) {
-  return ["PPR", "Rounds", "StatPoints", "OPPR", "Opp Pts", "DPR", "4 Baggers"].reduce((count, key) => {
-    const v = row[key];
-    return count + (v !== "" && v !== null && v !== undefined ? 1 : 0);
-  }, 0);
-}
-
 function parseEventStats(workbook: XLSX.WorkBook, season: string) {
   const rows: Record<string, any>[] = [];
 
@@ -246,7 +242,6 @@ function parseEventStats(workbook: XLSX.WorkBook, season: string) {
       PPR: getValue(row, ["ptsPerRnd", "PPR", "Average PPR"]),
       Rounds: getValue(row, ["rounds", "Rounds", "Rds", "Total Rounds"]),
       Points: getValue(row, ["totalPts", "Pts", "Points", "Total Pts", "Total Points"]),
-      StatPoints: getValue(row, ["totalPts", "Pts", "Points", "Total Pts", "Total Points"]),
       OPPR: getValue(row, ["opponentPtsPerRnd", "OPPR", "Opp PPR", "Opponent PPR", "Opponents Avg PPR"]),
       "Opp Pts": getValue(row, ["opponentPts", "Opp Pts", "Opponent Points", "Opponents Pts"]),
       DPR: getValue(row, ["diffPerRnd", "DPR", "Average DPR"]),
@@ -254,6 +249,7 @@ function parseEventStats(workbook: XLSX.WorkBook, season: string) {
     });
   }
 
+  // Some older workbooks have a small Old Stats sheet. Keep it as a fallback only.
   for (const row of sheetToObjects(workbook, "Old Stats")) {
     const player = getPlayerName(row);
     const week = weekLabel(getValue(row, ["Week", "WEEK", "week"]));
@@ -272,7 +268,6 @@ function parseEventStats(workbook: XLSX.WorkBook, season: string) {
       PPR: getValue(row, ["PPR", "ptsPerRnd", "Average PPR"]),
       Rounds: getValue(row, ["Rds", "Rounds", "rounds", "Total Rounds"]),
       Points: getValue(row, ["Pts", "Points", "totalPts", "Total Pts", "Total Points"]),
-      StatPoints: getValue(row, ["Pts", "Points", "totalPts", "Total Pts", "Total Points"]),
       OPPR: getValue(row, ["OPPR", "opponentPtsPerRnd", "Opp PPR", "Opponent PPR", "Opponents Avg PPR"]),
       "Opp Pts": getValue(row, ["Opp Pts", "opponentPts", "Opponent Points", "Opponents Pts"]),
       DPR: getValue(row, ["DPR", "diffPerRnd", "Average DPR"]),
@@ -280,11 +275,18 @@ function parseEventStats(workbook: XLSX.WorkBook, season: string) {
     });
   }
 
+  // Deduplicate by event/player and prefer the row with the most complete stat fields.
   const best = new Map<string, Record<string, any>>();
+  const score = (row: Record<string, any>) =>
+    ["PPR", "Rounds", "Points", "OPPR", "Opp Pts", "DPR", "4 Baggers"].reduce(
+      (count, key) => count + (row[key] !== "" && row[key] !== null && row[key] !== undefined ? 1 : 0),
+      0
+    );
+
   for (const row of rows) {
     const key = `${compact(row.Season)}|${compact(row.Week)}|${compact(row.Type)}|${compact(row.Player)}`;
     const existing = best.get(key);
-    if (!existing || statCompleteness(row) >= statCompleteness(existing)) best.set(key, row);
+    if (!existing || score(row) >= score(existing)) best.set(key, row);
   }
 
   return Array.from(best.values());
