@@ -184,26 +184,53 @@ function eventIdentity(row: any) {
 
 function mergeWeeklyRows(weeklyRows: any[], eventStatsRows: any[]) {
   const statMap = new Map<string, any>();
+
   for (const stat of eventStatsRows || []) {
     if (!isValidPlayerName(getPlayer(stat))) continue;
+
+    const idKey = clean(stat.EventId) && clean(stat.PlayerId) ? `${clean(stat.EventId)}|${clean(stat.PlayerId)}` : "";
+    if (idKey) statMap.set(idKey, stat);
+
     statMap.set(eventIdentity(stat), stat);
   }
 
-  return (weeklyRows || [])
+  const merged = (weeklyRows || [])
     .filter((row) => isValidPlayerName(getPlayer(row)))
     .map((row) => {
-      const stat = statMap.get(eventIdentity(row)) || {};
+      const idKey = clean(row.EventId) && clean(row.PlayerId) ? `${clean(row.EventId)}|${clean(row.PlayerId)}` : "";
+      const stat = (idKey ? statMap.get(idKey) : null) || statMap.get(eventIdentity(row)) || {};
+
       return {
         ...row,
-        PPR: getValue(stat, ["PPR"]),
-        Rounds: getValue(stat, ["Rounds"]),
-        StatPoints: getValue(stat, ["Points"]),
-        OPPR: getValue(stat, ["OPPR"]),
-        "Opp Pts": getValue(stat, ["Opp Pts"]),
-        DPR: getValue(stat, ["DPR"]),
-        "4 Baggers": getValue(stat, ["4 Baggers"]),
+        PPR: getValue(stat, ["PPR"]) || getValue(row, ["PPR"]),
+        Rounds: getValue(stat, ["Rounds"]) || getValue(row, ["Rounds"]),
+        StatPoints: getValue(stat, ["Points", "StatPoints"]) || getValue(row, ["StatPoints"]),
+        OPPR: getValue(stat, ["OPPR"]) || getValue(row, ["OPPR"]),
+        "Opp Pts": getValue(stat, ["Opp Pts"]) || getValue(row, ["Opp Pts"]),
+        DPR: getValue(stat, ["DPR"]) || getValue(row, ["DPR"]),
+        "4 Baggers": getValue(stat, ["4 Baggers"]) || getValue(row, ["4 Baggers"]),
       };
     });
+
+  const existing = new Set(merged.map(eventIdentity));
+
+  for (const stat of eventStatsRows || []) {
+    if (!isValidPlayerName(getPlayer(stat))) continue;
+    const key = eventIdentity(stat);
+    if (existing.has(key)) continue;
+
+    merged.push({
+      ...stat,
+      Rank: getValue(stat, ["Rank"]),
+      Team: "",
+      Points: "",
+      FinishPts: "",
+      "+/-": "",
+      StatPoints: getValue(stat, ["Points", "StatPoints"]),
+    });
+  }
+
+  return merged;
 }
 
 function summarizeSeasonStats(rows: any[]) {
@@ -366,10 +393,13 @@ export default function LeagueClient() {
 
   const dashboardWeeks = useMemo(() => {
     const values = Array.from(
-      new Set(allWeeklyMerged.filter((row) => getSeason(row) === season).map(getWeek).filter(Boolean))
+      new Set([
+        ...allWeeklyMerged.filter((row) => getSeason(row) === season).map(getWeek),
+        ...(data?.weekScores || []).filter((row) => getSeason(row) === season).map(getWeek),
+      ].filter(Boolean))
     ).sort(weekSort);
     return ["All Weeks", ...values];
-  }, [allWeeklyMerged, season]);
+  }, [allWeeklyMerged, data, season]);
 
   const weeksRowsForType = useMemo(
     () =>
