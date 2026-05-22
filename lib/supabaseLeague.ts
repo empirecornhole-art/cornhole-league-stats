@@ -43,7 +43,7 @@ function getValue(row: Record<string, any> | null | undefined, keys: string[]) {
   if (!row) return "";
 
   for (const key of keys) {
-    if (row?.[key] !== undefined && row?.[key] !== "" && row?.[key] !== null) return row[key];
+    if (row?.[key] !== undefined && row?.[key] !== "") return row[key];
   }
 
   const wanted = keys.map(compact);
@@ -105,28 +105,16 @@ function eventKey(week: any, type: any) {
   return `${clean(week)}|${clean(type)}`;
 }
 
-function playerEventKey(row: Record<string, any>) {
-  return `${clean(row.Week)}|${clean(row.Type)}|${normalizeName(getPlayer(row))}`;
-}
-
-function dedupeBy<T>(rows: T[], getKey: (row: T) => string, prefer?: (existing: T, next: T) => T) {
+function dedupeBy<T>(rows: T[], getKey: (row: T) => string) {
   const map = new Map<string, T>();
 
   for (const row of rows) {
     const key = getKey(row);
     if (!key) continue;
-    const existing = map.get(key);
-    map.set(key, existing && prefer ? prefer(existing, row) : row);
+    map.set(key, row);
   }
 
   return Array.from(map.values());
-}
-
-function completeness(row: any) {
-  return ["PPR", "Rounds", "Points", "OPPR", "Opp Pts", "DPR", "4 Baggers"].reduce(
-    (total, key) => total + (getValue(row, [key]) !== "" ? 1 : 0),
-    0
-  );
 }
 
 function findStandingForPlayer(parsed: LeagueData, playerName: string) {
@@ -196,12 +184,7 @@ function seasonStatsPayload(parsed: LeagueData, seasonId: string, playerMap: Map
     .filter(Boolean);
 }
 
-function resultPayload(
-  rows: Record<string, any>[],
-  eventMap: Map<string, string>,
-  playerMap: Map<string, string>,
-  statMap: Map<string, any>
-) {
+function resultPayload(rows: Record<string, any>[], eventMap: Map<string, string>, playerMap: Map<string, string>) {
   return rows
     .map((row) => {
       const playerName = getPlayer(row);
@@ -210,19 +193,17 @@ function resultPayload(
 
       if (!playerName || !playerId || !eventId) return null;
 
-      const matchingStat = statMap.get(playerEventKey(row)) || null;
-
       return {
         event_id: eventId,
         player_id: playerId,
         player_name: playerName,
         rank: num(getValue(row, ["Rank", "RANK", "Finish", "Place"])),
         team: clean(getValue(row, ["Team", "TEAM"])) || null,
-        finish_points: num(getValue(row, ["FinishPts", "Finish Pts", "Points", "POINTS", "Weekly Points"])),
+        finish_points: num(getValue(row, ["Points", "POINTS", "Finish Pts", "Weekly Points"])),
         wins: num(getValue(row, ["Wins", "WINS"])),
         losses: num(getValue(row, ["Losses", "LOSSES"])),
         plus_minus: num(getValue(row, ["+/-", "+ / -", "Plus Minus"])),
-        raw: { ...row, __eventStat: matchingStat },
+        raw: row,
       };
     })
     .filter(Boolean);
@@ -254,6 +235,8 @@ function eventStatsPayload(rows: Record<string, any>[], eventMap: Map<string, st
     })
     .filter(Boolean);
 }
+
+
 
 function weekScorePayload(parsed: LeagueData, seasonId: string, playerMap: Map<string, string>) {
   const rows: any[] = [];
@@ -417,16 +400,8 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
     if (error) throw error;
   }
 
-  const eventStatSourceRows = dedupeBy(
-    parsed.eventStats || [],
-    (row: any) => playerEventKey(row),
-    (existing: any, next: any) => (completeness(next) >= completeness(existing) ? next : existing)
-  );
-
-  const statSourceMap = new Map(eventStatSourceRows.map((row: any) => [playerEventKey(row), row]));
-
   const resultRows = dedupeBy(
-    resultPayload(parsed.weekly || [], eventMap, playerMap, statSourceMap),
+    resultPayload(parsed.weekly || [], eventMap, playerMap),
     (row: any) => `${row.event_id}|${row.player_id}`
   );
 
@@ -438,7 +413,7 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
   }
 
   const statRows = dedupeBy(
-    eventStatsPayload(eventStatSourceRows, eventMap, playerMap),
+    eventStatsPayload(parsed.eventStats || [], eventMap, playerMap),
     (row: any) => `${row.event_id}|${row.player_id}`
   );
 
@@ -457,33 +432,6 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
     eventResults: resultRows.length,
     eventStats: statRows.length,
     weekScores: weekScoreRows.length,
-  };
-}
-
-function statObjectFromDbRow(row: any) {
-  const raw = row?.raw || {};
-  return {
-    Rank: firstNumber(row?.rank, getValue(raw, ["Rank", "ranking"])),
-    PPR: firstNumber(row?.ppr, statMetricFromRaw(raw, "ppr")),
-    Rounds: firstNumber(row?.rounds, statMetricFromRaw(raw, "rounds")),
-    Points: firstNumber(row?.points, statMetricFromRaw(raw, "points")),
-    OPPR: firstNumber(row?.oppr, statMetricFromRaw(raw, "oppr")),
-    "Opp Pts": firstNumber(row?.opponent_points, statMetricFromRaw(raw, "oppPoints")),
-    DPR: firstNumber(row?.dpr, statMetricFromRaw(raw, "dpr")),
-    "4 Baggers": firstNumber(row?.four_baggers, statMetricFromRaw(raw, "fourBaggers")),
-  };
-}
-
-function statObjectFromRaw(raw: any) {
-  return {
-    Rank: firstNumber(getValue(raw, ["Rank", "ranking"])),
-    PPR: statMetricFromRaw(raw, "ppr"),
-    Rounds: statMetricFromRaw(raw, "rounds"),
-    Points: statMetricFromRaw(raw, "points"),
-    OPPR: statMetricFromRaw(raw, "oppr"),
-    "Opp Pts": statMetricFromRaw(raw, "oppPoints"),
-    DPR: statMetricFromRaw(raw, "dpr"),
-    "4 Baggers": statMetricFromRaw(raw, "fourBaggers"),
   };
 }
 
@@ -546,45 +494,55 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
 
   const { data: eventStatRows, error: eventStatsError } = await supabase
     .from("event_stats")
-    .select("*, events(id,week,event_type,seasons(name))");
+    .select("*, events(week,event_type,seasons(name))");
 
   if (eventStatsError) throw eventStatsError;
 
   const eventStats = dedupeBy(
     (eventStatRows || []).map((row: any) => {
-      const stat = statObjectFromDbRow(row);
+      const raw = row.raw || {};
       return {
         Season: row.events?.seasons?.name || "",
         Player: row.player_name,
         playerName: row.player_name,
         Week: row.events?.week || "",
         Type: row.events?.event_type || "",
-        ...stat,
+        Rank: firstNumber(row.rank, getValue(raw, ["ranking", "Rank", "RANK"])),
+        PPR: firstNumber(row.ppr, statMetricFromRaw(raw, "ppr")),
+        Rounds: firstNumber(row.rounds, statMetricFromRaw(raw, "rounds")),
+        Points: firstNumber(row.points, statMetricFromRaw(raw, "points")),
+        OPPR: firstNumber(row.oppr, statMetricFromRaw(raw, "oppr")),
+        "Opp Pts": firstNumber(row.opponent_points, statMetricFromRaw(raw, "oppPoints")),
+        DPR: firstNumber(row.dpr, statMetricFromRaw(raw, "dpr")),
+        "4 Baggers": firstNumber(row.four_baggers, statMetricFromRaw(raw, "fourBaggers")),
       };
     }),
     (row: any) => `${row.Season}|${row.Week}|${row.Type}|${normalizeName(row.Player)}`
   );
 
-  const eventStatsById = new Map(
-    (eventStatRows || []).map((row: any) => [`${row.event_id}|${row.player_id}`, statObjectFromDbRow(row)])
+  const eventStatsMap = new Map(
+    eventStats.map((row: any) => [`${row.Season}|${row.Week}|${row.Type}|${normalizeName(row.Player)}`, row])
   );
 
   const { data: results, error: resultsError } = await supabase
     .from("event_results")
-    .select("*, events(id,week,event_type,seasons(name))");
+    .select("*, events(week,event_type,seasons(name))");
 
   if (resultsError) throw resultsError;
 
   const weekly = (results || []).map((row: any) => {
-    const raw = row.raw || {};
-    const stat = eventStatsById.get(`${row.event_id}|${row.player_id}`) || statObjectFromRaw(raw.__eventStat || {});
+    const seasonName = row.events?.seasons?.name || "";
+    const week = row.events?.week || "";
+    const type = row.events?.event_type || "";
+    const playerName = row.player_name;
+    const stat = eventStatsMap.get(`${seasonName}|${week}|${type}|${normalizeName(playerName)}`) || {};
 
     return {
-      Season: row.events?.seasons?.name || "",
-      Player: row.player_name,
-      playerName: row.player_name,
-      Week: row.events?.week || "",
-      Type: row.events?.event_type || "",
+      Season: seasonName,
+      Player: playerName,
+      playerName,
+      Week: week,
+      Type: type,
       Rank: row.rank,
       Team: row.team,
       Points: row.finish_points,

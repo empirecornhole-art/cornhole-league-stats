@@ -20,7 +20,7 @@ function parseSeason(value: string) {
   const s = clean(value).toLowerCase();
   const yearMatch = s.match(/(\d{2,4})/);
   const year = yearMatch ? Number(yearMatch[1].slice(-2)) : 999;
-  const word = Object.keys(seasonOrder).find((k) => s.includes(k)) || "spring";
+  const word = Object.keys(seasonOrder).find((k) => s.includes(k)) || "summer";
   return { year, order: seasonOrder[word] || 99 };
 }
 
@@ -32,13 +32,19 @@ export function seasonSort(a: string, b: string) {
 }
 
 function uniqueSorted(values: string[]) {
-  return Array.from(new Set(values.map(clean).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  return Array.from(new Set(values.map(clean).filter(Boolean))).sort((a, b) => seasonSort(a, b));
+}
+
+function sheetToObjects(workbook: XLSX.WorkBook, sheetName: string): Record<string, any>[] {
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) return [];
+  return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true }) as Record<string, any>[];
 }
 
 function sheetToArrays(workbook: XLSX.WorkBook, sheetName: string): any[][] {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return [];
-  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as any[][];
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: true }) as any[][];
 }
 
 function seasonFromFileName(fileName?: string) {
@@ -64,10 +70,30 @@ function typeLabel(value: any, fallback = "") {
   return clean(value || fallback);
 }
 
-function numberVal(value: any) {
-  if (value === null || value === undefined || value === "") return "";
-  const n = Number(String(value).replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(n) ? n : value;
+function getValue(row: Record<string, any>, keys: string[]) {
+  for (const key of keys) {
+    if (row?.[key] !== undefined && row?.[key] !== "" && row?.[key] !== null) return row[key];
+  }
+
+  const wanted = keys.map(compact);
+  const found = Object.keys(row || {}).find((key) => wanted.includes(compact(key)));
+  return found ? row[found] : "";
+}
+
+function getPlayerName(row: Record<string, any>) {
+  const first = clean(row.playerFirstName || row["Player First Name"] || row["First Name"] || row.First || row.firstName);
+  const last = clean(row.playerLastName || row["Player Last Name"] || row["Last Name"] || row.Last || row.lastName);
+  if (first || last) return `${first} ${last}`.trim();
+
+  return clean(
+    row.Player ||
+      row.playerName ||
+      row["PLAYER NAME"] ||
+      row["Player Name"] ||
+      row.Name ||
+      row.name ||
+      row["Row Labels"]
+  );
 }
 
 function isValidPlayerName(value: any) {
@@ -88,47 +114,31 @@ function isValidPlayerName(value: any) {
   ].includes(id);
 }
 
-function makeName(first: any, last: any, direct?: any) {
-  const d = clean(direct);
-  if (isValidPlayerName(d)) return d;
-  return [clean(first), clean(last)].filter(Boolean).join(" ").trim();
-}
-
 function parseOverallStandings(workbook: XLSX.WorkBook, season: string) {
   const rows = sheetToArrays(workbook, "Overall");
-  const headerRow = rows[0] || [];
-  const weekColumns: { index: number; label: string }[] = [];
+  const headers = rows[0]?.slice(0, 16).map(clean) || [];
 
-  for (let c = 0; c < headerRow.length; c++) {
-    const label = weekLabel(headerRow[c]);
-    if (/^Week \d+$/i.test(label)) weekColumns.push({ index: c, label });
-  }
+  return rows
+    .slice(1)
+    .map((row, index) => {
+      const player = clean(row[0]);
+      if (!isValidPlayerName(player)) return null;
 
-  const standings: Record<string, any>[] = [];
+      const obj: Record<string, any> = {
+        Season: season,
+        Player: player,
+        Rank: index + 1,
+        Overall: row[2],
+        Points: row[2],
+      };
 
-  for (let r = 1; r < rows.length; r++) {
-    const row = rows[r] || [];
-    const player = clean(row[0]);
-    if (!isValidPlayerName(player)) continue;
+      headers.forEach((header, columnIndex) => {
+        if (header) obj[header] = row[columnIndex];
+      });
 
-    const overall = numberVal(row[2]);
-    const obj: Record<string, any> = {
-      Season: season,
-      Player: player,
-      playerName: player,
-      Rank: standings.length + 1,
-      Overall: overall,
-      Points: overall,
-    };
-
-    for (const week of weekColumns) {
-      obj[week.label] = numberVal(row[week.index]);
-    }
-
-    standings.push(obj);
-  }
-
-  return standings;
+      return obj;
+    })
+    .filter(Boolean) as Record<string, any>[];
 }
 
 function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
@@ -139,14 +149,10 @@ function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
 
   for (let r = 0; r < Math.min(rows.length, 10); r++) {
     for (let c = 0; c < (rows[r]?.length || 0); c++) {
-      if (["rowlabels", "player", "playername"].includes(compact(rows[r][c]))) {
-        const next = compact(rows[r][c + 1]);
-        const next2 = compact(rows[r][c + 2]);
-        if (next.includes("totalrounds") || next2.includes("totalpts")) {
-          headerRowIndex = r;
-          startCol = c;
-          break;
-        }
+      if (compact(rows[r][c]) === "overallstatsandaverages" || compact(rows[r][c]) === "statsandaverages") {
+        headerRowIndex = r + 1;
+        startCol = c;
+        break;
       }
     }
     if (headerRowIndex >= 0) break;
@@ -158,181 +164,130 @@ function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
   }
 
   const headers = (rows[headerRowIndex] || []).slice(startCol, startCol + 18).map(clean);
-  const output: Record<string, any>[] = [];
 
-  for (let r = headerRowIndex + 1; r < rows.length; r++) {
-    const values = (rows[r] || []).slice(startCol, startCol + 18);
-    const player = clean(values[0]);
-    if (!isValidPlayerName(player)) continue;
+  return rows
+    .slice(headerRowIndex + 1)
+    .map((row) => {
+      const values = row.slice(startCol, startCol + 18);
+      const player = clean(values[0]);
+      if (!isValidPlayerName(player)) return null;
 
-    const obj: Record<string, any> = {
-      Season: season,
-      Player: player,
-      playerName: player,
-    };
+      const obj: Record<string, any> = {
+        Season: season,
+        Player: player,
+        playerName: player,
+      };
 
-    headers.forEach((header, index) => {
-      if (header) obj[header] = numberVal(values[index]);
-    });
+      headers.forEach((header, index) => {
+        if (header) obj[header] = values[index];
+      });
 
-    output.push(obj);
-  }
-
-  return output;
+      return obj;
+    })
+    .filter(Boolean) as Record<string, any>[];
 }
 
 function parseWeeklyStandings(workbook: XLSX.WorkBook, season: string) {
-  const weekly: Record<string, any>[] = [];
+  const parseSheet = (sheetName: "Blind" | "Swap") =>
+    sheetToObjects(workbook, sheetName)
+      .map((row) => {
+        const player = getPlayerName(row);
+        const week = weekLabel(getValue(row, ["Week", "WEEK", "week", "Week "]));
+        if (!isValidPlayerName(player) || !week) return null;
 
-  const parseBlind = () => {
-    const rows = sheetToArrays(workbook, "Blind");
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r] || [];
-      const player = clean(row[1]);
-      const week = weekLabel(row[4]);
-      if (!isValidPlayerName(player) || !week) continue;
+        const finishPoints = getValue(row, ["POINTS", "Points", "points"]);
 
-      weekly.push({
-        Season: season,
-        Player: player,
-        playerName: player,
-        Week: week,
-        Type: "Blind",
-        Rank: numberVal(row[0]),
-        Team: clean(row[2]),
-        Points: numberVal(row[3]),
-        FinishPts: numberVal(row[3]),
-        Wins: "",
-        Losses: "",
-        "+/-": "",
-        raw: { source: "Blind", rowNumber: r + 1 },
-      });
-    }
-  };
+        return {
+          ...row,
+          Season: season,
+          Player: player,
+          playerName: player,
+          Week: week,
+          Type: sheetName,
+          Rank: getValue(row, ["RANK", "Rank", "rank"]),
+          Team: getValue(row, ["TEAM", "Team", "team"]),
+          Points: finishPoints,
+          FinishPts: finishPoints,
+          "+/-": getValue(row, ["+/-", "+ / -", "+/- ", "Plus Minus"]),
+          Wins: getValue(row, ["Wins", "WINS"]),
+          Losses: getValue(row, ["Losses", "LOSSES"]),
+        };
+      })
+      .filter(Boolean) as Record<string, any>[];
 
-  const parseSwap = () => {
-    const rows = sheetToArrays(workbook, "Swap");
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r] || [];
-      const player = clean(row[1]);
-      const week = weekLabel(row[8]);
-      if (!isValidPlayerName(player) || !week) continue;
+  return [...parseSheet("Blind"), ...parseSheet("Swap")];
+}
 
-      weekly.push({
-        Season: season,
-        Player: player,
-        playerName: player,
-        Week: week,
-        Type: "Swap",
-        Rank: numberVal(row[0]),
-        Team: clean(row[2]).startsWith("Team") ? clean(row[2]) : "",
-        Points: numberVal(row[2]),
-        FinishPts: numberVal(row[2]),
-        Wins: numberVal(row[6]),
-        Losses: numberVal(row[7]),
-        "+/-": numberVal(row[4]),
-        raw: {
-          source: "Swap",
-          rowNumber: r + 1,
-          weeklyTotal: numberVal(row[5]),
-          winLoss: clean(row[3]),
-        },
-      });
-    }
-  };
-
-  parseBlind();
-  parseSwap();
-
-  return weekly;
+function statCompleteness(row: Record<string, any>) {
+  return ["PPR", "Rounds", "StatPoints", "OPPR", "Opp Pts", "DPR", "4 Baggers"].reduce((count, key) => {
+    const v = row[key];
+    return count + (v !== "" && v !== null && v !== undefined ? 1 : 0);
+  }, 0);
 }
 
 function parseEventStats(workbook: XLSX.WorkBook, season: string) {
-  const rows = sheetToArrays(workbook, "Stats");
-  if (!rows.length) return [];
+  const rows: Record<string, any>[] = [];
 
-  const headers = (rows[0] || []).map(compact);
-  const find = (...keys: string[]) => {
-    const wanted = keys.map(compact);
-    return headers.findIndex((h) => wanted.includes(h));
-  };
-
-  const col = {
-    rank: find("ranking", "rank"),
-    first: find("playerFirstName", "firstName", "first"),
-    last: find("playerLastName", "lastName", "last"),
-    name: find("Name", "Player Name", "Player"),
-    rounds: find("rounds", "rds"),
-    points: find("totalPts", "pts", "points", "totalpoints"),
-    ppr: find("ptsPerRnd", "ppr", "averageppr"),
-    oppPoints: find("opponentPts", "opppoints", "opponentspts"),
-    oppr: find("opponentPtsPerRnd", "oppr", "opponentppr"),
-    dpr: find("diffPerRnd", "dpr", "averagedpr"),
-    fourBaggers: find("TotalFourBaggers", "4baggers", "total4baggers"),
-    week: find("Week", "week"),
-    type: find("Type", "type"),
-  };
-
-  const output: Record<string, any>[] = [];
-
-  for (let r = 1; r < rows.length; r++) {
-    const row = rows[r] || [];
-    const player = makeName(row[col.first], row[col.last], col.name >= 0 ? row[col.name] : "");
-    const week = weekLabel(col.week >= 0 ? row[col.week] : "");
-    const type = typeLabel(col.type >= 0 ? row[col.type] : "");
+  for (const row of sheetToObjects(workbook, "Stats")) {
+    const player = getPlayerName(row);
+    const week = weekLabel(getValue(row, ["Week", "Week ", "WEEK", "week"]));
+    const type = typeLabel(getValue(row, ["Type", "TYPE", "type"]));
 
     if (!isValidPlayerName(player) || !week || !type) continue;
 
-    output.push({
+    rows.push({
+      ...row,
       Season: season,
       Player: player,
       playerName: player,
       Week: week,
       Type: type,
-      Rank: numberVal(col.rank >= 0 ? row[col.rank] : ""),
-      PPR: numberVal(col.ppr >= 0 ? row[col.ppr] : ""),
-      Rounds: numberVal(col.rounds >= 0 ? row[col.rounds] : ""),
-      Points: numberVal(col.points >= 0 ? row[col.points] : ""),
-      OPPR: numberVal(col.oppr >= 0 ? row[col.oppr] : ""),
-      "Opp Pts": numberVal(col.oppPoints >= 0 ? row[col.oppPoints] : ""),
-      DPR: numberVal(col.dpr >= 0 ? row[col.dpr] : ""),
-      "4 Baggers": numberVal(col.fourBaggers >= 0 ? row[col.fourBaggers] : ""),
-      raw: { source: "Stats", rowNumber: r + 1 },
+      Rank: getValue(row, ["ranking", "Rank", "RANK"]),
+      PPR: getValue(row, ["ptsPerRnd", "PPR", "Average PPR"]),
+      Rounds: getValue(row, ["rounds", "Rounds", "Rds", "Total Rounds"]),
+      Points: getValue(row, ["totalPts", "Pts", "Points", "Total Pts", "Total Points"]),
+      StatPoints: getValue(row, ["totalPts", "Pts", "Points", "Total Pts", "Total Points"]),
+      OPPR: getValue(row, ["opponentPtsPerRnd", "OPPR", "Opp PPR", "Opponent PPR", "Opponents Avg PPR"]),
+      "Opp Pts": getValue(row, ["opponentPts", "Opp Pts", "Opponent Points", "Opponents Pts"]),
+      DPR: getValue(row, ["diffPerRnd", "DPR", "Average DPR"]),
+      "4 Baggers": getValue(row, ["TotalFourBaggers", "4 Baggers", "Total 4-Baggers", "Four Baggers"]),
     });
   }
 
-  // Some older files include an Old Stats sheet. Add any rows not already in Stats.
-  const oldRows = sheetToArrays(workbook, "Old Stats");
-  if (oldRows.length) {
-    const existingKeys = new Set(output.map((row) => `${compact(row.Week)}|${compact(row.Type)}|${compact(row.Player)}`));
-    for (let r = 1; r < oldRows.length; r++) {
-      const row = oldRows[r] || [];
-      const player = clean(row[0]);
-      const week = weekLabel(row[7]);
-      const type = typeLabel(row[8]);
-      const key = `${compact(week)}|${compact(type)}|${compact(player)}`;
-      if (!isValidPlayerName(player) || !week || !type || existingKeys.has(key)) continue;
+  for (const row of sheetToObjects(workbook, "Old Stats")) {
+    const player = getPlayerName(row);
+    const week = weekLabel(getValue(row, ["Week", "WEEK", "week"]));
+    const type = typeLabel(getValue(row, ["Type", "TYPE", "type"]));
 
-      output.push({
-        Season: season,
-        Player: player,
-        playerName: player,
-        Week: week,
-        Type: type,
-        Rank: "",
-        PPR: numberVal(row[1]),
-        Rounds: numberVal(row[2]),
-        Points: numberVal(row[3]),
-        OPPR: numberVal(row[4]),
-        "Opp Pts": numberVal(row[5]),
-        DPR: numberVal(row[6]),
-        "4 Baggers": numberVal(row[9]),
-        raw: { source: "Old Stats", rowNumber: r + 1 },
-      });
-    }
+    if (!isValidPlayerName(player) || !week || !type) continue;
+
+    rows.push({
+      ...row,
+      Season: season,
+      Player: player,
+      playerName: player,
+      Week: week,
+      Type: type,
+      Rank: getValue(row, ["ranking", "Rank", "RANK"]),
+      PPR: getValue(row, ["PPR", "ptsPerRnd", "Average PPR"]),
+      Rounds: getValue(row, ["Rds", "Rounds", "rounds", "Total Rounds"]),
+      Points: getValue(row, ["Pts", "Points", "totalPts", "Total Pts", "Total Points"]),
+      StatPoints: getValue(row, ["Pts", "Points", "totalPts", "Total Pts", "Total Points"]),
+      OPPR: getValue(row, ["OPPR", "opponentPtsPerRnd", "Opp PPR", "Opponent PPR", "Opponents Avg PPR"]),
+      "Opp Pts": getValue(row, ["Opp Pts", "opponentPts", "Opponent Points", "Opponents Pts"]),
+      DPR: getValue(row, ["DPR", "diffPerRnd", "Average DPR"]),
+      "4 Baggers": getValue(row, ["Total 4-Baggers", "TotalFourBaggers", "4 Baggers", "Four Baggers"]),
+    });
   }
 
-  return output;
+  const best = new Map<string, Record<string, any>>();
+  for (const row of rows) {
+    const key = `${compact(row.Season)}|${compact(row.Week)}|${compact(row.Type)}|${compact(row.Player)}`;
+    const existing = best.get(key);
+    if (!existing || statCompleteness(row) >= statCompleteness(existing)) best.set(key, row);
+  }
+
+  return Array.from(best.values());
 }
 
 export async function parseWorkbook(buffer: ArrayBuffer, fileName?: string): Promise<LeagueData> {
@@ -344,14 +299,12 @@ export async function parseWorkbook(buffer: ArrayBuffer, fileName?: string): Pro
   const weekly = parseWeeklyStandings(workbook, season);
   const eventStats = parseEventStats(workbook, season);
 
-  const players = uniqueSorted(
-    [
-      ...standings.map((row) => clean(row.Player)),
-      ...stats.map((row) => clean(row.Player)),
-      ...weekly.map((row) => clean(row.Player)),
-      ...eventStats.map((row) => clean(row.Player)),
-    ].filter(isValidPlayerName)
-  );
+  const players = uniqueSorted([
+    ...standings.map((row) => clean(row.Player)),
+    ...stats.map((row) => clean(row.Player)),
+    ...weekly.map((row) => clean(row.Player)),
+    ...eventStats.map((row) => clean(row.Player)),
+  ].filter(isValidPlayerName));
 
   return {
     seasons: [season],
