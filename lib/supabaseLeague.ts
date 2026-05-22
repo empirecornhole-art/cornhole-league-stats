@@ -400,8 +400,37 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
     if (error) throw error;
   }
 
+  const statRows = dedupeBy(
+    eventStatsPayload(parsed.eventStats || [], eventMap, playerMap),
+    (row: any) => `${row.event_id}|${row.player_id}`
+  );
+
+  const statByResultKey = new Map(
+    statRows.map((row: any) => [`${row.event_id}|${row.player_id}`, row])
+  );
+
   const resultRows = dedupeBy(
-    resultPayload(parsed.weekly || [], eventMap, playerMap),
+    resultPayload(parsed.weekly || [], eventMap, playerMap).map((row: any) => {
+      const stat = statByResultKey.get(`${row.event_id}|${row.player_id}`);
+
+      return {
+        ...row,
+        raw: {
+          ...(row.raw || {}),
+          __eventStats: stat
+            ? {
+                ppr: stat.ppr,
+                rounds: stat.rounds,
+                points: stat.points,
+                oppr: stat.oppr,
+                opponent_points: stat.opponent_points,
+                dpr: stat.dpr,
+                four_baggers: stat.four_baggers,
+              }
+            : null,
+        },
+      };
+    }),
     (row: any) => `${row.event_id}|${row.player_id}`
   );
 
@@ -411,11 +440,6 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
       .upsert(resultRows, { onConflict: "event_id,player_id" });
     if (error) throw error;
   }
-
-  const statRows = dedupeBy(
-    eventStatsPayload(parsed.eventStats || [], eventMap, playerMap),
-    (row: any) => `${row.event_id}|${row.player_id}`
-  );
 
   if (statRows.length) {
     const { error } = await supabase
@@ -524,6 +548,21 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
     eventStats.map((row: any) => [`${row.Season}|${row.Week}|${row.Type}|${normalizeName(row.Player)}`, row])
   );
 
+  const eventStatsById = new Map(
+    (eventStatRows || []).map((row: any) => [
+      `${row.event_id}|${row.player_id}`,
+      {
+        PPR: firstNumber(row.ppr, statMetricFromRaw(row.raw || {}, "ppr")),
+        Rounds: firstNumber(row.rounds, statMetricFromRaw(row.raw || {}, "rounds")),
+        Points: firstNumber(row.points, statMetricFromRaw(row.raw || {}, "points")),
+        OPPR: firstNumber(row.oppr, statMetricFromRaw(row.raw || {}, "oppr")),
+        "Opp Pts": firstNumber(row.opponent_points, statMetricFromRaw(row.raw || {}, "oppPoints")),
+        DPR: firstNumber(row.dpr, statMetricFromRaw(row.raw || {}, "dpr")),
+        "4 Baggers": firstNumber(row.four_baggers, statMetricFromRaw(row.raw || {}, "fourBaggers")),
+      },
+    ])
+  );
+
   const { data: results, error: resultsError } = await supabase
     .from("event_results")
     .select("*, events(week,event_type,seasons(name))");
@@ -535,7 +574,10 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
     const week = row.events?.week || "";
     const type = row.events?.event_type || "";
     const playerName = row.player_name;
-    const stat = eventStatsMap.get(`${seasonName}|${week}|${type}|${normalizeName(playerName)}`) || {};
+    const stat = eventStatsById.get(`${row.event_id}|${row.player_id}`)
+      || eventStatsMap.get(`${seasonName}|${week}|${type}|${normalizeName(playerName)}`)
+      || {};
+    const rawStats = row.raw?.__eventStats || {};
 
     return {
       Season: seasonName,
@@ -549,13 +591,13 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
       Wins: row.wins,
       Losses: row.losses,
       "+/-": row.plus_minus,
-      PPR: stat.PPR ?? null,
-      Rounds: stat.Rounds ?? null,
-      StatPoints: stat.Points ?? null,
-      OPPR: stat.OPPR ?? null,
-      "Opp Pts": stat["Opp Pts"] ?? null,
-      DPR: stat.DPR ?? null,
-      "4 Baggers": stat["4 Baggers"] ?? null,
+      PPR: firstNumber(stat.PPR, rawStats.ppr),
+      Rounds: firstNumber(stat.Rounds, rawStats.rounds),
+      StatPoints: firstNumber(stat.Points, rawStats.points),
+      OPPR: firstNumber(stat.OPPR, rawStats.oppr),
+      "Opp Pts": firstNumber(stat["Opp Pts"], rawStats.opponent_points),
+      DPR: firstNumber(stat.DPR, rawStats.dpr),
+      "4 Baggers": firstNumber(stat["4 Baggers"], rawStats.four_baggers),
     };
   });
 
