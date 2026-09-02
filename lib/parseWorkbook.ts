@@ -133,13 +133,17 @@ function parseOverallStandings(workbook: XLSX.WorkBook, season: string) {
 }
 
 function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
+  // NOTE: our rebuilt "Overall" tab has the Overall Stats and Averages table
+  // starting at column V (index 21) through column AL (index 37, exclusive end 38),
+  // with a single header row (row 1) and data starting on row 2 -- no second
+  // header row / pivot-table offset like the original legacy workbook layout.
   const rows = sheetToArrays(workbook, "Overall");
-  const startCol = 25;
-  const endCol = 42;
-  const headers = rows[1]?.slice(startCol, endCol).map(clean) || [];
+  const startCol = 21;
+  const endCol = 38;
+  const headers = rows[0]?.slice(startCol, endCol).map(clean) || [];
 
   return rows
-    .slice(2)
+    .slice(1)
     .map((row) => {
       const values = row.slice(startCol, endCol);
       const player = clean(values[0]);
