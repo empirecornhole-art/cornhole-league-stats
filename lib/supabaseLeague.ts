@@ -19,6 +19,34 @@ function normalizeName(name: string) {
   return compact(name);
 }
 
+// Supabase/PostgREST caps a .select() at 1000 rows by default, silently
+// dropping the rest instead of erroring. event_stats and event_results grow
+// by roughly (players x weeks x 2 event types) per season, so a season or
+// two in it's easy to sail past 1000 total rows across all seasons combined
+// -- and because rows come back in insertion order, it's always the NEWEST
+// season's data that gets cut off. That's why a current week's finish
+// points would show on the site while that same week's PPR/Rounds/DPR/etc.
+// came back blank: the event_results rows fit under the cap, but the
+// event_stats rows for the same week didn't. This pages through with
+// .range() so every row comes back regardless of table size.
+const SUPABASE_PAGE_SIZE = 1000;
+
+async function fetchAllRows<T = any>(
+  buildQuery: (rangeFrom: number, rangeTo: number) => PromiseLike<{ data: T[] | null; error: any }>
+): Promise<T[]> {
+  const rows: T[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await buildQuery(from, from + SUPABASE_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = data || [];
+    rows.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+    from += SUPABASE_PAGE_SIZE;
+  }
+  return rows;
+}
+
 // A "player" name that's really a spreadsheet error token (e.g. "#REF!",
 // "#N/A", "#DIV/0!") or a bare numeric placeholder (e.g. "0"). These can
 // end up in the "players" table from a past upload where an upstream
@@ -316,8 +344,9 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
   // Self-healing cleanup: remove any junk player rows left over from a past
   // upload (see isJunkPlayerName). This runs on every import so a single
   // bad row doesn't have to be manually cleaned out of Supabase by hand.
-  const { data: allPlayers, error: allPlayersError } = await supabase.from("players").select("id,name");
-  if (allPlayersError) throw allPlayersError;
+  const allPlayers = await fetchAllRows((from, to) =>
+    supabase.from("players").select("id,name").order("id", { ascending: true }).range(from, to)
+  );
   const junkPlayerIds = (allPlayers || []).filter((p) => isJunkPlayerName(p.name)).map((p) => p.id);
   if (junkPlayerIds.length) {
     // Clear dependent rows first rather than relying on FK cascade behavior
@@ -436,28 +465,24 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
 export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
   const supabase = getSupabaseAdmin();
 
-  const { data: seasons, error: seasonsError } = await supabase
-    .from("seasons")
-    .select("id,name,season_year,season_order")
-    .order("season_year", { ascending: true })
-    .order("season_order", { ascending: true });
+  const seasons = await fetchAllRows((from, to) =>
+    supabase
+      .from("seasons")
+      .select("id,name,season_year,season_order")
+      .order("season_year", { ascending: true })
+      .order("season_order", { ascending: true })
+      .range(from, to)
+  );
 
-  if (seasonsError) throw seasonsError;
-
-  const { data: players, error: playersError } = await supabase
-    .from("players")
-    .select("name")
-    .order("name", { ascending: true });
-
-  if (playersError) throw playersError;
+  const players = await fetchAllRows((from, to) =>
+    supabase.from("players").select("name").order("name", { ascending: true }).range(from, to)
+  );
 
   const seasonById = new Map((seasons || []).map((s) => [s.id, s.name]));
 
-  const { data: seasonStats, error: seasonStatsError } = await supabase
-    .from("season_stats")
-    .select("*, seasons(name)");
-
-  if (seasonStatsError) throw seasonStatsError;
+  const seasonStats = await fetchAllRows((from, to) =>
+    supabase.from("season_stats").select("*, seasons(name)").order("id", { ascending: true }).range(from, to)
+  );
 
   const stats = (seasonStats || []).map((row: any) => ({
     Season: row.seasons?.name || seasonById.get(row.season_id) || "",
@@ -490,11 +515,13 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
     Points: row.standing_points ?? row.total_points,
   }));
 
-  const { data: eventStatRows, error: eventStatsError } = await supabase
-    .from("event_stats")
-    .select("*, events(week,event_type,seasons(name))");
-
-  if (eventStatsError) throw eventStatsError;
+  const eventStatRows = await fetchAllRows((from, to) =>
+    supabase
+      .from("event_stats")
+      .select("*, events(week,event_type,seasons(name))")
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
 
   const eventStats = dedupeBy(
     (eventStatRows || []).map((row: any) => {
@@ -522,11 +549,13 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
     eventStats.map((row: any) => [`${row.Season}|${row.Week}|${row.Type}|${normalizeName(row.Player)}`, row])
   );
 
-  const { data: results, error: resultsError } = await supabase
-    .from("event_results")
-    .select("*, events(week,event_type,seasons(name))");
-
-  if (resultsError) throw resultsError;
+  const results = await fetchAllRows((from, to) =>
+    supabase
+      .from("event_results")
+      .select("*, events(week,event_type,seasons(name))")
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
 
   const weekly = (results || []).map((row: any) => {
     const seasonName = row.events?.seasons?.name || "";
@@ -557,11 +586,9 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
     };
   });
 
-  const { data: weekScoreRows, error: weekScoreError } = await supabase
-    .from("season_week_scores")
-    .select("*, seasons(name)");
-
-  if (weekScoreError) throw weekScoreError;
+  const weekScoreRows = await fetchAllRows((from, to) =>
+    supabase.from("season_week_scores").select("*, seasons(name)").order("id", { ascending: true }).range(from, to)
+  );
 
   const weekScores = (weekScoreRows || []).map((row: any) => ({
     Season: row.seasons?.name || seasonById.get(row.season_id) || "",
