@@ -13,6 +13,21 @@ function uniqueSorted(values: string[]) {
   return Array.from(new Set(values.filter(Boolean))).sort((a, b) => seasonSort(a, b));
 }
 
+// Filters out spreadsheet-error tokens (e.g. "#REF!", "#N/A", "#DIV/0!") and
+// bare numeric placeholders (e.g. "0") that can end up in a "Player" cell
+// when an upstream formula reference breaks (a deleted row/column, a stale
+// roster row past the real player count, etc). These aren't real players
+// and should never surface as selectable names or standings rows on the
+// site -- without this, a broken cell shows up as a phantom "player" with
+// garbage stats.
+function isJunkPlayerName(value: any): boolean {
+  const name = clean(value);
+  if (!name) return true;
+  if (/^\d+$/.test(name)) return true;
+  if (/^#[A-Z0-9/]+!?\??$/i.test(name)) return true;
+  return false;
+}
+
 function sheetToObjects(workbook: XLSX.WorkBook, sheetName: string): Record<string, any>[] {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return [];
@@ -92,7 +107,7 @@ function getValue(row: Record<string, any>, keys: string[]) {
 
 function normalizeStatRow(row: Record<string, any>, season: string): Record<string, any> | null {
   const player = getPlayerName(row);
-  if (!player) return null;
+  if (!player || isJunkPlayerName(player)) return null;
 
   const week = weekLabel(getValue(row, ["Week", "WEEK", "week"]));
   const type = typeLabel(getValue(row, ["Type", "TYPE", "type", "Event", "event", "League Type", "Game Type"]));
@@ -122,7 +137,7 @@ function parseOverallStandings(workbook: XLSX.WorkBook, season: string) {
     .slice(1)
     .map((row) => {
       const player = clean(row[0]);
-      if (!player || player === "Grand Total") return null;
+      if (!player || player === "Grand Total" || isJunkPlayerName(player)) return null;
       const obj: Record<string, any> = { Season: season, Player: player, Overall: row[2] };
       headers.forEach((header, index) => {
         if (header) obj[header] = row[index];
@@ -147,7 +162,7 @@ function parseOverallStatsAndAverages(workbook: XLSX.WorkBook, season: string) {
     .map((row) => {
       const values = row.slice(startCol, endCol);
       const player = clean(values[0]);
-      if (!player || player === "Grand Total") return null;
+      if (!player || player === "Grand Total" || isJunkPlayerName(player)) return null;
       const obj: Record<string, any> = { Season: season, Player: player, playerName: player };
       headers.forEach((header, index) => {
         if (header) obj[header] = values[index];
@@ -162,7 +177,7 @@ function parseWeeklyStandings(workbook: XLSX.WorkBook, season: string) {
     sheetToObjects(workbook, sheet)
       .map((row) => {
         const player = getPlayerName(row);
-        if (!player) return null;
+        if (!player || isJunkPlayerName(player)) return null;
         return {
           ...row,
           Season: season,
