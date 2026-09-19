@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LineChart,
   Line,
@@ -22,7 +23,8 @@ type Data = {
   weekScores?: any[];
 };
 
-type Tab = "dashboard" | "standings" | "weeks" | "stats" | "players" | "scenarios" | "compare";
+type Tab = "dashboard" | "standings" | "weeks" | "stats" | "alltime" | "players" | "scenarios" | "compare";
+const TAB_IDS: Tab[] = ["dashboard", "standings", "weeks", "stats", "alltime", "players", "scenarios", "compare"];
 type EventFilter = "All" | "Blind" | "Swap";
 type SortDirection = "asc" | "desc";
 
@@ -32,6 +34,22 @@ function clean(value: any) {
 
 function compact(value: any) {
   return clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// URL-friendly player slug for shareable links, e.g. "Jim Mateunas" -> "jim-mateunas".
+// Matching an incoming slug back to a player uses compact() instead (see findPlayerBySlug),
+// since compact() already strips hyphens and is insensitive to spacing/punctuation either way.
+function slugify(value: any) {
+  return clean(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-+|-+$)/g, "");
+}
+
+function findPlayerBySlug(players: string[], slug: string) {
+  const target = compact(slug);
+  if (!target) return "";
+  return players.find((p) => compact(p) === target) || "";
 }
 
 function isValidPlayerName(value: any) {
@@ -258,6 +276,71 @@ function summarizeEvent(rows: any[]) {
   ];
 }
 
+// Career (all-time, cross-season) totals per player, built from the same
+// per-season Stats rows the Season Stats tab uses. Counting stats (rounds,
+// points, bags, 4-baggers) are straight sums across every season on record.
+// Rate stats are recomputed from those sums where the underlying formula is
+// known (PPR/OPPR/DPR, Bags On %, Avg Bags In/Rd) rather than averaged, so a
+// 3-round cameo season can't skew a rate the way a naive average would; the
+// couple of rate stats without a documented sum-based formula (4-Bagger %,
+// Bags Off %, Rounds/Swap) fall back to a rounds-weighted average instead of
+// a guessed formula.
+function aggregateCareerStats(rows: any[]) {
+  const byPlayer = new Map<string, any[]>();
+  for (const row of rows) {
+    const name = getPlayer(row);
+    if (!isValidPlayerName(name)) continue;
+    if (!byPlayer.has(name)) byPlayer.set(name, []);
+    byPlayer.get(name)!.push(row);
+  }
+
+  const sumKeys = (playerRows: any[], keys: string[]) =>
+    playerRows.reduce((acc, row) => acc + numberVal(getStatValue(row, keys)), 0);
+
+  const roundsWeightedAvg = (playerRows: any[], keys: string[]) => {
+    let weightedTotal = 0;
+    let weightTotal = 0;
+    for (const row of playerRows) {
+      const weight = numberVal(getStatValue(row, ["Total Rounds"]));
+      weightedTotal += numberVal(getStatValue(row, keys)) * weight;
+      weightTotal += weight;
+    }
+    return weightTotal ? weightedTotal / weightTotal : 0;
+  };
+
+  return Array.from(byPlayer.entries()).map(([name, playerRows]) => {
+    const totalRounds = sumKeys(playerRows, ["Total Rounds"]);
+    const totalPts = sumKeys(playerRows, ["Total Pts", "Total Points"]);
+    const totalOppPts = sumKeys(playerRows, ["Opponents Pts", "Opp Pts"]);
+    const totalBagsIn = sumKeys(playerRows, ["Total Bags In"]);
+    const totalBags = sumKeys(playerRows, ["Total Bags Thrown", "Total Bags"]);
+    const total4Baggers = sumKeys(playerRows, ["Total 4-Baggers", "4 Baggers"]);
+    const totalFirsts = sumKeys(playerRows, ["1st in Stats"]);
+    const avgPPR = totalRounds ? totalPts / totalRounds : 0;
+    const avgOPPR = totalRounds ? totalOppPts / totalRounds : 0;
+
+    return {
+      name,
+      seasonsPlayed: playerRows.length,
+      totalRounds,
+      totalPts,
+      totalOppPts,
+      avgPPR,
+      avgOPPR,
+      avgDPR: avgPPR - avgOPPR,
+      bagsOnPct: totalBags ? (totalBagsIn / totalBags) * 100 : 0,
+      avgBagsInPerRd: totalRounds ? totalBagsIn / totalRounds : 0,
+      totalBagsIn,
+      totalBags,
+      avgBaggerPct: roundsWeightedAvg(playerRows, ["Avg 4-Bagger %"]),
+      total4Baggers,
+      avgBagsOffPct: roundsWeightedAvg(playerRows, ["Bags Off %"]),
+      avgRoundsPerSwap: roundsWeightedAvg(playerRows, ["Avg Rounds/Swap Game", "Avg Rounds/Swap"]),
+      totalFirsts,
+    };
+  });
+}
+
 function sumBestScores(scores: number[], count = 9) {
   return [...scores].sort((a, b) => b - a).slice(0, count).reduce((acc, value) => acc + value, 0);
 }
@@ -290,6 +373,10 @@ function getCurrentRank(standings: { name: string; points: number }[], playerNam
 }
 
 export default function LeagueClient() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [data, setData] = useState<Data | null>(null);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [season, setSeason] = useState("");
@@ -305,21 +392,60 @@ export default function LeagueClient() {
   const [sortKey, setSortKey] = useState("Total Pts");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedStatsPlayers, setSelectedStatsPlayers] = useState<string[]>([]);
+  const [statsPlayerFilter, setStatsPlayerFilter] = useState("");
   const [scenarioWeek, setScenarioWeek] = useState("Week 12");
   const [scenarioInputs, setScenarioInputs] = useState<Record<string, string>>({});
+  const [careerSortKey, setCareerSortKey] = useState("totalPts");
+  const [careerSortDirection, setCareerSortDirection] = useState<SortDirection>("desc");
+  const [urlReady, setUrlReady] = useState(false);
 
   useEffect(() => {
-  fetch("/api/data")
-    .then((res) => res.json())
-    .then((loaded) => {
-      const seasons = loaded.seasons || [];
-      const latestSeason = seasons[seasons.length - 1] || "";
+    fetch("/api/data")
+      .then((res) => res.json())
+      .then((loaded) => {
+        const seasons = loaded.seasons || [];
+        const latestSeason = seasons[seasons.length - 1] || "";
+        const validPlayers = (loaded.players || []).filter(isValidPlayerName);
 
-      setData(loaded);
-      setSeason(latestSeason);
-      setProfileSeason(latestSeason);
-    });
-}, []);
+        setData(loaded);
+
+        // A shared/bookmarked link (?player=jim-mateunas&tab=players&season=...)
+        // takes priority over the defaults so it lands exactly where it was shared from.
+        const urlSeason = searchParams.get("season");
+        const urlTab = searchParams.get("tab");
+        const urlPlayerSlug = searchParams.get("player");
+        const matchedPlayer = urlPlayerSlug ? findPlayerBySlug(validPlayers, urlPlayerSlug) : "";
+
+        setSeason(urlSeason && seasons.includes(urlSeason) ? urlSeason : latestSeason);
+
+        if (matchedPlayer) {
+          setPlayer(matchedPlayer);
+          setProfileSeason("All Seasons");
+          setTab("players");
+        } else {
+          if (urlTab && (TAB_IDS as string[]).includes(urlTab)) setTab(urlTab as Tab);
+          setProfileSeason(latestSeason);
+        }
+
+        setUrlReady(true);
+      });
+    // Only ever runs once on mount to read the initial URL -- afterwards the
+    // effect below is the one source of truth writing the URL back out.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keeps the URL in sync with the current view so any state (season, tab, a
+  // selected player) can be copied/bookmarked/shared and land back in the
+  // same place. Guarded by urlReady so this doesn't fire (and clobber the
+  // just-parsed URL) before the initial load above has had a chance to read it.
+  useEffect(() => {
+    if (!urlReady) return;
+    const params = new URLSearchParams();
+    params.set("tab", tab);
+    if (season) params.set("season", season);
+    if (player !== "All Players") params.set("player", slugify(player));
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [tab, season, player, urlReady, pathname, router]);
 
   const seasons = useMemo(() => [...(data?.seasons || [])].sort(seasonSort), [data]);
   const players = useMemo(
@@ -531,6 +657,50 @@ export default function LeagueClient() {
   const statA = seasonStatsAll.find((row) => getPlayer(row) === compareA && getSeason(row) === season);
   const statB = seasonStatsAll.find((row) => getPlayer(row) === compareB && getSeason(row) === season);
 
+  const careerColumns = [
+    { key: "seasonsPlayed", label: "Seasons", decimals: 0 },
+    { key: "totalRounds", label: "Total Rounds", decimals: 0 },
+    { key: "totalPts", label: "Total Pts", decimals: 0 },
+    { key: "avgPPR", label: "Avg PPR", decimals: 2 },
+    { key: "avgOPPR", label: "Opp Avg PPR", decimals: 2 },
+    { key: "avgDPR", label: "Avg DPR", decimals: 2 },
+    { key: "bagsOnPct", label: "Bags On %", decimals: 2 },
+    { key: "avgBagsInPerRd", label: "Avg Bags In/Rd", decimals: 2 },
+    { key: "avgBaggerPct", label: "Avg 4-Bagger %", decimals: 2 },
+    { key: "total4Baggers", label: "Total 4-Baggers", decimals: 0 },
+    { key: "totalBags", label: "Total Bags", decimals: 0 },
+    { key: "totalFirsts", label: "1st in Stats", decimals: 0 },
+  ];
+
+  const careerRows = useMemo(() => aggregateCareerStats(seasonStatsAll), [seasonStatsAll]);
+
+  const sortedCareerRows = useMemo(() => {
+    return [...careerRows].sort((a, b) => {
+      const av = Number((a as any)[careerSortKey]) || 0;
+      const bv = Number((b as any)[careerSortKey]) || 0;
+      if (av === bv) return a.name.localeCompare(b.name);
+      return careerSortDirection === "asc" ? av - bv : bv - av;
+    });
+  }, [careerRows, careerSortKey, careerSortDirection]);
+
+  const MIN_CAREER_ROUNDS_FOR_RATE_LEADERS = 200;
+  const careerLeaders = useMemo(() => {
+    const eligibleForRates = careerRows.filter((r) => r.totalRounds >= MIN_CAREER_ROUNDS_FOR_RATE_LEADERS);
+    const top = (rows: typeof careerRows, key: keyof (typeof careerRows)[number], n = 3) =>
+      [...rows].sort((a, b) => (Number(b[key]) || 0) - (Number(a[key]) || 0)).slice(0, n);
+
+    return {
+      "Career Points": { rows: top(careerRows, "totalPts"), key: "totalPts" as const, decimals: 0 },
+      "Career PPR": { rows: top(eligibleForRates, "avgPPR"), key: "avgPPR" as const, decimals: 2 },
+      "Career 4-Baggers": { rows: top(careerRows, "total4Baggers"), key: "total4Baggers" as const, decimals: 0 },
+    };
+  }, [careerRows]);
+
+  const shareUrl =
+    typeof window !== "undefined" && selectedProfilePlayer
+      ? `${window.location.origin}${pathname}?tab=players&player=${slugify(selectedProfilePlayer)}`
+      : "";
+
   if (!data) {
     return <main className="min-h-screen bg-black p-6 text-white">Loading League Stats...</main>;
   }
@@ -540,6 +710,7 @@ export default function LeagueClient() {
     { id: "standings", label: "Standings" },
     { id: "weeks", label: "Weeks" },
     { id: "stats", label: "Stats" },
+    { id: "alltime", label: "All-Time" },
     { id: "players", label: "Players" },
     { id: "scenarios", label: "Scenarios" },
     { id: "compare", label: "Compare" },
@@ -557,7 +728,7 @@ export default function LeagueClient() {
             </div>
           </div>
 
-          <div className="hidden gap-2 md:flex">
+          <div className="hidden flex-wrap gap-2 md:flex">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -590,14 +761,9 @@ export default function LeagueClient() {
               </select>
             </div>
 
-            <div>
+            <div className="w-full md:w-64">
               <label className="text-xs font-bold uppercase text-[#f04a22]">Player</label>
-              <select className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white" value={player} onChange={(e) => setPlayer(e.target.value)}>
-                <option>All Players</option>
-                {players.map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </select>
+              <PlayerCombobox players={players} value={player} onChange={setPlayer} allLabel="All Players" />
             </div>
 
             <div>
@@ -666,8 +832,14 @@ export default function LeagueClient() {
             <div className="mb-4 space-y-3">
               <div>
                 <div className="mb-2 text-sm font-bold text-neutral-300">Multi-select players for this tab</div>
+                <input
+                  className="mb-2 w-full rounded-lg border border-neutral-700 bg-[#242424] p-2 text-sm text-white"
+                  placeholder="Filter players..."
+                  value={statsPlayerFilter}
+                  onChange={(e) => setStatsPlayerFilter(e.target.value)}
+                />
                 <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-neutral-800 bg-[#101010] p-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {players.map((p) => (
+                  {players.filter((p) => p.toLowerCase().includes(statsPlayerFilter.toLowerCase())).map((p) => (
                     <label key={p} className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
@@ -705,8 +877,57 @@ export default function LeagueClient() {
           </Card>
         )}
 
+        {tab === "alltime" && (
+          <>
+            <Card title="All-Time Leaders">
+              <p className="mb-4 text-sm text-neutral-400">
+                Career totals across every season on record. PPR leaders require at least {MIN_CAREER_ROUNDS_FOR_RATE_LEADERS} career
+                rounds played so a short cameo season can&apos;t top the list.
+              </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                {Object.entries(careerLeaders).map(([label, { rows, key, decimals }]) => (
+                  <div key={label} className="rounded-xl border border-neutral-800 bg-[#101010] p-4">
+                    <div className="mb-2 text-xs font-bold uppercase text-[#f04a22]">{label}</div>
+                    <div className="space-y-1">
+                      {rows.length === 0 && <div className="text-sm text-neutral-500">Not enough data yet</div>}
+                      {rows.map((row, index) => (
+                        <div key={row.name} className="flex items-center justify-between text-sm">
+                          <span className="font-bold">
+                            {index + 1}. {row.name}
+                          </span>
+                          <span className="text-neutral-300">{formatValue((row as any)[key], decimals)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card title="Career Stats — All Players">
+              <CareerStatsTable
+                rows={sortedCareerRows}
+                columns={careerColumns}
+                sortKey={careerSortKey}
+                sortDirection={careerSortDirection}
+                highlightPlayer={selectedProfilePlayer}
+                onSort={(key) => {
+                  if (careerSortKey === key) setCareerSortDirection(careerSortDirection === "asc" ? "desc" : "asc");
+                  else {
+                    setCareerSortKey(key);
+                    setCareerSortDirection("desc");
+                  }
+                }}
+              />
+            </Card>
+          </>
+        )}
+
         {tab === "players" && (
-          <Card title={selectedProfilePlayer ? `${selectedProfilePlayer} Profile` : "Player Profile"}>
+          <Card
+            title={selectedProfilePlayer ? `${selectedProfilePlayer} Profile` : "Player Profile"}
+            actions={selectedProfilePlayer && shareUrl ? <ShareButton url={shareUrl} /> : undefined}
+          >
             {!selectedProfilePlayer ? (
               <p className="text-neutral-400">Choose a player from the top Player dropdown to view their profile.</p>
             ) : (
@@ -804,14 +1025,12 @@ export default function LeagueClient() {
         {tab === "compare" && (
           <Card title="Compare Players">
             <div className="mb-4 flex flex-wrap gap-3">
-              <select className="rounded-lg bg-[#242424] p-2" value={compareA} onChange={(e) => setCompareA(e.target.value)}>
-                <option value="">Player A</option>
-                {players.map((p) => <option key={p}>{p}</option>)}
-              </select>
-              <select className="rounded-lg bg-[#242424] p-2" value={compareB} onChange={(e) => setCompareB(e.target.value)}>
-                <option value="">Player B</option>
-                {players.map((p) => <option key={p}>{p}</option>)}
-              </select>
+              <div className="w-full sm:w-64">
+                <PlayerCombobox players={players} value={compareA} onChange={setCompareA} placeholder="Player A" />
+              </div>
+              <div className="w-full sm:w-64">
+                <PlayerCombobox players={players} value={compareB} onChange={setCompareB} placeholder="Player B" />
+              </div>
             </div>
             <CompareTable statA={statA} statB={statB} />
           </Card>
@@ -819,9 +1038,9 @@ export default function LeagueClient() {
       </section>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-black/95 p-2 md:hidden">
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-4 gap-1">
           {navItems.map((item) => (
-            <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-lg px-1 py-3 text-[10px] font-bold ${tab === item.id ? "bg-[#f04a22]" : "bg-[#1d1d1d]"}`}>
+            <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-lg px-1 py-3 text-[11px] font-bold ${tab === item.id ? "bg-[#f04a22]" : "bg-[#1d1d1d]"}`}>
               {item.label}
             </button>
           ))}
@@ -831,12 +1050,110 @@ export default function LeagueClient() {
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, actions, children }: { title: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
-      <h2 className="mb-4 text-xl font-black">{title}</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-black">{title}</h2>
+        {actions}
+      </div>
       {children}
     </section>
+  );
+}
+
+// Searchable player picker -- a plain <select> with 100+ alphabetical names is
+// painful to scroll through on a phone, so this is a text input that filters
+// as you type and falls back to showing the current value when closed.
+function PlayerCombobox({
+  players,
+  value,
+  onChange,
+  allLabel,
+  placeholder = "Search players...",
+}: {
+  players: string[];
+  value: string;
+  onChange: (value: string) => void;
+  allLabel?: string;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const options = allLabel ? [allLabel, ...players] : players;
+  const filtered = query ? options.filter((p) => p.toLowerCase().includes(query.toLowerCase())) : options;
+
+  return (
+    <div ref={containerRef} className="relative">
+      <input
+        className="block w-full rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white"
+        value={open ? query : value}
+        placeholder={value ? undefined : placeholder}
+        onFocus={() => {
+          setOpen(true);
+          setQuery("");
+        }}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {open && (
+        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-neutral-700 bg-[#1c1c1c] shadow-xl">
+          {filtered.length === 0 && <div className="p-3 text-sm text-neutral-500">No players found</div>}
+          {filtered.map((p) => (
+            <button
+              type="button"
+              key={p}
+              className={`block w-full px-3 py-2 text-left text-sm hover:bg-[#f04a22]/20 ${
+                p === value ? "bg-[#f04a22]/10 text-[#f04a22]" : "text-white"
+              }`}
+              onClick={() => {
+                onChange(p);
+                setOpen(false);
+                setQuery("");
+              }}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ShareButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      className="rounded-lg bg-[#242424] px-3 py-2 text-sm font-bold hover:bg-[#2f2f2f]"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch {
+          // Clipboard API can be unavailable (older browsers, non-HTTPS) --
+          // fall back to a manual prompt so the link is still copyable.
+          window.prompt("Copy this link:", url);
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+    >
+      {copied ? "Link copied!" : "Copy share link"}
+    </button>
   );
 }
 
@@ -947,6 +1264,74 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
               <tr key={`${getPlayer(row)}-${index}`} className="border-t border-neutral-800">
                 <td className="sticky left-0 z-10 bg-[#141414] p-2 font-bold text-[#f04a22]">{getPlayer(row)}</td>
                 {statColumns.map((col) => <td key={col.label} className="whitespace-nowrap p-2">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function CareerStatsTable({
+  rows,
+  columns,
+  sortKey,
+  sortDirection,
+  highlightPlayer,
+  onSort,
+}: {
+  rows: any[];
+  columns: { key: string; label: string; decimals: number }[];
+  sortKey: string;
+  sortDirection: SortDirection;
+  highlightPlayer?: string;
+  onSort: (key: string) => void;
+}) {
+  return (
+    <>
+      <div className="grid gap-3 md:hidden">
+        {rows.map((row) => (
+          <div
+            key={row.name}
+            className={`rounded-xl border p-4 ${
+              row.name === highlightPlayer ? "border-[#f04a22] bg-[#f04a22]/10" : "border-neutral-800 bg-[#202020]"
+            }`}
+          >
+            <div className="mb-3 text-lg font-black text-[#f04a22]">{row.name}</div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              {columns.map((col) => (
+                <div key={col.key}>
+                  <div className="text-xs uppercase text-neutral-500">{col.label}</div>
+                  <div className="font-bold">{formatValue(row[col.key], col.decimals)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[1150px] text-[12px]">
+          <thead>
+            <tr className="text-left text-neutral-400">
+              <th className="sticky left-0 z-10 bg-[#141414] p-2">Player</th>
+              {columns.map((col) => (
+                <th key={col.key} className="cursor-pointer whitespace-nowrap p-2 hover:text-[#f04a22]" onClick={() => onSort(col.key)}>
+                  {col.label}
+                  {sortKey === col.key ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.name} className={`border-t border-neutral-800 ${row.name === highlightPlayer ? "bg-[#f04a22]/10" : ""}`}>
+                <td className="sticky left-0 z-10 bg-[#141414] p-2 font-bold text-[#f04a22]">{row.name}</td>
+                {columns.map((col) => (
+                  <td key={col.key} className="whitespace-nowrap p-2">
+                    {formatValue(row[col.key], col.decimals)}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
