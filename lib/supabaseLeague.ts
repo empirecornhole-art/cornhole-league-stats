@@ -19,6 +19,22 @@ function normalizeName(name: string) {
   return compact(name);
 }
 
+// A "player" name that's really a spreadsheet error token (e.g. "#REF!",
+// "#N/A", "#DIV/0!") or a bare numeric placeholder (e.g. "0"). These can
+// end up in the "players" table from a past upload where an upstream
+// formula reference broke, and -- unlike season_stats/season_week_scores/
+// event_results/event_stats, which are wiped and rebuilt fresh per season
+// on every import -- the "players" table is only ever upserted into, never
+// pruned, so a bad name uploaded once stays forever. parseWorkbook.ts now
+// filters these out of new uploads, but this cleans up ones already there.
+function isJunkPlayerName(name: string): boolean {
+  const n = clean(name);
+  if (!n) return true;
+  if (/^\d+$/.test(n)) return true;
+  if (/^#[A-Z0-9/]+!?\??$/i.test(n)) return true;
+  return false;
+}
+
 function getValue(row: Record<string, any> | null | undefined, keys: string[]) {
   if (!row) return "";
 
@@ -295,6 +311,23 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
       .from("players")
       .upsert(playerRows, { onConflict: "normalized_name" });
     if (playerError) throw playerError;
+  }
+
+  // Self-healing cleanup: remove any junk player rows left over from a past
+  // upload (see isJunkPlayerName). This runs on every import so a single
+  // bad row doesn't have to be manually cleaned out of Supabase by hand.
+  const { data: allPlayers, error: allPlayersError } = await supabase.from("players").select("id,name");
+  if (allPlayersError) throw allPlayersError;
+  const junkPlayerIds = (allPlayers || []).filter((p) => isJunkPlayerName(p.name)).map((p) => p.id);
+  if (junkPlayerIds.length) {
+    // Clear dependent rows first rather than relying on FK cascade behavior
+    // we can't inspect from here.
+    for (const table of ["season_stats", "season_week_scores", "event_results", "event_stats"]) {
+      const { error: depDeleteError } = await supabase.from(table).delete().in("player_id", junkPlayerIds);
+      if (depDeleteError) throw depDeleteError;
+    }
+    const { error: junkDeleteError } = await supabase.from("players").delete().in("id", junkPlayerIds);
+    if (junkDeleteError) throw junkDeleteError;
   }
 
   const { data: dbPlayers, error: dbPlayersError } = await supabase
