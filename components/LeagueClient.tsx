@@ -40,6 +40,10 @@ function isValidPlayerName(value: any) {
 
   if (!name) return false;
   if (/^\d+$/.test(name)) return false;
+  // Spreadsheet error tokens (e.g. "#REF!", "#N/A", "#DIV/0!") that can leak
+  // in from a broken upstream formula reference -- these aren't real
+  // players and shouldn't be selectable anywhere on the site.
+  if (/^#[A-Z0-9/]+!?\??$/i.test(name)) return false;
 
   return ![
     "standings",
