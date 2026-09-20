@@ -23,6 +23,10 @@ const PRODUCTS_QUERY = `
             minVariantPrice { amount currencyCode }
             maxVariantPrice { amount currencyCode }
           }
+          options {
+            name
+            values
+          }
           variants(first: 50) {
             edges {
               node {
@@ -31,6 +35,10 @@ const PRODUCTS_QUERY = `
                 availableForSale
                 price { amount currencyCode }
                 selectedOptions { name value }
+                image {
+                  url
+                  altText
+                }
               }
             }
           }
@@ -72,12 +80,15 @@ export async function GET() {
             min: node.priceRange.minVariantPrice,
             max: node.priceRange.maxVariantPrice,
           },
+          // e.g. [{ name: "Color", values: ["Black", "Red"] }, { name: "Size", values: ["S", "M", "L"] }]
+          options: (node.options || []).filter((o: any) => !(o.name === "Title" && o.values?.length === 1 && o.values[0] === "Default Title")),
           variants: (node.variants?.edges || []).map((v: any) => ({
             id: v.node.id,
             title: v.node.title,
             availableForSale: v.node.availableForSale,
             price: v.node.price,
             options: v.node.selectedOptions,
+            image: v.node.image ? { url: v.node.image.url, alt: v.node.image.altText } : null,
           })),
         });
       }
