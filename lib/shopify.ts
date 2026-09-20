@@ -22,7 +22,12 @@ export async function shopifyFetch<T = any>(query: string, variables?: Record<st
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Shopify-Storefront-Access-Token": token,
+      // The Headless channel's *private* Storefront token (the one meant for
+      // server-side use, which is what this route is) authenticates via this
+      // header rather than X-Shopify-Storefront-Access-Token, which is for
+      // the public/client-side token instead. Confirmed against the live
+      // store -- the public header 401'd, this one returned real shop data.
+      "Shopify-Storefront-Private-Token": token,
     },
     body: JSON.stringify({ query, variables }),
     cache: "no-store",
