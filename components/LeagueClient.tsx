@@ -399,6 +399,47 @@ function podiumStyle(rank: number) {
   return { medal: null, rowClass: "", textClass: "text-[#f04a22]" };
 }
 
+// Turns a timestamp into "3 minutes ago" style text. Falls back to a plain
+// date/time once it's more than a day old, since "37 hours ago" stops being
+// useful.
+function formatRelativeTime(dateString?: string) {
+  if (!dateString) return "No upload date found";
+  const then = new Date(dateString).getTime();
+  if (Number.isNaN(then)) return "No upload date found";
+
+  const seconds = Math.round((Date.now() - then) / 1000);
+  if (seconds < 15) return "just now";
+  if (seconds < 60) return `${seconds} seconds ago`;
+
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+
+  return new Date(dateString).toLocaleString();
+}
+
+// Keeps its own tick so "X minutes ago" advances on its own without needing
+// the whole page to re-render.
+function LastUpdated({ value }: { value?: string }) {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setTick((n) => n + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="text-sm text-neutral-400" title={value ? new Date(value).toLocaleString() : undefined}>
+      Last updated: {formatRelativeTime(value)}
+    </div>
+  );
+}
+
 // Smoothly animates between a stat's previous and next value instead of it
 // just popping to the new number whenever a filter/season/player selection
 // changes. `target` is null for anything non-numeric (a name, a "-"
@@ -850,7 +891,7 @@ export default function LeagueClient() {
       : "";
 
   if (!data) {
-    return <main className="min-h-screen bg-black p-6 text-white">Loading League Stats...</main>;
+    return <LoadingSkeleton />;
   }
 
   const navItems: { id: Tab; label: string }[] = [
@@ -890,7 +931,7 @@ export default function LeagueClient() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl p-4">
+      <section className="sticky top-0 z-20 mx-auto max-w-7xl bg-[#070707]/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-[#070707]/85">
         <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             <div>
@@ -923,9 +964,7 @@ export default function LeagueClient() {
               </select>
             </div>
 
-            <div className="text-sm text-neutral-400">
-              Last updated: {data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : "No upload date found"}
-            </div>
+            <LastUpdated value={data.lastUpdated} />
           </div>
         </div>
       </section>
@@ -1290,6 +1329,63 @@ function PlayerCombobox({
         </div>
       )}
     </div>
+  );
+}
+
+// Gray placeholder boxes shaped like the real page, shown while the season's
+// data is loading client-side. Replaces the old plain "Loading..." text so
+// the first impression of the site feels finished rather than broken.
+function LoadingSkeleton() {
+  return (
+    <main className="min-h-screen animate-pulse bg-[#070707] pb-24 text-white">
+      <header className="border-b border-[#2a2a2a] bg-gradient-to-r from-black via-[#151515] to-[#f04a22]/20">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-20 rounded-xl bg-neutral-800" />
+            <div className="space-y-2">
+              <div className="h-6 w-40 rounded bg-neutral-800" />
+              <div className="h-4 w-64 rounded bg-neutral-800" />
+            </div>
+          </div>
+          <div className="hidden flex-wrap gap-2 md:flex">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-9 w-24 rounded-full bg-neutral-800" />
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <section className="mx-auto max-w-7xl p-4">
+        <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 w-16 rounded bg-neutral-800" />
+                <div className="h-10 w-40 rounded-lg bg-neutral-800" />
+              </div>
+            ))}
+            <div className="h-4 w-32 rounded bg-neutral-800" />
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl space-y-6 p-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-24 rounded-xl border border-neutral-800 bg-[#101010] p-4">
+              <div className="h-3 w-20 rounded bg-neutral-800" />
+              <div className="mt-3 h-8 w-16 rounded bg-neutral-800" />
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-2 rounded-xl border border-neutral-800 bg-[#101010] p-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-8 rounded bg-neutral-800" />
+          ))}
+        </div>
+      </section>
+    </main>
   );
 }
 
