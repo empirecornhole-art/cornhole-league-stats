@@ -24,8 +24,8 @@ type Data = {
   weekScores?: any[];
 };
 
-type Tab = "dashboard" | "standings" | "weeks" | "stats" | "alltime" | "players" | "scenarios" | "compare" | "store";
-const TAB_IDS: Tab[] = ["dashboard", "standings", "weeks", "stats", "alltime", "players", "scenarios", "compare", "store"];
+type Tab = "dashboard" | "standings" | "weeks" | "stats" | "alltime" | "badges" | "players" | "scenarios" | "compare" | "store";
+const TAB_IDS: Tab[] = ["dashboard", "standings", "weeks", "stats", "alltime", "badges", "players", "scenarios", "compare", "store"];
 type EventFilter = "All" | "Blind" | "Swap";
 type SortDirection = "asc" | "desc";
 
@@ -340,6 +340,412 @@ function aggregateCareerStats(rows: any[]) {
       totalFirsts,
     };
   });
+}
+
+function standardDeviation(values: number[]) {
+  if (values.length < 2) return 0;
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((acc, v) => acc + (v - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+// Picks the best value out of a list of {name, value} entries and returns
+// every name tied for it -- ties are common with small league sizes, and a
+// badge that silently picked one of several tied players would look wrong
+// to everyone else who actually earned it too.
+function pickLeaders(entries: { name: string; value: number }[], lowerIsBetter = false) {
+  const valid = entries.filter((e) => e.name && Number.isFinite(e.value));
+  if (!valid.length) return { winners: [] as string[], value: null as number | null };
+
+  const best = valid.reduce(
+    (acc, e) => (lowerIsBetter ? Math.min(acc, e.value) : Math.max(acc, e.value)),
+    lowerIsBetter ? Infinity : -Infinity
+  );
+
+  const winners = Array.from(new Set(valid.filter((e) => e.value === best).map((e) => e.name)));
+  return { winners, value: best };
+}
+
+const MIN_SEASON_ROUNDS_FOR_RATE_BADGES = 30;
+const MIN_WEEKS_FOR_CONSISTENCY_BADGE = 4;
+
+// Season-long badges, recomputed live from whatever weeks have been uploaded
+// so far -- they can change hands week to week right up until the season
+// ends, which is the point (it gives people a reason to check back).
+function computeSeasonBadges(seasonRows: any[], weeklyRows: any[], priorSeasonRows: any[], careerByName: Map<string, any>) {
+  const valid = seasonRows.filter((row) => isValidPlayerName(getPlayer(row)));
+  const badges: any[] = [];
+
+  const roundsByPlayer = new Map<string, number>();
+  for (const row of valid) roundsByPlayer.set(getPlayer(row), numberVal(getStatValue(row, ["Total Rounds"])));
+
+  const finishEntries = valid
+    .map((row) => ({ name: getPlayer(row), value: numberVal(getStatValue(row, ["Finish", "Rank"])) }))
+    .filter((e) => e.value > 0);
+  if (finishEntries.length) {
+    const { winners, value } = pickLeaders(finishEntries, true);
+    badges.push({
+      id: "points-champion",
+      icon: "🏆",
+      title: "Points Champion",
+      description: "Best final standing this season.",
+      winners,
+      display: value ? `Finished #${value}` : "",
+    });
+  }
+
+  const weeksByPlayer = new Map<string, Set<string>>();
+  for (const row of weeklyRows) {
+    const name = getPlayer(row);
+    if (!isValidPlayerName(name)) continue;
+    if (!weeksByPlayer.has(name)) weeksByPlayer.set(name, new Set());
+    weeksByPlayer.get(name)!.add(getWeek(row));
+  }
+  const totalWeeksInSeason = new Set(weeklyRows.map(getWeek).filter(Boolean)).size;
+  const attendanceEntries = Array.from(weeksByPlayer.entries()).map(([name, weeks]) => ({ name, value: weeks.size }));
+
+  {
+    const { winners, value } = pickLeaders(attendanceEntries);
+    badges.push({
+      id: "iron-man",
+      icon: "🦾",
+      title: "Iron Man",
+      description: "Played in the most weeks this season.",
+      winners,
+      display: value ? `${value} week${value === 1 ? "" : "s"} played` : "",
+    });
+  }
+
+  if (totalWeeksInSeason > 0) {
+    const perfect = attendanceEntries.filter((e) => e.value === totalWeeksInSeason).map((e) => e.name);
+    if (perfect.length) {
+      badges.push({
+        id: "perfect-attendance",
+        icon: "📅",
+        title: "Perfect Attendance",
+        description: `Played every one of the ${totalWeeksInSeason} weeks so far.`,
+        winners: perfect,
+        display: `${totalWeeksInSeason}/${totalWeeksInSeason} weeks`,
+      });
+    }
+  }
+
+  const pprEntries = valid
+    .map((row) => ({ name: getPlayer(row), value: numberVal(getStatValue(row, ["Average PPR", "PPR"])) }))
+    .filter((e) => (roundsByPlayer.get(e.name) || 0) >= MIN_SEASON_ROUNDS_FOR_RATE_BADGES);
+  {
+    const { winners, value } = pickLeaders(pprEntries);
+    badges.push({
+      id: "offensive-machine",
+      icon: "🔥",
+      title: "Offensive Machine",
+      description: `Highest scoring average (min ${MIN_SEASON_ROUNDS_FOR_RATE_BADGES} rounds played).`,
+      winners,
+      display: value !== null ? `${value.toFixed(2)} PPR` : "",
+    });
+  }
+
+  const opprEntries = valid
+    .map((row) => ({ name: getPlayer(row), value: numberVal(getStatValue(row, ["Opponents Avg PPR", "OPPR"])) }))
+    .filter((e) => (roundsByPlayer.get(e.name) || 0) >= MIN_SEASON_ROUNDS_FOR_RATE_BADGES);
+  {
+    const { winners, value } = pickLeaders(opprEntries, true);
+    badges.push({
+      id: "defensive-wall",
+      icon: "🧱",
+      title: "Defensive Wall",
+      description: `Held opponents to the fewest points per round (min ${MIN_SEASON_ROUNDS_FOR_RATE_BADGES} rounds played).`,
+      winners,
+      display: value !== null ? `${value.toFixed(2)} OPPR allowed` : "",
+    });
+  }
+
+  const baggerPctEntries = valid
+    .map((row) => ({ name: getPlayer(row), value: numberVal(getStatValue(row, ["Avg 4-Bagger %"])) }))
+    .filter((e) => (roundsByPlayer.get(e.name) || 0) >= MIN_SEASON_ROUNDS_FOR_RATE_BADGES);
+  {
+    const { winners, value } = pickLeaders(baggerPctEntries);
+    badges.push({
+      id: "sharpshooter",
+      icon: "🎯",
+      title: "Sharpshooter",
+      description: `Highest 4-bagger rate (min ${MIN_SEASON_ROUNDS_FOR_RATE_BADGES} rounds played).`,
+      winners,
+      display: value !== null ? `${value.toFixed(2)}%` : "",
+    });
+  }
+
+  const totalBaggerEntries = valid
+    .map((row) => ({ name: getPlayer(row), value: numberVal(getStatValue(row, ["Total 4-Baggers", "4 Baggers"])) }))
+    .filter((e) => e.value > 0);
+  {
+    const { winners, value } = pickLeaders(totalBaggerEntries);
+    badges.push({
+      id: "bag-assassin",
+      icon: "💥",
+      title: "Bag Assassin",
+      description: "Most 4-baggers thrown this season.",
+      winners,
+      display: value !== null ? `${Math.round(value)} 4-baggers` : "",
+    });
+  }
+
+  const bagsOnEntries = valid
+    .map((row) => ({ name: getPlayer(row), value: numberVal(getStatValue(row, ["Bags On %"])) }))
+    .filter((e) => e.value > 0);
+  {
+    const { winners, value } = pickLeaders(bagsOnEntries);
+    badges.push({
+      id: "bullseye",
+      icon: "🏹",
+      title: "Bullseye",
+      description: "Highest percentage of bags landing on the board this season.",
+      winners,
+      display: value !== null ? `${value.toFixed(2)}%` : "",
+    });
+  }
+
+  const pointsByPlayer = new Map<string, number[]>();
+  for (const row of weeklyRows) {
+    const name = getPlayer(row);
+    if (!isValidPlayerName(name)) continue;
+    const pts = numberVal(row.Points);
+    if (!pts) continue;
+    if (!pointsByPlayer.has(name)) pointsByPlayer.set(name, []);
+    pointsByPlayer.get(name)!.push(pts);
+  }
+  const consistencyEntries = Array.from(pointsByPlayer.entries())
+    .filter(([, pts]) => pts.length >= MIN_WEEKS_FOR_CONSISTENCY_BADGE)
+    .map(([name, pts]) => ({ name, value: standardDeviation(pts) }));
+  {
+    const { winners, value } = pickLeaders(consistencyEntries, true);
+    badges.push({
+      id: "iceman",
+      icon: "🧊",
+      title: "Iceman",
+      description: `Most consistent week-to-week finishes (min ${MIN_WEEKS_FOR_CONSISTENCY_BADGE} weeks played).`,
+      winners,
+      display: value !== null ? `±${value.toFixed(1)} pts` : "",
+    });
+  }
+
+  if (priorSeasonRows.length) {
+    const priorFinishByName = new Map<string, number>();
+    for (const row of priorSeasonRows) {
+      const name = getPlayer(row);
+      const finish = numberVal(getStatValue(row, ["Finish", "Rank"]));
+      if (isValidPlayerName(name) && finish > 0) priorFinishByName.set(name, finish);
+    }
+
+    const improvedEntries = valid
+      .map((row) => {
+        const name = getPlayer(row);
+        const currentFinish = numberVal(getStatValue(row, ["Finish", "Rank"]));
+        const priorFinish = priorFinishByName.get(name);
+        if (!currentFinish || !priorFinish) return null;
+        return { name, value: priorFinish - currentFinish };
+      })
+      .filter((e): e is { name: string; value: number } => !!e && e.value > 0);
+
+    if (improvedEntries.length) {
+      const { winners, value } = pickLeaders(improvedEntries);
+      badges.push({
+        id: "most-improved",
+        icon: "🚀",
+        title: "Most Improved",
+        description: "Biggest jump in final standing vs. last season.",
+        winners,
+        display: value !== null ? `Up ${value} spot${value === 1 ? "" : "s"}` : "",
+      });
+    }
+  }
+
+  const rookieEntries = valid
+    .map((row) => {
+      const name = getPlayer(row);
+      const career = careerByName.get(name);
+      if (!career || career.seasonsPlayed !== 1) return null;
+      const finish = numberVal(getStatValue(row, ["Finish", "Rank"]));
+      if (!finish) return null;
+      return { name, value: finish };
+    })
+    .filter((e): e is { name: string; value: number } => !!e);
+
+  if (rookieEntries.length) {
+    const { winners, value } = pickLeaders(rookieEntries, true);
+    badges.push({
+      id: "rookie-standout",
+      icon: "🌱",
+      title: "Rookie Standout",
+      description: "Best finish this season among first-timers.",
+      winners,
+      display: value !== null ? `Finished #${value}` : "",
+    });
+  }
+
+  return badges;
+}
+
+// Week-specific badges. Rewards more than just "who won the week" -- offense,
+// defense, volume, and a personal-best callout so players who aren't
+// contending for the top spot still have something to check for.
+function computeWeeklyBadges(weekRows: any[], seasonWeekScores: any[], weekNumber: number, allWeeklyForSeason: any[]) {
+  if (!weekNumber) return [];
+
+  const badges: any[] = [];
+  const validWeekRows = weekRows.filter((row) => isValidPlayerName(getPlayer(row)));
+
+  const scoreEntries = seasonWeekScores
+    .filter((row) => isValidPlayerName(getPlayer(row)) && numberVal(row.WeekNumber) === weekNumber)
+    .map((row) => ({ name: getPlayer(row), value: numberVal(row.Score) }))
+    .filter((e) => e.value > 0);
+
+  if (scoreEntries.length) {
+    const { winners, value } = pickLeaders(scoreEntries);
+    badges.push({
+      id: "weekly-champ",
+      icon: "👑",
+      title: "Weekly Champ",
+      description: "Highest scoring week.",
+      winners,
+      display: value !== null ? `${formatValue(value, 0)} pts` : "",
+    });
+  }
+
+  const prevWeekScores = new Map(
+    seasonWeekScores
+      .filter((row) => isValidPlayerName(getPlayer(row)) && numberVal(row.WeekNumber) === weekNumber - 1)
+      .map((row) => [getPlayer(row), numberVal(row.Score)])
+  );
+  const riserEntries = scoreEntries
+    .map((entry) => {
+      const prev = prevWeekScores.get(entry.name);
+      if (prev === undefined) return null;
+      return { name: entry.name, value: entry.value - prev };
+    })
+    .filter((e): e is { name: string; value: number } => !!e && e.value > 0);
+
+  if (riserEntries.length) {
+    const { winners, value } = pickLeaders(riserEntries);
+    badges.push({
+      id: "biggest-riser",
+      icon: "📈",
+      title: "Biggest Riser",
+      description: "Biggest jump in weekly score vs. last week.",
+      winners,
+      display: value !== null ? `+${formatValue(value, 0)} pts` : "",
+    });
+  }
+
+  const byPlayer = new Map<string, { ppr: number[]; oppr: number[]; fourBaggers: number; rounds: number }>();
+  for (const row of validWeekRows) {
+    const name = getPlayer(row);
+    if (!byPlayer.has(name)) byPlayer.set(name, { ppr: [], oppr: [], fourBaggers: 0, rounds: 0 });
+    const bucket = byPlayer.get(name)!;
+    const ppr = numberVal(getStatValue(row, ["PPR"]));
+    const oppr = numberVal(getStatValue(row, ["OPPR"]));
+    if (ppr) bucket.ppr.push(ppr);
+    if (oppr) bucket.oppr.push(oppr);
+    bucket.fourBaggers += numberVal(getStatValue(row, ["4 Baggers"]));
+    bucket.rounds += numberVal(getStatValue(row, ["Rounds"]));
+  }
+
+  const avg = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : NaN);
+
+  const pprWeekEntries = Array.from(byPlayer.entries())
+    .map(([name, b]) => ({ name, value: avg(b.ppr) }))
+    .filter((e) => Number.isFinite(e.value));
+  {
+    const { winners, value } = pickLeaders(pprWeekEntries);
+    badges.push({
+      id: "sharpshooter-week",
+      icon: "🎯",
+      title: "Sharpshooter of the Week",
+      description: "Highest scoring average this week.",
+      winners,
+      display: value !== null ? `${value.toFixed(2)} PPR` : "",
+    });
+  }
+
+  const opprWeekEntries = Array.from(byPlayer.entries())
+    .map(([name, b]) => ({ name, value: avg(b.oppr) }))
+    .filter((e) => Number.isFinite(e.value));
+  {
+    const { winners, value } = pickLeaders(opprWeekEntries, true);
+    badges.push({
+      id: "lockdown-week",
+      icon: "🧱",
+      title: "Lockdown Defense",
+      description: "Held opponents to the fewest points per round this week.",
+      winners,
+      display: value !== null ? `${value.toFixed(2)} OPPR allowed` : "",
+    });
+  }
+
+  const baggerWeekEntries = Array.from(byPlayer.entries())
+    .map(([name, b]) => ({ name, value: b.fourBaggers }))
+    .filter((e) => e.value > 0);
+  {
+    const { winners, value } = pickLeaders(baggerWeekEntries);
+    badges.push({
+      id: "bag-frenzy",
+      icon: "💣",
+      title: "4-Bagger Frenzy",
+      description: "Most 4-baggers thrown this week.",
+      winners,
+      display: value !== null ? `${Math.round(value)} 4-baggers` : "",
+    });
+  }
+
+  const grinderEntries = Array.from(byPlayer.entries())
+    .map(([name, b]) => ({ name, value: b.rounds }))
+    .filter((e) => e.value > 0);
+  {
+    const { winners, value } = pickLeaders(grinderEntries);
+    badges.push({
+      id: "grinder",
+      icon: "🥵",
+      title: "Grinder",
+      description: "Most rounds played this week.",
+      winners,
+      display: value !== null ? `${Math.round(value)} rounds` : "",
+    });
+  }
+
+  const historyByPlayer = new Map<string, { week: number; ppr: number }[]>();
+  for (const row of allWeeklyForSeason) {
+    const name = getPlayer(row);
+    if (!isValidPlayerName(name)) continue;
+    const wn = numberVal(getWeek(row));
+    const ppr = numberVal(getStatValue(row, ["PPR"]));
+    if (!wn || !ppr) continue;
+    if (!historyByPlayer.has(name)) historyByPlayer.set(name, []);
+    historyByPlayer.get(name)!.push({ week: wn, ppr });
+  }
+
+  const personalBests: string[] = [];
+  for (const [name, bucket] of historyByPlayer) {
+    const thisWeek = byPlayer.get(name);
+    if (!thisWeek || !thisWeek.ppr.length) continue;
+    const priorWeeks = bucket.filter((b) => b.week < weekNumber);
+    if (!priorWeeks.length) continue;
+    const thisWeekPPR = avg(thisWeek.ppr);
+    const priorMax = Math.max(...priorWeeks.map((b) => b.ppr));
+    if (thisWeekPPR > priorMax) personalBests.push(name);
+  }
+
+  if (personalBests.length) {
+    badges.push({
+      id: "personal-best",
+      icon: "🌟",
+      title: "Personal Best",
+      description: "Set a new season-high PPR this week.",
+      winners: personalBests,
+      display: "New high!",
+    });
+  }
+
+  return badges;
 }
 
 function sumBestScores(scores: number[], count = 9) {
@@ -886,6 +1292,50 @@ export default function LeagueClient() {
     };
   }, [careerRows]);
 
+  // Badges tab: season-long badges recompute from whatever's uploaded so far
+  // for the selected season, and weekly badges are scoped to one week at a
+  // time (defaulting to the most recent) so there's a reason to check back
+  // after every week's results go up.
+  const allWeeklyForSeason = useMemo(
+    () => allWeeklyMerged.filter((row) => getSeason(row) === season),
+    [allWeeklyMerged, season]
+  );
+
+  const priorSeason = useMemo(() => {
+    const index = seasons.indexOf(season);
+    return index > 0 ? seasons[index - 1] : "";
+  }, [seasons, season]);
+
+  const priorSeasonStats = useMemo(
+    () => (priorSeason ? seasonStatsAll.filter((row) => getSeason(row) === priorSeason) : []),
+    [seasonStatsAll, priorSeason]
+  );
+
+  const careerByName = useMemo(() => new Map(careerRows.map((row) => [row.name, row])), [careerRows]);
+
+  const seasonBadges = useMemo(
+    () => computeSeasonBadges(selectedSeasonStats, allWeeklyForSeason, priorSeasonStats, careerByName),
+    [selectedSeasonStats, allWeeklyForSeason, priorSeasonStats, careerByName]
+  );
+
+  const badgeWeeks = useMemo(() => dashboardWeeks.filter((w) => w !== "All Weeks"), [dashboardWeeks]);
+  const [badgeWeek, setBadgeWeek] = useState("");
+
+  useEffect(() => {
+    if (!badgeWeek || !badgeWeeks.includes(badgeWeek)) setBadgeWeek(badgeWeeks[badgeWeeks.length - 1] || "");
+  }, [badgeWeeks, badgeWeek]);
+
+  const weeklyRowsForBadgeWeek = useMemo(
+    () => allWeeklyForSeason.filter((row) => getWeek(row) === badgeWeek),
+    [allWeeklyForSeason, badgeWeek]
+  );
+
+  const weeklyBadges = useMemo(
+    () =>
+      badgeWeek ? computeWeeklyBadges(weeklyRowsForBadgeWeek, scenarioSeasonScores, numberVal(badgeWeek), allWeeklyForSeason) : [],
+    [weeklyRowsForBadgeWeek, scenarioSeasonScores, badgeWeek, allWeeklyForSeason]
+  );
+
   const shareUrl =
     typeof window !== "undefined" && selectedProfilePlayer
       ? `${window.location.origin}${pathname}?tab=players&player=${slugify(selectedProfilePlayer)}`
@@ -901,6 +1351,7 @@ export default function LeagueClient() {
     { id: "weeks", label: "Weeks" },
     { id: "stats", label: "Stats" },
     { id: "alltime", label: "All-Time" },
+    { id: "badges", label: "Badges" },
     { id: "players", label: "Players" },
     { id: "scenarios", label: "Scenarios" },
     { id: "compare", label: "Compare" },
@@ -1114,6 +1565,30 @@ export default function LeagueClient() {
                   }
                 }}
               />
+            </Card>
+          </>
+        )}
+
+        {tab === "badges" && (
+          <>
+            <Card title={`${season} Season Badges`}>
+              <p className="mb-4 text-sm text-neutral-400">
+                Auto-awarded from this season&apos;s stats so far — these can change hands as more weeks get added, right up
+                until the season wraps up.
+              </p>
+              <BadgeGrid badges={seasonBadges} highlightPlayer={selectedProfilePlayer} />
+            </Card>
+
+            <Card title="Weekly Badges">
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <label className="text-xs font-bold uppercase text-[#f04a22]">Week</label>
+                <select className="rounded-lg bg-[#242424] p-2" value={badgeWeek} onChange={(e) => setBadgeWeek(e.target.value)}>
+                  {badgeWeeks.map((w) => (
+                    <option key={w}>{w}</option>
+                  ))}
+                </select>
+              </div>
+              <BadgeGrid badges={weeklyBadges} highlightPlayer={selectedProfilePlayer} />
             </Card>
           </>
         )}
@@ -1416,6 +1891,52 @@ function ShareButton({ url }: { url: string }) {
     >
       {copied ? "Link copied!" : "Copy share link"}
     </button>
+  );
+}
+
+type BadgeInfo = { id: string; icon: string; title: string; description: string; winners: string[]; display?: string };
+
+function BadgeGrid({ badges, highlightPlayer }: { badges: BadgeInfo[]; highlightPlayer?: string }) {
+  if (!badges.length) {
+    return <p className="text-sm text-neutral-500">Not enough data yet to award badges here.</p>;
+  }
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {badges.map((badge) => (
+        <BadgeCard key={badge.id} badge={badge} highlightPlayer={highlightPlayer} />
+      ))}
+    </div>
+  );
+}
+
+function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlayer?: string }) {
+  const tied = badge.winners.length > 1;
+  return (
+    <div className="rounded-xl border border-neutral-800 bg-[#101010] p-4">
+      <div className="mb-1 flex items-center gap-2">
+        <span className="text-2xl">{badge.icon}</span>
+        <div className="text-sm font-black uppercase text-[#f04a22]">{badge.title}</div>
+      </div>
+      <p className="mb-3 text-xs text-neutral-500">{badge.description}</p>
+      <div className="space-y-1">
+        {badge.winners.map((name) => (
+          <div
+            key={name}
+            className={`rounded-lg px-2 py-1 text-sm ${
+              name === highlightPlayer ? "bg-[#f04a22]/20 font-bold text-white" : "text-neutral-200"
+            }`}
+          >
+            {name}
+          </div>
+        ))}
+      </div>
+      {badge.display && (
+        <div className="mt-2 text-right text-xs font-bold text-neutral-400">
+          {badge.display}
+          {tied ? " (tied)" : ""}
+        </div>
+      )}
+    </div>
   );
 }
 
