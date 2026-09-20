@@ -372,6 +372,95 @@ function getCurrentRank(standings: { name: string; points: number }[], playerNam
   return index >= 0 ? index + 1 : null;
 }
 
+// Gold/silver/bronze treatment for the top 3 spots on a leaderboard. Ranks
+// below 3 get no special styling.
+function podiumStyle(rank: number) {
+  if (rank === 1) {
+    return {
+      medal: "🥇",
+      rowClass: "border-yellow-400/50 bg-gradient-to-r from-yellow-400/15 via-transparent to-transparent",
+      textClass: "text-yellow-300",
+    };
+  }
+  if (rank === 2) {
+    return {
+      medal: "🥈",
+      rowClass: "border-slate-300/40 bg-gradient-to-r from-slate-300/10 via-transparent to-transparent",
+      textClass: "text-slate-200",
+    };
+  }
+  if (rank === 3) {
+    return {
+      medal: "🥉",
+      rowClass: "border-amber-600/40 bg-gradient-to-r from-amber-600/15 via-transparent to-transparent",
+      textClass: "text-amber-500",
+    };
+  }
+  return { medal: null, rowClass: "", textClass: "text-[#f04a22]" };
+}
+
+// Smoothly animates between a stat's previous and next value instead of it
+// just popping to the new number whenever a filter/season/player selection
+// changes. `target` is null for anything non-numeric (a name, a "-"
+// placeholder) -- callers simply don't animate those.
+function useCountUp(target: number | null, duration = 700) {
+  const [display, setDisplay] = useState(target ?? 0);
+  const fromRef = useRef(target ?? 0);
+
+  useEffect(() => {
+    if (target === null) return;
+    const from = fromRef.current;
+    const to = target;
+    if (from === to) {
+      setDisplay(to);
+      return;
+    }
+    let frame: number;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(from + (to - from) * eased);
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+      } else {
+        fromRef.current = to;
+      }
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target, duration]);
+
+  return display;
+}
+
+// Parses an already-formatted stat ("8.52", "4784", "37.16%") back into a
+// number + decimals + suffix so it can be animated and re-rendered looking
+// identical to the static version. Returns null for anything that isn't a
+// plain formatted number (a player's name, a "-" placeholder), so callers
+// know to just render the value as-is with no animation.
+function parseAnimatable(value: any) {
+  const raw = String(value ?? "").trim();
+  const match = raw.match(/^(-?\d+(?:\.\d+)?)(%?)$/);
+  if (!match) return null;
+  const numeric = match[1];
+  const dot = numeric.indexOf(".");
+  const decimals = dot === -1 ? 0 : numeric.length - dot - 1;
+  return { target: Number(numeric), decimals, suffix: match[2] };
+}
+
+function AnimatedNumber({ value }: { value: any }) {
+  const parsed = parseAnimatable(value);
+  const animated = useCountUp(parsed ? parsed.target : null);
+  if (!parsed) return <>{value}</>;
+  return (
+    <>
+      {animated.toFixed(parsed.decimals)}
+      {parsed.suffix}
+    </>
+  );
+}
+
 export default function LeagueClient() {
   const router = useRouter();
   const pathname = usePathname();
@@ -563,14 +652,30 @@ export default function LeagueClient() {
     if (!week || !weeks.includes(week)) setWeek(weeks[0] || "");
   }, [weeks, week]);
 
-  const visibleWeekRows = useMemo(
-    () =>
-      weeksRowsForType
-        .filter((row) => getWeek(row) === week)
-        .filter((row) => player === "All Players" || getPlayer(row) === player)
-        .sort((a, b) => numberVal(a.Rank) - numberVal(b.Rank) || getPlayer(a).localeCompare(getPlayer(b))),
-    [weeksRowsForType, week, player]
-  );
+  const visibleWeekRows = useMemo(() => {
+    const weekIndex = weeks.indexOf(week);
+    const prevWeek = weekIndex > 0 ? weeks[weekIndex - 1] : null;
+
+    const prevRankByPlayer = new Map<string, number>();
+    if (prevWeek) {
+      for (const row of weeksRowsForType) {
+        if (getWeek(row) !== prevWeek) continue;
+        const rank = numberVal(row.Rank);
+        if (rank) prevRankByPlayer.set(getPlayer(row), rank);
+      }
+    }
+
+    return weeksRowsForType
+      .filter((row) => getWeek(row) === week)
+      .filter((row) => player === "All Players" || getPlayer(row) === player)
+      .map((row) => {
+        const currentRank = numberVal(row.Rank);
+        const prevRank = prevRankByPlayer.get(getPlayer(row));
+        const rankChange = prevWeek && prevRank && currentRank ? prevRank - currentRank : null;
+        return { ...row, RankChange: rankChange };
+      })
+      .sort((a, b) => numberVal(a.Rank) - numberVal(b.Rank) || getPlayer(a).localeCompare(getPlayer(b)));
+  }, [weeksRowsForType, week, weeks, player]);
 
   const statsTabRows = useMemo(() => {
     const selected = selectedStatsPlayers.length
@@ -826,6 +931,10 @@ export default function LeagueClient() {
       </section>
 
       <section className="mx-auto max-w-7xl space-y-6 p-4">
+        {/* Keying on `tab` remounts this wrapper on every switch, which
+           re-triggers the fadeSlideIn animation -- a cheap way to get a
+           transition between tabs without a full animation library. */}
+        <div key={tab} className="tab-transition space-y-6">
         {tab === "dashboard" && (
           <>
             <Card title="Top Standings">
@@ -1085,6 +1194,7 @@ export default function LeagueClient() {
             <CompareTable statA={statA} statB={statB} />
           </Card>
         )}
+        </div>
       </section>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-black/95 p-2 md:hidden">
@@ -1211,7 +1321,7 @@ function MiniStat({ label, value }: { label: string; value: any }) {
   return (
     <div className="rounded-xl border border-neutral-800 bg-[#101010] p-4">
       <div className="text-xs font-bold uppercase text-neutral-400">{label}</div>
-      <div className="mt-1 text-3xl font-black text-[#f04a22]">{value}</div>
+      <div className="mt-1 text-3xl font-black text-[#f04a22]"><AnimatedNumber value={value} /></div>
     </div>
   );
 }
@@ -1219,12 +1329,23 @@ function MiniStat({ label, value }: { label: string; value: any }) {
 function RankedList({ rows }: { rows: { name: string; points: number }[] }) {
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {rows.map((row, index) => (
-        <div key={`${row.name}-${index}`} className="flex items-center justify-between rounded-xl bg-[#202020] px-4 py-3">
-          <span className="font-black">{index + 1}. {row.name}</span>
-          <span className="text-xl font-black text-[#f04a22]">{formatValue(row.points, 0)}</span>
-        </div>
-      ))}
+      {rows.map((row, index) => {
+        const rank = index + 1;
+        const podium = podiumStyle(rank);
+        return (
+          <div
+            key={`${row.name}-${index}`}
+            className={`flex items-center justify-between rounded-xl border border-transparent bg-[#202020] px-4 py-3 ${podium.rowClass}`}
+          >
+            <span className={`font-black ${podium.textClass}`}>
+              {podium.medal ? `${podium.medal} ` : `${rank}. `}{row.name}
+            </span>
+            <span className={`text-xl font-black ${podium.medal ? podium.textClass : "text-[#f04a22]"}`}>
+              <AnimatedNumber value={formatValue(row.points, 0)} />
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1235,13 +1356,34 @@ function StandingsTable({ rows }: { rows: { name: string; points: number }[] }) 
       <table className="w-full text-sm">
         <thead><tr className="text-left text-neutral-400"><th className="p-2">#</th><th className="p-2">Player</th><th className="p-2">Points</th></tr></thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${row.name}-${index}`} className="border-t border-neutral-800"><td className="p-2">{index + 1}</td><td className="p-2 font-bold text-[#f04a22]">{row.name}</td><td className="p-2">{formatValue(row.points, 0)}</td></tr>
-          ))}
+          {rows.map((row, index) => {
+            const rank = index + 1;
+            const podium = podiumStyle(rank);
+            return (
+              <tr key={`${row.name}-${index}`} className={`border-t border-neutral-800 ${podium.rowClass}`}>
+                <td className={`p-2 font-black ${podium.textClass}`}>{podium.medal || rank}</td>
+                <td className={`p-2 font-bold ${podium.medal ? podium.textClass : "text-[#f04a22]"}`}>{row.name}</td>
+                <td className="p-2"><AnimatedNumber value={formatValue(row.points, 0)} /></td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
+}
+
+function RankChangeBadge({ change }: { change: number | null }) {
+  if (change === null || change === undefined || Number.isNaN(change)) {
+    return <span className="text-neutral-600">-</span>;
+  }
+  if (change === 0) {
+    return <span className="text-neutral-500">•</span>;
+  }
+  if (change > 0) {
+    return <span className="font-bold text-emerald-400">▲{change}</span>;
+  }
+  return <span className="font-bold text-red-500">▼{Math.abs(change)}</span>;
 }
 
 function WeeklyTable({ rows }: { rows: any[] }) {
@@ -1261,7 +1403,7 @@ function WeeklyTable({ rows }: { rows: any[] }) {
               <td className="p-2 font-bold text-[#f04a22]">{getPlayer(row)}</td>
               <td className="p-2">{clean(row.Team) || "-"}</td>
               <td className="p-2">{formatValue(row.Points, 0)}</td>
-              <td className="p-2">{formatValue(row["+/-"], 0)}</td>
+              <td className="p-2"><RankChangeBadge change={row.RankChange ?? null} /></td>
               {weeklyStatColumns.map((col) => (
                 <td key={col.label} className="p-2">{formatValue(getStatValue(row, col.label === "Points" ? ["StatPoints"] : col.keys), col.decimals)}</td>
               ))}
