@@ -933,43 +933,45 @@ export default function LeagueClient() {
         </div>
       </header>
 
-      <section className="sticky top-0 z-20 mx-auto max-w-7xl bg-[#070707]/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-[#070707]/85">
-        <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end">
-            <div>
-              <label className="text-xs font-bold uppercase text-[#f04a22]">Season</label>
-              <select
-                className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white"
-                value={season}
-                onChange={(e) => {
-                  setSeason(e.target.value);
-                  setDashboardWeek("All Weeks");
-                }}
-              >
-                {seasons.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </div>
+      {tab !== "store" && (
+        <section className="sticky top-0 z-20 mx-auto max-w-7xl bg-[#070707]/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-[#070707]/85">
+          <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+              <div>
+                <label className="text-xs font-bold uppercase text-[#f04a22]">Season</label>
+                <select
+                  className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white"
+                  value={season}
+                  onChange={(e) => {
+                    setSeason(e.target.value);
+                    setDashboardWeek("All Weeks");
+                  }}
+                >
+                  {seasons.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="w-full md:w-64">
-              <label className="text-xs font-bold uppercase text-[#f04a22]">Player</label>
-              <PlayerCombobox players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
-            </div>
+              <div className="w-full md:w-64">
+                <label className="text-xs font-bold uppercase text-[#f04a22]">Player</label>
+                <PlayerCombobox players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
+              </div>
 
-            <div>
-              <label className="text-xs font-bold uppercase text-[#f04a22]">Dashboard Week</label>
-              <select className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
-                {dashboardWeeks.map((w) => (
-                  <option key={w}>{w}</option>
-                ))}
-              </select>
-            </div>
+              <div>
+                <label className="text-xs font-bold uppercase text-[#f04a22]">Dashboard Week</label>
+                <select className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
+                  {dashboardWeeks.map((w) => (
+                    <option key={w}>{w}</option>
+                  ))}
+                </select>
+              </div>
 
-            <LastUpdated value={data.lastUpdated} />
+              <LastUpdated value={data.lastUpdated} />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="mx-auto max-w-7xl space-y-6 p-4">
         {/* Keying on `tab` remounts this wrapper on every switch, which
