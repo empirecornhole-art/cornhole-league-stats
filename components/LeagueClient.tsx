@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import StoreTab from "./StoreTab";
 
 type Data = {
   lastUpdated?: string;
@@ -23,8 +24,8 @@ type Data = {
   weekScores?: any[];
 };
 
-type Tab = "dashboard" | "standings" | "weeks" | "stats" | "alltime" | "players" | "scenarios" | "compare";
-const TAB_IDS: Tab[] = ["dashboard", "standings", "weeks", "stats", "alltime", "players", "scenarios", "compare"];
+type Tab = "dashboard" | "standings" | "weeks" | "stats" | "alltime" | "players" | "scenarios" | "compare" | "store";
+const TAB_IDS: Tab[] = ["dashboard", "standings", "weeks", "stats", "alltime", "players", "scenarios", "compare", "store"];
 type EventFilter = "All" | "Blind" | "Swap";
 type SortDirection = "asc" | "desc";
 
@@ -903,6 +904,7 @@ export default function LeagueClient() {
     { id: "players", label: "Players" },
     { id: "scenarios", label: "Scenarios" },
     { id: "compare", label: "Compare" },
+    { id: "store", label: "Store" },
   ];
 
   return (
@@ -1233,6 +1235,8 @@ export default function LeagueClient() {
             <CompareTable statA={statA} statB={statB} />
           </Card>
         )}
+
+        {tab === "store" && <StoreTab />}
         </div>
       </section>
 
