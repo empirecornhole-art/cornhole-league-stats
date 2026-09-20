@@ -10,7 +10,10 @@ type ShopifyVariant = {
   availableForSale: boolean;
   price: Money;
   options: { name: string; value: string }[];
+  image: { url: string; alt: string | null } | null;
 };
+
+type ShopifyProductOption = { name: string; values: string[] };
 
 type ShopifyProduct = {
   id: string;
@@ -20,6 +23,7 @@ type ShopifyProduct = {
   availableForSale: boolean;
   image: { url: string; alt: string | null } | null;
   priceRange: { min: Money; max: Money };
+  options: ShopifyProductOption[];
   variants: ShopifyVariant[];
 };
 
@@ -41,26 +45,51 @@ function formatMoney(money: Money) {
   }
 }
 
+// Finds the one variant (if any) whose selected options exactly match the
+// shopper's current picks across every option (Color, Size, ...).
+function findMatchingVariant(product: ShopifyProduct, picks: Record<string, string>) {
+  return product.variants.find((v) => v.options.every((o) => picks[o.name] === o.value));
+}
+
 function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line: CartLine) => void }) {
   const firstAvailable = product.variants.find((v) => v.availableForSale) || product.variants[0];
-  const [variantId, setVariantId] = useState(firstAvailable?.id || "");
+
+  const [picks, setPicks] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    for (const opt of firstAvailable?.options || []) initial[opt.name] = opt.value;
+    return initial;
+  });
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
 
-  const selectedVariant = product.variants.find((v) => v.id === variantId) || firstAvailable;
-  const showVariantPicker = product.variants.length > 1;
+  const hasOptions = product.options.length > 0;
+  const selectedVariant = hasOptions ? findMatchingVariant(product, picks) : firstAvailable;
+  const noSuchCombo = hasOptions && !selectedVariant;
   const soldOut = !product.availableForSale || !selectedVariant?.availableForSale;
+
+  const displayImage = selectedVariant?.image || product.image;
 
   const priceLabel =
     product.priceRange.min.amount === product.priceRange.max.amount
       ? formatMoney(product.priceRange.min)
       : `From ${formatMoney(product.priceRange.min)}`;
 
+  // For a given option value, is there ANY variant that combines it with the
+  // shopper's other current picks? Used to gray out combinations that don't
+  // exist (e.g. an out-of-stock size for the currently picked color).
+  function valueIsReachable(optionName: string, value: string) {
+    return product.variants.some(
+      (v) =>
+        v.availableForSale &&
+        v.options.every((o) => (o.name === optionName ? o.value === value : picks[o.name] === o.value))
+    );
+  }
+
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-neutral-800 bg-[#101010]">
       <div className="aspect-square w-full bg-[#1a1a1a]">
-        {product.image ? (
-          <img src={product.image.url} alt={product.image.alt || product.title} className="h-full w-full object-cover" />
+        {displayImage ? (
+          <img src={displayImage.url} alt={displayImage.alt || product.title} className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-sm text-neutral-600">No image</div>
         )}
@@ -70,20 +99,25 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
         <div className="font-black">{product.title}</div>
         <div className="text-lg font-black text-[#f04a22]">{priceLabel}</div>
 
-        {showVariantPicker && (
-          <select
-            className="rounded-lg border border-neutral-700 bg-[#242424] p-2 text-sm text-white"
-            value={variantId}
-            onChange={(e) => setVariantId(e.target.value)}
-          >
-            {product.variants.map((v) => (
-              <option key={v.id} value={v.id} disabled={!v.availableForSale}>
-                {v.title}
-                {!v.availableForSale ? " (Sold out)" : ""}
-              </option>
-            ))}
-          </select>
-        )}
+        {product.options.map((option) => (
+          <div key={option.name}>
+            <label className="text-xs font-bold uppercase text-neutral-400">{option.name}</label>
+            <select
+              className="block w-full rounded-lg border border-neutral-700 bg-[#242424] p-2 text-sm text-white"
+              value={picks[option.name] || ""}
+              onChange={(e) => setPicks((prev) => ({ ...prev, [option.name]: e.target.value }))}
+            >
+              {option.values.map((value) => (
+                <option key={value} value={value} disabled={!valueIsReachable(option.name, value)}>
+                  {value}
+                  {!valueIsReachable(option.name, value) ? " (Unavailable)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+
+        {noSuchCombo && <div className="text-xs text-red-400">That combination isn't available.</div>}
 
         <div className="mt-auto flex items-center gap-2 pt-2">
           <div className="flex items-center rounded-lg border border-neutral-700">
@@ -110,7 +144,7 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
             type="button"
             disabled={soldOut || !selectedVariant}
             className={`flex-1 rounded-lg py-2 text-sm font-bold transition ${
-              soldOut
+              soldOut || !selectedVariant
                 ? "cursor-not-allowed bg-neutral-800 text-neutral-500"
                 : justAdded
                 ? "bg-emerald-600 text-white"
@@ -121,16 +155,16 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
               onAdd({
                 variantId: selectedVariant.id,
                 productTitle: product.title,
-                variantTitle: showVariantPicker ? selectedVariant.title : "",
+                variantTitle: hasOptions ? selectedVariant.title : "",
                 price: selectedVariant.price,
-                image: product.image?.url || null,
+                image: displayImage?.url || null,
                 quantity,
               });
               setJustAdded(true);
               setTimeout(() => setJustAdded(false), 1200);
             }}
           >
-            {soldOut ? "Sold out" : justAdded ? "Added!" : "Add to cart"}
+            {!selectedVariant ? "Unavailable" : soldOut ? "Sold out" : justAdded ? "Added!" : "Add to cart"}
           </button>
         </div>
       </div>
