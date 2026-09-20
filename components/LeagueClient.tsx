@@ -471,6 +471,49 @@ export default function LeagueClient() {
     [seasonStatsAll, season]
   );
 
+  // Players who actually appear in the selected season -- pulled from Stats,
+  // Standings, and Weekly rows together (rather than just one) so a player
+  // never goes missing from the picker just because one of those tabs
+  // happened to sync slightly ahead of the others. Falls back to the full
+  // roster if data hasn't loaded for a season yet.
+  const seasonPlayers = useMemo(() => {
+    if (!season) return players;
+    const names = new Set<string>();
+    for (const row of selectedSeasonStats) names.add(getPlayer(row));
+    for (const row of data?.standings || []) {
+      if (getSeason(row, season) === season) {
+        const name = getPlayer(row);
+        if (isValidPlayerName(name)) names.add(name);
+      }
+    }
+    for (const row of allWeeklyMerged) {
+      if (getSeason(row) === season) names.add(getPlayer(row));
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [players, selectedSeasonStats, data, season, allWeeklyMerged]);
+
+  // The Players and All-Time tabs are explicitly about a player across (or
+  // regardless of) season, so the picker there stays the full roster rather
+  // than whoever happened to play in whatever season the top bar has active.
+  const playerPickerOptions = tab === "players" || tab === "alltime" ? players : seasonPlayers;
+
+  // If the currently selected player didn't play in whatever season you just
+  // switched to, drop back to "All Players" instead of silently showing a
+  // player who has nothing to do with this season. Only fires on an actual
+  // season *change* (tracked via prevSeasonRef) -- never on the initial load
+  // (so a shared profile link still lands correctly), and never while on the
+  // Players/All-Time tabs, where a player's selection is season-independent.
+  const prevSeasonRef = useRef("");
+  useEffect(() => {
+    if (!urlReady) return;
+    if (prevSeasonRef.current && prevSeasonRef.current !== season) {
+      if (tab !== "players" && tab !== "alltime" && player !== "All Players" && !seasonPlayers.includes(player)) {
+        setPlayer("All Players");
+      }
+    }
+    prevSeasonRef.current = season;
+  }, [season, seasonPlayers, urlReady, player, tab]);
+
   const dashboardStandings = useMemo(() => {
     if (dashboardWeek === "All Weeks") {
       return (data?.standings || [])
@@ -763,7 +806,7 @@ export default function LeagueClient() {
 
             <div className="w-full md:w-64">
               <label className="text-xs font-bold uppercase text-[#f04a22]">Player</label>
-              <PlayerCombobox players={players} value={player} onChange={setPlayer} allLabel="All Players" />
+              <PlayerCombobox players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
             </div>
 
             <div>
@@ -839,7 +882,7 @@ export default function LeagueClient() {
                   onChange={(e) => setStatsPlayerFilter(e.target.value)}
                 />
                 <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-neutral-800 bg-[#101010] p-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {players.filter((p) => p.toLowerCase().includes(statsPlayerFilter.toLowerCase())).map((p) => (
+                  {seasonPlayers.filter((p) => p.toLowerCase().includes(statsPlayerFilter.toLowerCase())).map((p) => (
                     <label key={p} className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
@@ -948,7 +991,14 @@ export default function LeagueClient() {
                   </select>
                 </div>
 
-                <PlayerStatsSummary row={profileSeasonStats[profileSeasonStats.length - 1]} />
+                {profileSeason === "All Seasons" ? (
+                  <CareerStatsSummary
+                    row={careerRows.find((r) => r.name === selectedProfilePlayer)}
+                    columns={careerColumns}
+                  />
+                ) : (
+                  <PlayerStatsSummary row={profileSeasonStats[profileSeasonStats.length - 1]} />
+                )}
 
                 <div>
                   <h3 className="mb-3 text-lg font-black text-[#f04a22]">Season Finishes</h3>
@@ -1026,10 +1076,10 @@ export default function LeagueClient() {
           <Card title="Compare Players">
             <div className="mb-4 flex flex-wrap gap-3">
               <div className="w-full sm:w-64">
-                <PlayerCombobox players={players} value={compareA} onChange={setCompareA} placeholder="Player A" />
+                <PlayerCombobox players={seasonPlayers} value={compareA} onChange={setCompareA} placeholder="Player A" />
               </div>
               <div className="w-full sm:w-64">
-                <PlayerCombobox players={players} value={compareB} onChange={setCompareB} placeholder="Player B" />
+                <PlayerCombobox players={seasonPlayers} value={compareB} onChange={setCompareB} placeholder="Player B" />
               </div>
             </div>
             <CompareTable statA={statA} statB={statB} />
@@ -1347,6 +1397,22 @@ function PlayerStatsSummary({ row }: { row: any }) {
     <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
       {statColumns.slice(1).map((col) => (
         <MiniStat key={col.label} label={col.label} value={formatValue(getStatValue(row, col.keys), col.decimals)} />
+      ))}
+    </div>
+  );
+}
+
+// Career-aggregate version of PlayerStatsSummary, shown instead when the
+// profile's season filter is set to "All Seasons" -- previously that setting
+// still just showed the single most recent season's numbers (whichever
+// season happened to sort last), which looked identical to picking that
+// season directly and made "All Seasons" seem broken.
+function CareerStatsSummary({ row, columns }: { row: any; columns: { key: string; label: string; decimals: number }[] }) {
+  if (!row) return <p className="text-neutral-400">No career stats found for this player.</p>;
+  return (
+    <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
+      {columns.map((col) => (
+        <MiniStat key={col.key} label={col.label} value={formatValue(row[col.key], col.decimals)} />
       ))}
     </div>
   );
