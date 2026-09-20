@@ -617,8 +617,20 @@ function computeWeeklyBadges(weekRows: any[], seasonWeekScores: any[], weekNumbe
       .filter((row) => isValidPlayerName(getPlayer(row)) && numberVal(row.WeekNumber) === weekNumber - 1)
       .map((row) => [getPlayer(row), numberVal(row.Score)])
   );
+  // Someone who sat out last week and is just showing up this week isn't a
+  // "riser" -- that's not an improvement over anything. Requiring an actual
+  // played row for the prior week (rather than just a non-null score) also
+  // guards against a sheet that zero-fills a bye week's score instead of
+  // leaving the cell blank, which would otherwise look like a huge jump
+  // from 0.
+  const playedPrevWeek = new Set(
+    allWeeklyForSeason
+      .filter((row) => isValidPlayerName(getPlayer(row)) && numberVal(getWeek(row)) === weekNumber - 1)
+      .map((row) => getPlayer(row))
+  );
   const riserEntries = scoreEntries
     .map((entry) => {
+      if (!playedPrevWeek.has(entry.name)) return null;
       const prev = prevWeekScores.get(entry.name);
       if (prev === undefined) return null;
       return { name: entry.name, value: entry.value - prev };
@@ -631,7 +643,7 @@ function computeWeeklyBadges(weekRows: any[], seasonWeekScores: any[], weekNumbe
       id: "biggest-riser",
       icon: "📈",
       title: "Biggest Riser",
-      description: "Biggest jump in weekly score vs. last week.",
+      description: "Biggest jump in weekly score vs. last week (must have played both weeks).",
       winners,
       display: value !== null ? `+${formatValue(value, 0)} pts` : "",
     });
