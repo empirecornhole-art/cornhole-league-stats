@@ -1387,7 +1387,7 @@ export default function LeagueClient() {
               <button
                 key={item.id}
                 onClick={() => setTab(item.id)}
-                className={`rounded-full px-4 py-2 text-sm font-bold ${tab === item.id ? "bg-[#f04a22] text-white" : "bg-neutral-900 text-neutral-300 hover:bg-neutral-800"}`}
+                className={`rounded-full border px-4 py-2 font-sans text-sm font-bold uppercase tracking-wide transition duration-200 ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary hover:border-white/35 hover:text-brand-text"}`}
               >
                 {item.label}
               </button>
@@ -1732,7 +1732,11 @@ export default function LeagueClient() {
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-black/95 p-2 md:hidden">
         <div className="grid grid-cols-4 gap-1">
           {navItems.map((item) => (
-            <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-lg px-1 py-3 text-[11px] font-bold ${tab === item.id ? "bg-[#f04a22]" : "bg-[#1d1d1d]"}`}>
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={`rounded-full border px-1 py-3 font-sans text-[11px] font-bold uppercase tracking-wide transition duration-200 ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
+            >
               {item.label}
             </button>
           ))}

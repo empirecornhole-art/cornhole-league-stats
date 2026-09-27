@@ -13,8 +13,40 @@ body { background:#080808; color:#f5f5f5; }
   animation: fadeSlideIn 0.28s ease-out;
 }
 
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-fade-in {
+  animation: pageFadeIn 0.45s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .tab-transition {
+  .tab-transition,
+  .page-fade-in {
     animation: none;
   }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-brand-orange px-8 py-4 font-sans text-sm font-bold uppercase tracking-wide text-brand-bg transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-brand-orangeHover hover:shadow-[0_10px_30px_-8px_rgba(240,74,34,0.65)];
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border-2 border-white/35 bg-transparent px-8 py-4 font-sans text-sm font-bold uppercase tracking-wide text-brand-text transition duration-200 ease-out hover:-translate-y-0.5 hover:border-white;
+  }
+  .btn-nav-cta {
+    @apply inline-flex items-center justify-center rounded-full bg-brand-orange px-5 py-2.5 font-sans text-xs font-bold uppercase tracking-wide text-brand-bg transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-brand-orangeHover hover:shadow-[0_10px_30px_-8px_rgba(240,74,34,0.65)];
+  }
+}
+
+.hairline-bg {
+  background-image: repeating-linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.035) 0px,
+    rgba(255, 255, 255, 0.035) 1px,
+    transparent 1px,
+    transparent 64px
+  );
 }
