@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { getSiteSettings } from "../../lib/settings";
 
 const EXPLORE_LINKS = [
   { href: "/", label: "Home" },
@@ -8,7 +9,11 @@ const EXPLORE_LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-export default function Footer() {
+export default async function Footer() {
+  const settings = await getSiteSettings();
+  const facebookUrl = settings.facebook_url || "https://facebook.com/empirecornhole";
+  const instagramUrl = settings.instagram_url || "https://instagram.com/empirecornhole";
+
   return (
     <footer className="border-t border-white/10 bg-brand-panel">
       <div className="mx-auto max-w-7xl px-4 py-14 md:px-6">
@@ -57,7 +62,7 @@ export default function Footer() {
             <ul className="mt-4 space-y-2">
               <li>
                 <a
-                  href="https://facebook.com/empirecornhole"
+                  href={facebookUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-sans text-sm text-brand-textSecondary transition duration-200 hover:text-brand-orange"
@@ -67,7 +72,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="https://instagram.com/empirecornhole"
+                  href={instagramUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-sans text-sm text-brand-textSecondary transition duration-200 hover:text-brand-orange"

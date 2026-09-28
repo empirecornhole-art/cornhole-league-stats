@@ -1,24 +1,50 @@
 import FadeIn from "../../components/site/FadeIn";
+import { getSiteSettings } from "../../lib/settings";
 
-const INFO_CARDS = [
-  {
-    label: "Email",
-    icon: <EmailIcon />,
-    lines: ["info@empirecornhole.com", "We reply within a couple of days."],
-  },
-  {
-    label: "Where We Play",
-    icon: <PinIcon />,
-    lines: ["Pittsfield Firehouse", "167 State Route 80, New Berlin, NY"],
-  },
-  {
-    label: "Follow The League",
-    icon: <StarIcon />,
-    lines: ["@empirecornhole on Instagram & Facebook"],
-  },
-];
+export const dynamic = "force-dynamic";
 
-export default function ContactPage() {
+function socialHandle(url: string): string {
+  if (!url) return "";
+  try {
+    const path = new URL(url).pathname.replace(/^\/|\/$/g, "");
+    return path ? `@${path}` : url;
+  } catch {
+    return url;
+  }
+}
+
+export default async function ContactPage() {
+  const settings = await getSiteSettings();
+
+  const followLines: string[] = [];
+  if (settings.instagram_url || settings.facebook_url) {
+    const handles = [
+      settings.instagram_url && `${socialHandle(settings.instagram_url)} on Instagram`,
+      settings.facebook_url && `${socialHandle(settings.facebook_url)} on Facebook`,
+    ].filter(Boolean);
+    followLines.push(handles.join(" & "));
+  } else {
+    followLines.push("Find us on Instagram & Facebook.");
+  }
+
+  const infoCards = [
+    {
+      label: "Email",
+      icon: <EmailIcon />,
+      lines: [settings.contact_email || "info@empirecornhole.com", "We reply within a couple of days."],
+    },
+    {
+      label: "Where We Play",
+      icon: <PinIcon />,
+      lines: [settings.venue_name, settings.venue_address].filter(Boolean),
+    },
+    {
+      label: "Follow The League",
+      icon: <StarIcon />,
+      lines: followLines,
+    },
+  ];
+
   return (
     <main className="bg-brand-bg">
       <section className="relative overflow-hidden">
@@ -41,7 +67,7 @@ export default function ContactPage() {
         <FadeIn className="mx-auto max-w-6xl px-4 py-16 md:px-6">
           <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
             <div className="flex flex-col gap-4">
-              {INFO_CARDS.map((card) => (
+              {infoCards.map((card) => (
                 <div key={card.label} className="flex gap-4 rounded-2xl border border-white/10 bg-brand-bg p-6">
                   <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover">
                     {card.icon}

@@ -1,13 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import FadeIn from "../components/site/FadeIn";
+import { getUpcomingEvents } from "../lib/events";
+import { getSiteSettings } from "../lib/settings";
+import { formatEventDateParts, formatEventDateShort } from "../lib/format";
 
-// TODO: replace with real event data (shared shape with /events)
-const UPCOMING_EVENTS = [
-  { day: "12", month: "OCT", title: "Blind Draw Night — Week 13", meta: "6:30 PM · Pittsfield Firehouse" },
-  { day: "19", month: "OCT", title: "Swap Night — Week 14", meta: "6:30 PM · Pittsfield Firehouse" },
-  { day: "02", month: "NOV", title: "End of Summer Championship", meta: "12:00 PM · Empire Fairgrounds" },
-];
+export const dynamic = "force-dynamic";
 
 const FEATURES = [
   {
@@ -36,7 +34,43 @@ const FEATURES = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  let upcomingEvents: {
+    id: string;
+    day: string;
+    month: string;
+    title: string;
+    meta: string;
+    event_date: string;
+  }[] = [];
+  let seasonLabel = "";
+  let currentWeek = "";
+
+  try {
+    const [events, settings] = await Promise.all([getUpcomingEvents(3), getSiteSettings()]);
+    upcomingEvents = events.map((event) => {
+      const { day, month } = formatEventDateParts(event.event_date);
+      return {
+        id: event.id,
+        day,
+        month,
+        title: event.title,
+        meta: [event.time, event.location].filter(Boolean).join(" · "),
+        event_date: event.event_date,
+      };
+    });
+    seasonLabel = settings.season_label;
+    currentWeek = settings.current_week;
+  } catch (error) {
+    console.error("Failed to load homepage data:", error);
+  }
+
+  const nextEvent = upcomingEvents[0];
+  const weekLine = currentWeek && seasonLabel ? `Week ${currentWeek} of ${seasonLabel}` : "";
+  const nextEventLine = nextEvent
+    ? `Next Event: ${nextEvent.title} — ${formatEventDateShort(nextEvent.event_date)}`
+    : "";
+
   return (
     <main className="bg-brand-bg">
       {/* Hero */}
@@ -88,10 +122,11 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* TODO: wire to real season/event data */}
-          <div className="mt-16 rounded-full border border-white/10 bg-brand-panel/60 px-6 py-3 font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
-            Week 13 of Summer &apos;26 &middot; Next Event: Sat, Oct 12
-          </div>
+          {(weekLine || nextEventLine) && (
+            <div className="mt-16 rounded-full border border-white/10 bg-brand-panel/60 px-6 py-3 font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+              {[weekLine, nextEventLine].filter(Boolean).join(" · ")}
+            </div>
+          )}
         </FadeIn>
       </section>
 
@@ -146,25 +181,33 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
-            {UPCOMING_EVENTS.map((event) => (
-              <div
-                key={event.title}
-                className="flex gap-4 rounded-2xl border border-white/10 bg-brand-panel p-6"
-              >
-                <div className="flex h-16 w-16 flex-none flex-col items-center justify-center rounded-xl bg-brand-bg">
-                  <span className="font-display text-2xl leading-none text-brand-orange">{event.day}</span>
-                  <span className="mt-1 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-textMuted">
-                    {event.month}
-                  </span>
+          {upcomingEvents.length === 0 ? (
+            <p className="mt-12 rounded-2xl border border-white/10 bg-brand-panel p-6 font-sans text-sm text-brand-textSecondary">
+              No events scheduled yet — check back soon.
+            </p>
+          ) : (
+            <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+              {upcomingEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex gap-4 rounded-2xl border border-white/10 bg-brand-panel p-6"
+                >
+                  <div className="flex h-16 w-16 flex-none flex-col items-center justify-center rounded-xl bg-brand-bg">
+                    <span className="font-display text-2xl leading-none text-brand-orange">{event.day}</span>
+                    <span className="mt-1 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-textMuted">
+                      {event.month}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg uppercase leading-tight text-brand-text">{event.title}</h3>
+                    {event.meta && (
+                      <p className="mt-2 font-sans text-sm text-brand-textSecondary">{event.meta}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display text-lg uppercase leading-tight text-brand-text">{event.title}</h3>
-                  <p className="mt-2 font-sans text-sm text-brand-textSecondary">{event.meta}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </FadeIn>
       </section>
 
