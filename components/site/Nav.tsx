@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -15,6 +15,36 @@ const NAV_LINKS = [
 export default function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  // Close on navigation (covers back/forward, not just link clicks).
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // While open: lock page scroll behind the menu, close on Escape, and close
+  // if the viewport grows past the mobile breakpoint.
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const onResize = () => {
+      if (desktop.matches) setOpen(false);
+    };
+
+    window.addEventListener("keydown", onKey);
+    desktop.addEventListener("change", onResize);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+      desktop.removeEventListener("change", onResize);
+    };
+  }, [open]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-brand-bg/95 backdrop-blur supports-[backdrop-filter]:bg-brand-bg/85">
@@ -81,7 +111,7 @@ export default function Nav() {
       </div>
 
       {open && (
-        <div className="border-t border-white/10 bg-brand-bg px-4 pb-6 pt-2 md:hidden">
+        <div className="menu-in max-h-[calc(100dvh-var(--nav-h))] overflow-y-auto border-t border-white/10 bg-brand-bg px-4 pb-6 pt-2 md:hidden">
           <nav className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => {
               const active = pathname === link.href;

@@ -37,10 +37,10 @@ export default async function EventsPage() {
     <main className="bg-brand-bg">
       <section className="relative overflow-hidden">
         <div
-          className="pointer-events-none absolute -top-32 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-brand-orange/20 blur-[120px]"
+          className="pointer-events-none absolute -top-32 left-1/2 h-[300px] w-[360px] -translate-x-1/2 rounded-full bg-brand-orange/20 blur-[90px] md:h-[420px] md:w-[720px] md:blur-[120px]"
           aria-hidden
         />
-        <FadeIn className="relative mx-auto max-w-4xl px-4 py-20 text-center md:py-28">
+        <FadeIn className="relative mx-auto max-w-4xl px-4 py-16 text-center md:px-6 md:py-28">
           <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
             Schedule
           </span>

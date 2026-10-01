@@ -51,3 +51,27 @@ body { background:#0d0c0b; color:#f5f5f0; }
     transparent 64px
   );
 }
+
+/* Horizontal scroll hint: edge shadows appear only on the side that has more
+   content (covers are attached `local`, shadows `scroll`). Background color
+   must match the card the table sits in (brand.panel). */
+.scroll-shadow-x {
+  background:
+    linear-gradient(to right, #141210 30%, rgba(20, 18, 16, 0)) left center / 40px 100% no-repeat local,
+    linear-gradient(to left, #141210 30%, rgba(20, 18, 16, 0)) right center / 40px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(255, 255, 255, 0.14), transparent) left center / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(255, 255, 255, 0.14), transparent) right center / 14px 100% no-repeat scroll;
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.menu-in {
+  animation: menuIn 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-in { animation: menuIn 1ms; }
+}

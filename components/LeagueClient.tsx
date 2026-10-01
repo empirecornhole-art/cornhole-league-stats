@@ -1989,7 +1989,7 @@ function RankedList({ rows }: { rows: { name: string; points: number }[] }) {
 
 function StandingsTable({ rows }: { rows: { name: string; points: number }[] }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="scroll-shadow-x overflow-x-auto">
       <table className="w-full text-sm">
         <thead><tr className="text-left text-brand-textMuted"><th className="p-2">#</th><th className="p-2">Player</th><th className="p-2">Points</th></tr></thead>
         <tbody>
@@ -2025,7 +2025,7 @@ function RankChangeBadge({ change }: { change: number | null }) {
 
 function WeeklyTable({ rows }: { rows: any[] }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="scroll-shadow-x overflow-x-auto">
       <table className="w-full text-[12px]">
         <thead>
           <tr className="text-left text-brand-textMuted">
@@ -2076,7 +2076,7 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
           </div>
         ))}
       </div>
-      <div className="hidden overflow-x-auto md:block">
+      <div className="scroll-shadow-x hidden overflow-x-auto md:block">
         <table className="w-full min-w-[1150px] text-[12px]">
           <thead>
             <tr className="text-left text-brand-textMuted">
@@ -2139,7 +2139,7 @@ function CareerStatsTable({
           </div>
         ))}
       </div>
-      <div className="hidden overflow-x-auto md:block">
+      <div className="scroll-shadow-x hidden overflow-x-auto md:block">
         <table className="w-full min-w-[1150px] text-[12px]">
           <thead>
             <tr className="text-left text-brand-textMuted">
@@ -2199,7 +2199,7 @@ function CareerStatsSummary({ row, columns }: { row: any; columns: { key: string
 
 function SeasonFinishesTable({ rows }: { rows: any[] }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="scroll-shadow-x overflow-x-auto">
       <table className="w-full text-sm">
         <thead><tr className="text-left text-brand-textMuted"><th className="p-2">Season</th><th className="p-2">Finish</th><th className="p-2">PPR</th><th className="p-2">DPR</th><th className="p-2">OPPR</th><th className="p-2">Points</th><th className="p-2">Rounds</th><th className="p-2">4 Baggers</th></tr></thead>
         <tbody>
@@ -2225,7 +2225,7 @@ function ScenarioTable({
   selectedPlayer: string;
 }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="scroll-shadow-x overflow-x-auto">
       <table className="w-full min-w-[950px] text-sm">
         <thead>
           <tr className="text-left text-brand-textMuted">
@@ -2276,7 +2276,7 @@ function ScenarioTable({
 
 function CompareTable({ statA, statB }: { statA: any; statB: any }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="scroll-shadow-x overflow-x-auto">
       <table className="w-full text-sm">
         <tbody>
           {statColumns.map((col) => (

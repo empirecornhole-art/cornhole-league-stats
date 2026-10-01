@@ -79,13 +79,13 @@ export default async function Home() {
       <section className="relative overflow-hidden">
         <div className="hairline-bg absolute inset-0" />
         <div
-          className="absolute -top-40 right-[-10%] h-[640px] w-[640px] rounded-full bg-brand-orange/25 blur-[140px]"
+          className="absolute -top-32 right-[-20%] h-[360px] w-[360px] rounded-full bg-brand-orange/25 blur-[100px] md:-top-40 md:right-[-10%] md:h-[640px] md:w-[640px] md:blur-[140px]"
           aria-hidden
         />
 
         {/* Watermark layer 1: ambient far layer */}
         <div
-          className="pointer-events-none absolute -right-40 -top-24 h-[520px] w-[900px] opacity-5 blur-sm"
+          className="pointer-events-none absolute -right-40 -top-24 hidden h-[520px] w-[900px] opacity-5 blur-sm md:block"
           style={{ transform: "rotate(16deg)" }}
           aria-hidden
         >
@@ -94,7 +94,7 @@ export default async function Home() {
 
         {/* Watermark layer 3: primary mark, edge-masked */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[520px] w-full max-w-4xl opacity-[0.12]"
+          className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[360px] w-full max-w-4xl opacity-[0.12] md:h-[520px]"
           style={{
             transform: "rotate(-9deg)",
             maskImage: "radial-gradient(ellipse at center, black 40%, transparent 75%)",
@@ -105,17 +105,17 @@ export default async function Home() {
           <Image src="/ec-logo-full.png" alt="" fill className="object-contain" />
         </div>
 
-        <FadeIn className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-28 text-center md:py-36">
+        <FadeIn className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-16 text-center sm:py-24 md:px-6 md:py-36">
           <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
             Empire Cornhole League
           </span>
-          <h1 className="mt-5 font-display text-6xl uppercase leading-[0.95] text-brand-text md:text-8xl">
+          <h1 className="mt-5 font-display text-5xl uppercase leading-[0.95] text-brand-text sm:text-6xl md:text-8xl">
             Where every <span className="text-brand-orange">bag</span> counts.
           </h1>
-          <p className="mt-6 max-w-2xl font-sans text-lg text-brand-textSecondary">
+          <p className="mt-6 max-w-2xl font-sans text-base text-brand-textSecondary sm:text-lg">
             Weekly blind draws, swap nights, and the standings that decide who&apos;s really got game. This is home.
           </p>
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+          <div className="mt-8 flex w-full flex-col gap-3 sm:mt-10 sm:w-auto sm:flex-row sm:gap-4">
             <Link href="/leagues" className="btn-primary">
               View Live Standings
             </Link>
@@ -125,7 +125,7 @@ export default async function Home() {
           </div>
 
           {(weekLine || nextEventLine) && (
-            <div className="mt-16 rounded-full border border-white/10 bg-brand-panel/60 px-6 py-3 font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+            <div className="mt-12 rounded-2xl border border-white/10 bg-brand-panel/60 px-5 py-3 font-sans text-xs font-bold uppercase leading-relaxed tracking-wide text-brand-textMuted sm:mt-16 sm:rounded-full sm:px-6 sm:tracking-widest">
               {[weekLine, nextEventLine].filter(Boolean).join(" · ")}
             </div>
           )}
@@ -134,7 +134,7 @@ export default async function Home() {
 
       {/* Feature grid */}
       <section className="bg-brand-panel">
-        <FadeIn className="mx-auto max-w-7xl px-4 py-24 md:px-6">
+        <FadeIn className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
           <div className="mx-auto max-w-2xl text-center">
             <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
               What&apos;s Inside
@@ -147,7 +147,7 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="mt-14 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+          <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {FEATURES.map((feature) => (
               <Link
                 key={feature.title}
@@ -170,7 +170,7 @@ export default async function Home() {
 
       {/* Upcoming events preview */}
       <section className="bg-brand-bg">
-        <FadeIn className="mx-auto max-w-7xl px-4 py-24 md:px-6">
+        <FadeIn className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
               <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
@@ -225,7 +225,7 @@ export default async function Home() {
 
       {/* Store teaser */}
       <section className="bg-brand-panel">
-        <FadeIn className="mx-auto max-w-7xl px-4 py-24 md:px-6">
+        <FadeIn className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
           <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
             <div>
               <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
