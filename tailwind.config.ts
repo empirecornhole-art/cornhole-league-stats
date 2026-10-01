@@ -1,6 +1,9 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
+  // Emit hover: styles only under @media (hover: hover), so tapping on a
+  // phone doesn't leave cards and buttons stuck in their hover state.
+  future: { hoverOnlyWhenSupported: true },
   content: ['./app/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {

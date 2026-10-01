@@ -30,7 +30,7 @@ export default function EventsListToggle({
         <button
           type="button"
           onClick={() => setView("upcoming")}
-          className={`rounded-full px-5 py-2 font-sans text-xs font-bold uppercase tracking-wide transition duration-200 ${
+          className={`rounded-full px-5 py-2 font-sans text-xs font-bold uppercase tracking-wide transition-[transform,background-color,color] duration-200 active:scale-[0.97] ${
             view === "upcoming" ? "bg-brand-orange text-brand-bg" : "text-brand-textMuted"
           }`}
         >
@@ -39,7 +39,7 @@ export default function EventsListToggle({
         <button
           type="button"
           onClick={() => setView("past")}
-          className={`rounded-full px-5 py-2 font-sans text-xs font-bold uppercase tracking-wide transition duration-200 ${
+          className={`rounded-full px-5 py-2 font-sans text-xs font-bold uppercase tracking-wide transition-[transform,background-color,color] duration-200 active:scale-[0.97] ${
             view === "past" ? "bg-brand-orange text-brand-bg" : "text-brand-textMuted"
           }`}
         >

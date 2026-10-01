@@ -1,7 +1,5 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
+// Fade-and-rise on first paint. Pure CSS (see .page-fade-in in globals.css),
+// so content isn't held invisible until JavaScript hydrates.
 export default function FadeIn({
   children,
   className = "",
@@ -9,11 +7,5 @@ export default function FadeIn({
   children: React.ReactNode;
   className?: string;
 }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  return <div className={`${mounted ? "page-fade-in" : "opacity-0"} ${className}`}>{children}</div>;
+  return <div className={`page-fade-in ${className}`}>{children}</div>;
 }

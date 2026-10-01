@@ -1386,7 +1386,7 @@ export default function LeagueClient() {
               <button
                 key={item.id}
                 onClick={() => setTab(item.id)}
-                className={`rounded-full border px-4 py-2 font-sans text-sm font-bold uppercase tracking-wide transition duration-200 ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary hover:border-white/35 hover:text-brand-text"}`}
+                className={`rounded-full border px-4 py-2 font-sans text-sm font-bold uppercase tracking-wide transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary hover:border-white/35 hover:text-brand-text"}`}
               >
                 {item.label}
               </button>
@@ -1734,7 +1734,7 @@ export default function LeagueClient() {
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
-              className={`rounded-full border px-1 py-3 font-sans text-xs font-bold uppercase tracking-wide transition duration-200 ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
+              className={`rounded-full border px-1 py-3 font-sans text-xs font-bold uppercase tracking-wide transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
             >
               {item.label}
             </button>
@@ -1831,20 +1831,20 @@ function PlayerCombobox({
 // Gray placeholder boxes shaped like the real page, shown while the season's
 // data is loading client-side. Replaces the old plain "Loading..." text so
 // the first impression of the site feels finished rather than broken.
-function LoadingSkeleton() {
+export function LoadingSkeleton() {
   return (
-    <main className="min-h-screen animate-pulse bg-brand-bg pb-24 text-brand-text">
+    <main className="min-h-screen bg-brand-bg pb-24 text-brand-text">
       <header className="border-b border-white/10 bg-brand-panel">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="space-y-2">
-              <div className="h-6 w-40 rounded bg-white/10" />
-              <div className="h-4 w-64 rounded bg-white/10" />
+              <div className="h-6 w-40 rounded animate-pulse bg-white/10" />
+              <div className="h-4 w-64 rounded animate-pulse bg-white/10" />
             </div>
           </div>
           <div className="hidden flex-wrap gap-2 md:flex">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-9 w-24 rounded-full bg-white/10" />
+              <div key={i} className="h-9 w-24 rounded-full animate-pulse bg-white/10" />
             ))}
           </div>
         </div>
@@ -1855,11 +1855,11 @@ function LoadingSkeleton() {
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="space-y-2">
-                <div className="h-3 w-16 rounded bg-white/10" />
-                <div className="h-10 w-40 rounded-lg bg-white/10" />
+                <div className="h-3 w-16 rounded animate-pulse bg-white/10" />
+                <div className="h-10 w-40 rounded-lg animate-pulse bg-white/10" />
               </div>
             ))}
-            <div className="h-4 w-32 rounded bg-white/10" />
+            <div className="h-4 w-32 rounded animate-pulse bg-white/10" />
           </div>
         </div>
       </section>
@@ -1868,15 +1868,15 @@ function LoadingSkeleton() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-24 rounded-xl border border-white/10 bg-brand-bg p-4">
-              <div className="h-3 w-20 rounded bg-white/10" />
-              <div className="mt-3 h-8 w-16 rounded bg-white/10" />
+              <div className="h-3 w-20 rounded animate-pulse bg-white/10" />
+              <div className="mt-3 h-8 w-16 rounded animate-pulse bg-white/10" />
             </div>
           ))}
         </div>
 
         <div className="space-y-2 rounded-xl border border-white/10 bg-brand-bg p-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-8 rounded bg-white/10" />
+            <div key={i} className="h-8 rounded animate-pulse bg-white/10" />
           ))}
         </div>
       </section>

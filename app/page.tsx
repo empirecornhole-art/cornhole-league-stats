@@ -161,7 +161,7 @@ export default async function Home() {
               <Link
                 key={feature.title}
                 href={feature.href}
-                className="group flex flex-col rounded-2xl border border-white/10 bg-brand-bg p-6 transition duration-200 hover:-translate-y-1 hover:border-white/20"
+                className="group flex flex-col rounded-2xl border border-white/10 bg-brand-bg p-6 transition-[transform,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1 hover:border-white/20 active:scale-[0.98]"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover text-brand-bg">
                   {feature.icon}

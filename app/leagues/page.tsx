@@ -1,9 +1,9 @@
 import { Suspense } from "react";
-import LeagueClient from "../../components/LeagueClient";
+import LeagueClient, { LoadingSkeleton } from "../../components/LeagueClient";
 
 export default function LeaguePage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-black p-6 text-white">Loading League Stats...</main>}>
+    <Suspense fallback={<LoadingSkeleton />}>
       <LeagueClient />
     </Suspense>
   );
