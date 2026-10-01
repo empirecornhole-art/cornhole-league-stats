@@ -9,25 +9,25 @@ export const dynamic = "force-dynamic";
 
 const FEATURES = [
   {
-    href: "/league?tab=standings",
+    href: "/leagues?tab=standings",
     title: "Standings",
     desc: "See where every team sits in the current season, updated after every week of play.",
     icon: <StandingsIcon />,
   },
   {
-    href: "/league?tab=weeks",
+    href: "/leagues?tab=weeks",
     title: "Weekly Results",
     desc: "Dig into scores, matchups, and results from any week of the season.",
     icon: <WeeklyIcon />,
   },
   {
-    href: "/league?tab=alltime",
+    href: "/leagues?tab=alltime",
     title: "All-Time Leaders",
     desc: "Career stats and records for every player who's ever picked up a bag.",
     icon: <AllTimeIcon />,
   },
   {
-    href: "/league?tab=badges",
+    href: "/leagues?tab=badges",
     title: "Badges",
     desc: "Track the achievements and milestones players earn week to week.",
     icon: <BadgesIcon />,
@@ -225,7 +225,7 @@ export default async function Home() {
               <p className="mt-4 max-w-md font-sans text-brand-textSecondary">
                 League tees, hoodies, and bags &mdash; show up looking like you belong on the board.
               </p>
-              <Link href="/league?tab=store" className="btn-primary mt-8 inline-flex">
+              <Link href="/leagues?tab=store" className="btn-primary mt-8 inline-flex">
                 Shop the Store
               </Link>
             </div>

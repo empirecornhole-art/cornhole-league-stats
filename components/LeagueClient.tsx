@@ -815,7 +815,7 @@ function podiumStyle(rank: number) {
       textClass: "text-amber-500",
     };
   }
-  return { medal: null, rowClass: "", textClass: "text-[#f04a22]" };
+  return { medal: null, rowClass: "", textClass: "text-brand-orange" };
 }
 
 // Turns a timestamp into "3 minutes ago" style text. Falls back to a plain
@@ -853,7 +853,7 @@ function LastUpdated({ value }: { value?: string }) {
   }, []);
 
   return (
-    <div className="text-sm text-neutral-400" title={value ? new Date(value).toLocaleString() : undefined}>
+    <div className="text-sm text-brand-textMuted" title={value ? new Date(value).toLocaleString() : undefined}>
       Last updated: {formatRelativeTime(value)}
     </div>
   );
@@ -1371,14 +1371,13 @@ export default function LeagueClient() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#070707] pb-24 text-white">
-      <header className="border-b border-[#2a2a2a] bg-gradient-to-r from-black via-[#151515] to-[#f04a22]/20">
+    <main className="min-h-screen bg-brand-bg text-brand-text">
+      <header className="border-b border-white/10 bg-brand-panel">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <img src="/ec-logo.png" alt="Empire Cornhole" className="h-16 w-20 rounded-xl bg-white object-contain p-1" />
             <div>
-              <h1 className="text-3xl font-black tracking-tight">League Stats</h1>
-              <p className="text-sm text-neutral-300">Empire Cornhole standings, weekly results, and player stats.</p>
+              <h1 className="font-display text-4xl uppercase text-brand-text md:text-5xl">League Stats</h1>
+              <p className="text-sm text-brand-textSecondary">Empire Cornhole standings, weekly results, and player stats.</p>
             </div>
           </div>
 
@@ -1397,13 +1396,13 @@ export default function LeagueClient() {
       </header>
 
       {tab !== "store" && (
-        <section className="sticky top-0 z-20 mx-auto max-w-7xl bg-[#070707]/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-[#070707]/85">
-          <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
+        <section className="sticky top-[calc(var(--nav-h)+1px)] z-20 mx-auto max-w-7xl bg-brand-bg/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-brand-bg/85">
+          <div className="rounded-2xl border border-white/10 bg-brand-panel p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-end">
               <div>
-                <label className="text-xs font-bold uppercase text-[#f04a22]">Season</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-brand-textMuted">Season</label>
                 <select
-                  className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white"
+                  className="block rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-brand-text"
                   value={season}
                   onChange={(e) => {
                     setSeason(e.target.value);
@@ -1417,13 +1416,13 @@ export default function LeagueClient() {
               </div>
 
               <div className="w-full md:w-64">
-                <label className="text-xs font-bold uppercase text-[#f04a22]">Player</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-brand-textMuted">Player</label>
                 <PlayerCombobox players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase text-[#f04a22]">Dashboard Week</label>
-                <select className="block rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
+                <label className="text-xs font-bold uppercase tracking-widest text-brand-textMuted">Dashboard Week</label>
+                <select className="block rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-brand-text" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
                   {dashboardWeeks.map((w) => (
                     <option key={w}>{w}</option>
                   ))}
@@ -1453,7 +1452,7 @@ export default function LeagueClient() {
                   <MiniStat key={item.label} label={item.label} value={item.value} />
                 ))}
               </div>
-              <p className="mt-4 text-sm text-neutral-400">Individual player stat tables are now under the Stats tab.</p>
+              <p className="mt-4 text-sm text-brand-textMuted">Individual player stat tables are now under the Stats tab.</p>
             </Card>
           </>
         )}
@@ -1467,19 +1466,19 @@ export default function LeagueClient() {
         {tab === "weeks" && (
           <Card title="Weekly Results">
             <div className="mb-4 flex flex-wrap gap-3">
-              <select className="rounded-lg bg-[#242424] p-2" value={type} onChange={(e) => { setType(e.target.value as "Blind" | "Swap"); setWeek(""); }}>
+              <select className="rounded-lg bg-brand-raisedHover p-2" value={type} onChange={(e) => { setType(e.target.value as "Blind" | "Swap"); setWeek(""); }}>
                 <option>Blind</option>
                 <option>Swap</option>
               </select>
 
-              <select className="rounded-lg bg-[#242424] p-2" value={week} onChange={(e) => setWeek(e.target.value)}>
+              <select className="rounded-lg bg-brand-raisedHover p-2" value={week} onChange={(e) => setWeek(e.target.value)}>
                 {weeks.map((w) => (
                   <option key={w}>{w}</option>
                 ))}
               </select>
             </div>
 
-            <h3 className="mb-2 text-lg font-black text-[#f04a22]">Standings</h3>
+            <h3 className="mb-2 font-display text-lg uppercase text-brand-orange">Standings</h3>
             <WeeklyTable rows={visibleWeekRows} />
             <EventSummary rows={visibleWeekRows} />
           </Card>
@@ -1489,14 +1488,14 @@ export default function LeagueClient() {
           <Card title="Season Stats">
             <div className="mb-4 space-y-3">
               <div>
-                <div className="mb-2 text-sm font-bold text-neutral-300">Multi-select players for this tab</div>
+                <div className="mb-2 text-sm font-bold text-brand-textSecondary">Multi-select players for this tab</div>
                 <input
-                  className="mb-2 w-full rounded-lg border border-neutral-700 bg-[#242424] p-2 text-sm text-white"
+                  className="mb-2 w-full rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-sm text-brand-text"
                   placeholder="Filter players..."
                   value={statsPlayerFilter}
                   onChange={(e) => setStatsPlayerFilter(e.target.value)}
                 />
-                <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-neutral-800 bg-[#101010] p-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-white/10 bg-brand-bg p-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                   {seasonPlayers.filter((p) => p.toLowerCase().includes(statsPlayerFilter.toLowerCase())).map((p) => (
                     <label key={p} className="flex items-center gap-2 text-sm">
                       <input
@@ -1513,7 +1512,7 @@ export default function LeagueClient() {
                   ))}
                 </div>
                 {selectedStatsPlayers.length > 0 && (
-                  <button className="mt-2 rounded-lg bg-[#242424] px-3 py-2 text-sm font-bold" onClick={() => setSelectedStatsPlayers([])}>
+                  <button className="mt-2 rounded-lg bg-brand-raisedHover px-3 py-2 text-sm font-bold" onClick={() => setSelectedStatsPlayers([])}>
                     Clear multi-select
                   </button>
                 )}
@@ -1538,22 +1537,22 @@ export default function LeagueClient() {
         {tab === "alltime" && (
           <>
             <Card title="All-Time Leaders">
-              <p className="mb-4 text-sm text-neutral-400">
+              <p className="mb-4 text-sm text-brand-textMuted">
                 Career totals across every season on record. PPR leaders require at least {MIN_CAREER_ROUNDS_FOR_RATE_LEADERS} career
                 rounds played so a short cameo season can&apos;t top the list.
               </p>
               <div className="grid gap-4 md:grid-cols-3">
                 {Object.entries(careerLeaders).map(([label, { rows, key, decimals }]) => (
-                  <div key={label} className="rounded-xl border border-neutral-800 bg-[#101010] p-4">
-                    <div className="mb-2 text-xs font-bold uppercase text-[#f04a22]">{label}</div>
+                  <div key={label} className="rounded-xl border border-white/10 bg-brand-bg p-4">
+                    <div className="mb-2 text-xs font-bold uppercase tracking-widest text-brand-textMuted">{label}</div>
                     <div className="space-y-1">
-                      {rows.length === 0 && <div className="text-sm text-neutral-500">Not enough data yet</div>}
+                      {rows.length === 0 && <div className="text-sm text-brand-textFaint">Not enough data yet</div>}
                       {rows.map((row, index) => (
                         <div key={row.name} className="flex items-center justify-between text-sm">
                           <span className="font-bold">
                             {index + 1}. {row.name}
                           </span>
-                          <span className="text-neutral-300">{formatValue((row as any)[key], decimals)}</span>
+                          <span className="text-brand-textSecondary">{formatValue((row as any)[key], decimals)}</span>
                         </div>
                       ))}
                     </div>
@@ -1584,7 +1583,7 @@ export default function LeagueClient() {
         {tab === "badges" && (
           <>
             <Card title={`${season} Season Badges`}>
-              <p className="mb-4 text-sm text-neutral-400">
+              <p className="mb-4 text-sm text-brand-textMuted">
                 Auto-awarded from this season&apos;s stats so far — these can change hands as more weeks get added, right up
                 until the season wraps up.
               </p>
@@ -1593,8 +1592,8 @@ export default function LeagueClient() {
 
             <Card title="Weekly Badges">
               <div className="mb-4 flex flex-wrap items-center gap-3">
-                <label className="text-xs font-bold uppercase text-[#f04a22]">Week</label>
-                <select className="rounded-lg bg-[#242424] p-2" value={badgeWeek} onChange={(e) => setBadgeWeek(e.target.value)}>
+                <label className="text-xs font-bold uppercase tracking-widest text-brand-textMuted">Week</label>
+                <select className="rounded-lg bg-brand-raisedHover p-2" value={badgeWeek} onChange={(e) => setBadgeWeek(e.target.value)}>
                   {badgeWeeks.map((w) => (
                     <option key={w}>{w}</option>
                   ))}
@@ -1611,19 +1610,19 @@ export default function LeagueClient() {
             actions={selectedProfilePlayer && shareUrl ? <ShareButton url={shareUrl} /> : undefined}
           >
             {!selectedProfilePlayer ? (
-              <p className="text-neutral-400">Choose a player from the top Player dropdown to view their profile.</p>
+              <p className="text-brand-textMuted">Choose a player from the top Player dropdown to view their profile.</p>
             ) : (
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-3">
-                  <select className="rounded-lg bg-[#242424] p-2" value={profileSeason} onChange={(e) => { setProfileSeason(e.target.value); setProfileWeek("All Weeks"); }}>
+                  <select className="rounded-lg bg-brand-raisedHover p-2" value={profileSeason} onChange={(e) => { setProfileSeason(e.target.value); setProfileWeek("All Weeks"); }}>
                     <option>All Seasons</option>
                     {seasons.map((s) => <option key={s}>{s}</option>)}
                   </select>
-                  <select className="rounded-lg bg-[#242424] p-2" value={profileWeek} onChange={(e) => setProfileWeek(e.target.value)}>
+                  <select className="rounded-lg bg-brand-raisedHover p-2" value={profileWeek} onChange={(e) => setProfileWeek(e.target.value)}>
                     <option>All Weeks</option>
                     {profileWeeks.map((w) => <option key={w}>{w}</option>)}
                   </select>
-                  <select className="rounded-lg bg-[#242424] p-2" value={profileType} onChange={(e) => setProfileType(e.target.value as EventFilter)}>
+                  <select className="rounded-lg bg-brand-raisedHover p-2" value={profileType} onChange={(e) => setProfileType(e.target.value as EventFilter)}>
                     <option>All</option>
                     <option>Blind</option>
                     <option>Swap</option>
@@ -1640,13 +1639,13 @@ export default function LeagueClient() {
                 )}
 
                 <div>
-                  <h3 className="mb-3 text-lg font-black text-[#f04a22]">Season Finishes</h3>
+                  <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Season Finishes</h3>
                   <SeasonFinishesTable rows={profileSeasonStats} />
                 </div>
 
                 <div>
-                  <h3 className="mb-3 text-lg font-black text-[#f04a22]">Progress Over Time</h3>
-                  <div className="h-72 rounded-xl border border-neutral-800 p-3">
+                  <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Progress Over Time</h3>
+                  <div className="h-72 rounded-xl border border-white/10 p-3">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={progressData}>
                         <XAxis dataKey="season" />
@@ -1661,11 +1660,11 @@ export default function LeagueClient() {
                 </div>
 
                 <div>
-                  <h3 className="mb-3 text-lg font-black text-[#f04a22]">Weekly Breakdown</h3>
+                  <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Weekly Breakdown</h3>
                   <div className="space-y-4">
                     {groupedProfileWeeks.map(([label, rows]) => (
-                      <div key={label} className="rounded-xl border border-neutral-800 bg-[#1c1c1c] p-4">
-                        <h4 className="mb-3 text-xl font-black">{label}</h4>
+                      <div key={label} className="rounded-xl border border-white/10 bg-brand-raised p-4">
+                        <h4 className="mb-3 font-display text-xl uppercase">{label}</h4>
                         <WeeklyTable rows={rows} />
                         <EventSummary rows={rows} />
                       </div>
@@ -1679,15 +1678,15 @@ export default function LeagueClient() {
 
         {tab === "scenarios" && (
           <Card title="Final Week Scenarios">
-            <div className="mb-4 rounded-xl border border-neutral-800 bg-[#202020] p-4 text-sm text-neutral-300">
+            <div className="mb-4 rounded-xl border border-white/10 bg-brand-raised p-4 text-sm text-brand-textSecondary">
               Enter a projected combined weekly score for the selected week. The calculator keeps each player's best 9 scores and ranks ties by highest single week, then season PPR.
             </div>
 
             <div className="mb-4 flex flex-wrap gap-3">
-              <select className="rounded-lg bg-[#242424] p-2" value={scenarioWeek} onChange={(e) => setScenarioWeek(e.target.value)}>
+              <select className="rounded-lg bg-brand-raisedHover p-2" value={scenarioWeek} onChange={(e) => setScenarioWeek(e.target.value)}>
                 {scenarioWeeks.map((w) => <option key={w}>{w}</option>)}
               </select>
-              <button className="rounded-lg bg-[#242424] px-3 py-2 text-sm font-bold" onClick={() => setScenarioInputs({})}>
+              <button className="rounded-lg bg-brand-raisedHover px-3 py-2 text-sm font-bold" onClick={() => setScenarioInputs({})}>
                 Clear projected scores
               </button>
             </div>
@@ -1729,7 +1728,7 @@ export default function LeagueClient() {
         </div>
       </section>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-black/95 p-2 md:hidden">
+      <nav className="sticky bottom-0 z-40 border-t border-white/10 bg-brand-bg/95 p-2 md:hidden">
         <div className="grid grid-cols-4 gap-1">
           {navItems.map((item) => (
             <button
@@ -1748,9 +1747,9 @@ export default function LeagueClient() {
 
 function Card({ title, actions, children }: { title: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
+    <section className="rounded-2xl border border-white/10 bg-brand-panel p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-black">{title}</h2>
+        <h2 className="font-display text-xl uppercase">{title}</h2>
         {actions}
       </div>
       {children}
@@ -1795,7 +1794,7 @@ function PlayerCombobox({
   return (
     <div ref={containerRef} className="relative">
       <input
-        className="block w-full rounded-lg border border-neutral-700 bg-[#242424] p-2 text-white"
+        className="block w-full rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-brand-text"
         value={open ? query : value}
         placeholder={value ? undefined : placeholder}
         onFocus={() => {
@@ -1805,14 +1804,14 @@ function PlayerCombobox({
         onChange={(e) => setQuery(e.target.value)}
       />
       {open && (
-        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-neutral-700 bg-[#1c1c1c] shadow-xl">
-          {filtered.length === 0 && <div className="p-3 text-sm text-neutral-500">No players found</div>}
+        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-white/15 bg-brand-raised">
+          {filtered.length === 0 && <div className="p-3 text-sm text-brand-textFaint">No players found</div>}
           {filtered.map((p) => (
             <button
               type="button"
               key={p}
-              className={`block w-full px-3 py-2 text-left text-sm hover:bg-[#f04a22]/20 ${
-                p === value ? "bg-[#f04a22]/10 text-[#f04a22]" : "text-white"
+              className={`block w-full px-3 py-2 text-left text-sm hover:bg-brand-orange/20 ${
+                p === value ? "bg-brand-orange/10 text-brand-orange" : "text-brand-text"
               }`}
               onClick={() => {
                 onChange(p);
@@ -1834,34 +1833,33 @@ function PlayerCombobox({
 // the first impression of the site feels finished rather than broken.
 function LoadingSkeleton() {
   return (
-    <main className="min-h-screen animate-pulse bg-[#070707] pb-24 text-white">
-      <header className="border-b border-[#2a2a2a] bg-gradient-to-r from-black via-[#151515] to-[#f04a22]/20">
+    <main className="min-h-screen animate-pulse bg-brand-bg pb-24 text-brand-text">
+      <header className="border-b border-white/10 bg-brand-panel">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <div className="h-16 w-20 rounded-xl bg-neutral-800" />
             <div className="space-y-2">
-              <div className="h-6 w-40 rounded bg-neutral-800" />
-              <div className="h-4 w-64 rounded bg-neutral-800" />
+              <div className="h-6 w-40 rounded bg-white/10" />
+              <div className="h-4 w-64 rounded bg-white/10" />
             </div>
           </div>
           <div className="hidden flex-wrap gap-2 md:flex">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-9 w-24 rounded-full bg-neutral-800" />
+              <div key={i} className="h-9 w-24 rounded-full bg-white/10" />
             ))}
           </div>
         </div>
       </header>
 
       <section className="mx-auto max-w-7xl p-4">
-        <div className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
+        <div className="rounded-2xl border border-white/10 bg-brand-panel p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="space-y-2">
-                <div className="h-3 w-16 rounded bg-neutral-800" />
-                <div className="h-10 w-40 rounded-lg bg-neutral-800" />
+                <div className="h-3 w-16 rounded bg-white/10" />
+                <div className="h-10 w-40 rounded-lg bg-white/10" />
               </div>
             ))}
-            <div className="h-4 w-32 rounded bg-neutral-800" />
+            <div className="h-4 w-32 rounded bg-white/10" />
           </div>
         </div>
       </section>
@@ -1869,16 +1867,16 @@ function LoadingSkeleton() {
       <section className="mx-auto max-w-7xl space-y-6 p-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-xl border border-neutral-800 bg-[#101010] p-4">
-              <div className="h-3 w-20 rounded bg-neutral-800" />
-              <div className="mt-3 h-8 w-16 rounded bg-neutral-800" />
+            <div key={i} className="h-24 rounded-xl border border-white/10 bg-brand-bg p-4">
+              <div className="h-3 w-20 rounded bg-white/10" />
+              <div className="mt-3 h-8 w-16 rounded bg-white/10" />
             </div>
           ))}
         </div>
 
-        <div className="space-y-2 rounded-xl border border-neutral-800 bg-[#101010] p-4">
+        <div className="space-y-2 rounded-xl border border-white/10 bg-brand-bg p-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-8 rounded bg-neutral-800" />
+            <div key={i} className="h-8 rounded bg-white/10" />
           ))}
         </div>
       </section>
@@ -1892,7 +1890,7 @@ function ShareButton({ url }: { url: string }) {
   return (
     <button
       type="button"
-      className="rounded-lg bg-[#242424] px-3 py-2 text-sm font-bold hover:bg-[#2f2f2f]"
+      className="rounded-lg bg-brand-raisedHover px-3 py-2 text-sm font-bold hover:bg-white/15"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(url);
@@ -1914,7 +1912,7 @@ type BadgeInfo = { id: string; icon: string; title: string; description: string;
 
 function BadgeGrid({ badges, highlightPlayer }: { badges: BadgeInfo[]; highlightPlayer?: string }) {
   if (!badges.length) {
-    return <p className="text-sm text-neutral-500">Not enough data yet to award badges here.</p>;
+    return <p className="text-sm text-brand-textFaint">Not enough data yet to award badges here.</p>;
   }
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1928,18 +1926,18 @@ function BadgeGrid({ badges, highlightPlayer }: { badges: BadgeInfo[]; highlight
 function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlayer?: string }) {
   const tied = badge.winners.length > 1;
   return (
-    <div className="rounded-xl border border-neutral-800 bg-[#101010] p-4">
+    <div className="rounded-xl border border-white/10 bg-brand-bg p-4">
       <div className="mb-1 flex items-center gap-2">
         <span className="text-2xl">{badge.icon}</span>
-        <div className="text-sm font-black uppercase text-[#f04a22]">{badge.title}</div>
+        <div className="text-sm font-bold uppercase text-brand-orange">{badge.title}</div>
       </div>
-      <p className="mb-3 text-xs text-neutral-500">{badge.description}</p>
+      <p className="mb-3 text-xs text-brand-textFaint">{badge.description}</p>
       <div className="space-y-1">
         {badge.winners.map((name) => (
           <div
             key={name}
             className={`rounded-lg px-2 py-1 text-sm ${
-              name === highlightPlayer ? "bg-[#f04a22]/20 font-bold text-white" : "text-neutral-200"
+              name === highlightPlayer ? "bg-brand-orange/20 font-bold text-brand-text" : "text-brand-text"
             }`}
           >
             {name}
@@ -1947,7 +1945,7 @@ function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlay
         ))}
       </div>
       {badge.display && (
-        <div className="mt-2 text-right text-xs font-bold text-neutral-400">
+        <div className="mt-2 text-right text-xs font-bold text-brand-textMuted">
           {badge.display}
           {tied ? " (tied)" : ""}
         </div>
@@ -1958,9 +1956,9 @@ function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlay
 
 function MiniStat({ label, value }: { label: string; value: any }) {
   return (
-    <div className="rounded-xl border border-neutral-800 bg-[#101010] p-4">
-      <div className="text-xs font-bold uppercase text-neutral-400">{label}</div>
-      <div className="mt-1 text-3xl font-black text-[#f04a22]"><AnimatedNumber value={value} /></div>
+    <div className="rounded-xl border border-white/10 bg-brand-bg p-4">
+      <div className="text-xs font-bold uppercase text-brand-textMuted">{label}</div>
+      <div className="mt-1 text-3xl font-bold text-brand-orange"><AnimatedNumber value={value} /></div>
     </div>
   );
 }
@@ -1974,12 +1972,12 @@ function RankedList({ rows }: { rows: { name: string; points: number }[] }) {
         return (
           <div
             key={`${row.name}-${index}`}
-            className={`flex items-center justify-between rounded-xl border border-transparent bg-[#202020] px-4 py-3 ${podium.rowClass}`}
+            className={`flex items-center justify-between rounded-xl border border-transparent bg-brand-raised px-4 py-3 ${podium.rowClass}`}
           >
-            <span className={`font-black ${podium.textClass}`}>
+            <span className={`font-bold ${podium.textClass}`}>
               {podium.medal ? `${podium.medal} ` : `${rank}. `}{row.name}
             </span>
-            <span className={`text-xl font-black ${podium.medal ? podium.textClass : "text-[#f04a22]"}`}>
+            <span className={`text-xl font-bold ${podium.medal ? podium.textClass : "text-brand-orange"}`}>
               <AnimatedNumber value={formatValue(row.points, 0)} />
             </span>
           </div>
@@ -1993,15 +1991,15 @@ function StandingsTable({ rows }: { rows: { name: string; points: number }[] }) 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead><tr className="text-left text-neutral-400"><th className="p-2">#</th><th className="p-2">Player</th><th className="p-2">Points</th></tr></thead>
+        <thead><tr className="text-left text-brand-textMuted"><th className="p-2">#</th><th className="p-2">Player</th><th className="p-2">Points</th></tr></thead>
         <tbody>
           {rows.map((row, index) => {
             const rank = index + 1;
             const podium = podiumStyle(rank);
             return (
-              <tr key={`${row.name}-${index}`} className={`border-t border-neutral-800 ${podium.rowClass}`}>
-                <td className={`p-2 font-black ${podium.textClass}`}>{podium.medal || rank}</td>
-                <td className={`p-2 font-bold ${podium.medal ? podium.textClass : "text-[#f04a22]"}`}>{row.name}</td>
+              <tr key={`${row.name}-${index}`} className={`border-t border-white/10 ${podium.rowClass}`}>
+                <td className={`p-2 font-bold ${podium.textClass}`}>{podium.medal || rank}</td>
+                <td className={`p-2 font-bold ${podium.medal ? podium.textClass : "text-brand-orange"}`}>{row.name}</td>
                 <td className="p-2"><AnimatedNumber value={formatValue(row.points, 0)} /></td>
               </tr>
             );
@@ -2014,10 +2012,10 @@ function StandingsTable({ rows }: { rows: { name: string; points: number }[] }) 
 
 function RankChangeBadge({ change }: { change: number | null }) {
   if (change === null || change === undefined || Number.isNaN(change)) {
-    return <span className="text-neutral-600">-</span>;
+    return <span className="text-brand-textFaint">-</span>;
   }
   if (change === 0) {
-    return <span className="text-neutral-500">•</span>;
+    return <span className="text-brand-textFaint">•</span>;
   }
   if (change > 0) {
     return <span className="font-bold text-emerald-400">▲{change}</span>;
@@ -2030,16 +2028,16 @@ function WeeklyTable({ rows }: { rows: any[] }) {
     <div className="overflow-x-auto">
       <table className="w-full text-[12px]">
         <thead>
-          <tr className="text-left text-neutral-400">
+          <tr className="text-left text-brand-textMuted">
             <th className="p-2">Rank</th><th className="p-2">Player</th><th className="p-2">Team</th><th className="p-2">Finish Pts</th><th className="p-2">+/-</th>
             {weeklyStatColumns.map((col) => <th key={col.label} className="p-2">{col.label}</th>)}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={`${getPlayer(row)}-${getSeason(row)}-${getWeek(row)}-${getType(row)}-${index}`} className="border-t border-neutral-800">
+            <tr key={`${getPlayer(row)}-${getSeason(row)}-${getWeek(row)}-${getType(row)}-${index}`} className="border-t border-white/10">
               <td className="p-2">{formatValue(row.Rank, 0)}</td>
-              <td className="p-2 font-bold text-[#f04a22]">{getPlayer(row)}</td>
+              <td className="p-2 font-bold text-brand-orange">{getPlayer(row)}</td>
               <td className="p-2">{clean(row.Team) || "-"}</td>
               <td className="p-2">{formatValue(row.Points, 0)}</td>
               <td className="p-2"><RankChangeBadge change={row.RankChange ?? null} /></td>
@@ -2056,8 +2054,8 @@ function WeeklyTable({ rows }: { rows: any[] }) {
 
 function EventSummary({ rows }: { rows: any[] }) {
   return (
-    <div className="mt-6 rounded-xl border border-neutral-800 bg-[#202020] p-4">
-      <h3 className="mb-3 text-lg font-black text-[#f04a22]">Event Totals / Averages</h3>
+    <div className="mt-6 rounded-xl border border-white/10 bg-brand-raised p-4">
+      <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Event Totals / Averages</h3>
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
         {summarizeEvent(rows).map((item) => <MiniStat key={item.label} label={item.label} value={item.value} />)}
       </div>
@@ -2070,10 +2068,10 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
     <>
       <div className="grid gap-3 md:hidden">
         {rows.map((row, index) => (
-          <div key={`${getPlayer(row)}-${index}`} className="rounded-xl border border-neutral-800 bg-[#202020] p-4">
-            <div className="mb-3 text-lg font-black text-[#f04a22]">{getPlayer(row)}</div>
+          <div key={`${getPlayer(row)}-${index}`} className="rounded-xl border border-white/10 bg-brand-raised p-4">
+            <div className="mb-3 text-lg font-bold text-brand-orange">{getPlayer(row)}</div>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              {statColumns.map((col) => <div key={col.label}><div className="text-xs uppercase text-neutral-500">{col.label}</div><div className="font-bold">{formatValue(getStatValue(row, col.keys), col.decimals)}</div></div>)}
+              {statColumns.map((col) => <div key={col.label}><div className="text-xs uppercase text-brand-textFaint">{col.label}</div><div className="font-bold">{formatValue(getStatValue(row, col.keys), col.decimals)}</div></div>)}
             </div>
           </div>
         ))}
@@ -2081,10 +2079,10 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[1150px] text-[12px]">
           <thead>
-            <tr className="text-left text-neutral-400">
-              <th className="sticky left-0 z-10 bg-[#141414] p-2">Player</th>
+            <tr className="text-left text-brand-textMuted">
+              <th className="sticky left-0 z-10 bg-brand-panel p-2">Player</th>
               {statColumns.map((col) => (
-                <th key={col.label} className="cursor-pointer whitespace-nowrap p-2 hover:text-[#f04a22]" onClick={() => onSort(col.label)}>
+                <th key={col.label} className="cursor-pointer whitespace-nowrap p-2 hover:text-brand-orange" onClick={() => onSort(col.label)}>
                   {col.label}{sortKey === col.label ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
                 </th>
               ))}
@@ -2092,8 +2090,8 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={`${getPlayer(row)}-${index}`} className="border-t border-neutral-800">
-                <td className="sticky left-0 z-10 bg-[#141414] p-2 font-bold text-[#f04a22]">{getPlayer(row)}</td>
+              <tr key={`${getPlayer(row)}-${index}`} className="border-t border-white/10">
+                <td className="sticky left-0 z-10 bg-brand-panel p-2 font-bold text-brand-orange">{getPlayer(row)}</td>
                 {statColumns.map((col) => <td key={col.label} className="whitespace-nowrap p-2">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}
               </tr>
             ))}
@@ -2126,14 +2124,14 @@ function CareerStatsTable({
           <div
             key={row.name}
             className={`rounded-xl border p-4 ${
-              row.name === highlightPlayer ? "border-[#f04a22] bg-[#f04a22]/10" : "border-neutral-800 bg-[#202020]"
+              row.name === highlightPlayer ? "border-brand-orange bg-brand-orange/10" : "border-white/10 bg-brand-raised"
             }`}
           >
-            <div className="mb-3 text-lg font-black text-[#f04a22]">{row.name}</div>
+            <div className="mb-3 text-lg font-bold text-brand-orange">{row.name}</div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               {columns.map((col) => (
                 <div key={col.key}>
-                  <div className="text-xs uppercase text-neutral-500">{col.label}</div>
+                  <div className="text-xs uppercase text-brand-textFaint">{col.label}</div>
                   <div className="font-bold">{formatValue(row[col.key], col.decimals)}</div>
                 </div>
               ))}
@@ -2144,10 +2142,10 @@ function CareerStatsTable({
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[1150px] text-[12px]">
           <thead>
-            <tr className="text-left text-neutral-400">
-              <th className="sticky left-0 z-10 bg-[#141414] p-2">Player</th>
+            <tr className="text-left text-brand-textMuted">
+              <th className="sticky left-0 z-10 bg-brand-panel p-2">Player</th>
               {columns.map((col) => (
-                <th key={col.key} className="cursor-pointer whitespace-nowrap p-2 hover:text-[#f04a22]" onClick={() => onSort(col.key)}>
+                <th key={col.key} className="cursor-pointer whitespace-nowrap p-2 hover:text-brand-orange" onClick={() => onSort(col.key)}>
                   {col.label}
                   {sortKey === col.key ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
                 </th>
@@ -2156,8 +2154,8 @@ function CareerStatsTable({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.name} className={`border-t border-neutral-800 ${row.name === highlightPlayer ? "bg-[#f04a22]/10" : ""}`}>
-                <td className="sticky left-0 z-10 bg-[#141414] p-2 font-bold text-[#f04a22]">{row.name}</td>
+              <tr key={row.name} className={`border-t border-white/10 ${row.name === highlightPlayer ? "bg-brand-orange/10" : ""}`}>
+                <td className="sticky left-0 z-10 bg-brand-panel p-2 font-bold text-brand-orange">{row.name}</td>
                 {columns.map((col) => (
                   <td key={col.key} className="whitespace-nowrap p-2">
                     {formatValue(row[col.key], col.decimals)}
@@ -2173,7 +2171,7 @@ function CareerStatsTable({
 }
 
 function PlayerStatsSummary({ row }: { row: any }) {
-  if (!row) return <p className="text-neutral-400">No season stats found for this player.</p>;
+  if (!row) return <p className="text-brand-textMuted">No season stats found for this player.</p>;
   return (
     <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
       {statColumns.slice(1).map((col) => (
@@ -2189,7 +2187,7 @@ function PlayerStatsSummary({ row }: { row: any }) {
 // season happened to sort last), which looked identical to picking that
 // season directly and made "All Seasons" seem broken.
 function CareerStatsSummary({ row, columns }: { row: any; columns: { key: string; label: string; decimals: number }[] }) {
-  if (!row) return <p className="text-neutral-400">No career stats found for this player.</p>;
+  if (!row) return <p className="text-brand-textMuted">No career stats found for this player.</p>;
   return (
     <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
       {columns.map((col) => (
@@ -2203,10 +2201,10 @@ function SeasonFinishesTable({ rows }: { rows: any[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead><tr className="text-left text-neutral-400"><th className="p-2">Season</th><th className="p-2">Finish</th><th className="p-2">PPR</th><th className="p-2">DPR</th><th className="p-2">OPPR</th><th className="p-2">Points</th><th className="p-2">Rounds</th><th className="p-2">4 Baggers</th></tr></thead>
+        <thead><tr className="text-left text-brand-textMuted"><th className="p-2">Season</th><th className="p-2">Finish</th><th className="p-2">PPR</th><th className="p-2">DPR</th><th className="p-2">OPPR</th><th className="p-2">Points</th><th className="p-2">Rounds</th><th className="p-2">4 Baggers</th></tr></thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={getSeason(row)} className="border-t border-neutral-800"><td className="p-2 font-bold">{getSeason(row)}</td><td className="p-2 text-[#f04a22]">{formatValue(getStatValue(row, ["Finish"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average PPR", "PPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average DPR", "DPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Opponents Avg PPR", "OPPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Pts", "Total Points"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Rounds"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total 4-Baggers", "4 Baggers"]), 0)}</td></tr>
+            <tr key={getSeason(row)} className="border-t border-white/10"><td className="p-2 font-bold">{getSeason(row)}</td><td className="p-2 text-brand-orange">{formatValue(getStatValue(row, ["Finish"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average PPR", "PPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average DPR", "DPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Opponents Avg PPR", "OPPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Pts", "Total Points"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Rounds"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total 4-Baggers", "4 Baggers"]), 0)}</td></tr>
           ))}
         </tbody>
       </table>
@@ -2230,7 +2228,7 @@ function ScenarioTable({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[950px] text-sm">
         <thead>
-          <tr className="text-left text-neutral-400">
+          <tr className="text-left text-brand-textMuted">
             <th className="p-2">Projected Rank</th>
             <th className="p-2">Player</th>
             <th className="p-2">Current Rank</th>
@@ -2245,15 +2243,15 @@ function ScenarioTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.name} className={`border-t border-neutral-800 ${row.name === selectedPlayer ? "bg-[#f04a22]/10" : ""}`}>
+            <tr key={row.name} className={`border-t border-white/10 ${row.name === selectedPlayer ? "bg-brand-orange/10" : ""}`}>
               <td className="p-2 font-bold">{row.projectedRank}</td>
-              <td className="p-2 font-bold text-[#f04a22]">{row.name}</td>
+              <td className="p-2 font-bold text-brand-orange">{row.name}</td>
               <td className="p-2">{row.currentRank || "-"}</td>
               <td className="p-2">{formatValue(row.currentTotal, 0)}</td>
               <td className="p-2">{formatValue(row.lowestCounted, 0)}</td>
               <td className="p-2">
                 <input
-                  className="w-24 rounded bg-[#242424] p-2 text-white"
+                  className="w-24 rounded bg-brand-raisedHover p-2 text-brand-text"
                   type="number"
                   min="0"
                   value={inputs[row.name] ?? ""}
@@ -2265,7 +2263,7 @@ function ScenarioTable({
                 />
               </td>
               <td className="p-2">{formatValue(row.netGain, 0)}</td>
-              <td className="p-2 font-bold text-[#f04a22]">{formatValue(row.projectedTotal, 0)}</td>
+              <td className="p-2 font-bold text-brand-orange">{formatValue(row.projectedTotal, 0)}</td>
               <td className="p-2">{formatValue(row.highestWeek, 0)}</td>
               <td className="p-2">{formatValue(row.ppr, 2)}</td>
             </tr>
@@ -2282,7 +2280,7 @@ function CompareTable({ statA, statB }: { statA: any; statB: any }) {
       <table className="w-full text-sm">
         <tbody>
           {statColumns.map((col) => (
-            <tr key={col.label} className="border-t border-neutral-800"><td className="p-2 text-neutral-400">{col.label}</td><td className="p-2">{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td className="p-2">{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
+            <tr key={col.label} className="border-t border-white/10"><td className="p-2 text-brand-textMuted">{col.label}</td><td className="p-2">{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td className="p-2">{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
           ))}
         </tbody>
       </table>

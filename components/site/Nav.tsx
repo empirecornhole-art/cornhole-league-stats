@@ -18,7 +18,7 @@ export default function Nav() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-brand-bg/95 backdrop-blur supports-[backdrop-filter]:bg-brand-bg/85">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
+      <div className="mx-auto flex h-[var(--nav-h)] max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
         <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
           <Image
             src="/ec-logo.png"

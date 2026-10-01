@@ -1,8 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-:root { color-scheme: dark; }
-body { background:#080808; color:#f5f5f5; }
+:root { color-scheme: dark; --nav-h: 68px; }
+@media (min-width: 768px) { :root { --nav-h: 80px; } }
+body { background:#0d0c0b; color:#f5f5f0; }
 
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(6px); }

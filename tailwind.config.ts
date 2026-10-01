@@ -14,6 +14,8 @@ const config: Config = {
           textSecondary: '#c9c5bf',
           textMuted: '#9a9a9a',
           textFaint: '#7a7772',
+          raised: '#1c1a17',
+          raisedHover: '#26231f',
         },
       },
       fontFamily: {

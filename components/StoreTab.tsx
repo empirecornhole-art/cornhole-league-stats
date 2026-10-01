@@ -86,24 +86,24 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-neutral-800 bg-[#101010]">
-      <div className="aspect-square w-full bg-[#1a1a1a]">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-white/10 bg-brand-bg">
+      <div className="aspect-square w-full bg-brand-raised">
         {displayImage ? (
           <img src={displayImage.url} alt={displayImage.alt || product.title} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-neutral-600">No image</div>
+          <div className="flex h-full w-full items-center justify-center text-sm text-brand-textFaint">No image</div>
         )}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="font-black">{product.title}</div>
-        <div className="text-lg font-black text-[#f04a22]">{priceLabel}</div>
+        <div className="font-bold">{product.title}</div>
+        <div className="text-lg font-bold text-brand-orange">{priceLabel}</div>
 
         {product.options.map((option) => (
           <div key={option.name}>
-            <label className="text-xs font-bold uppercase text-neutral-400">{option.name}</label>
+            <label className="text-xs font-bold uppercase text-brand-textMuted">{option.name}</label>
             <select
-              className="block w-full rounded-lg border border-neutral-700 bg-[#242424] p-2 text-sm text-white"
+              className="block w-full rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-sm text-brand-text"
               value={picks[option.name] || ""}
               onChange={(e) => setPicks((prev) => ({ ...prev, [option.name]: e.target.value }))}
             >
@@ -120,10 +120,10 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
         {noSuchCombo && <div className="text-xs text-red-400">That combination isn't available.</div>}
 
         <div className="mt-auto flex items-center gap-2 pt-2">
-          <div className="flex items-center rounded-lg border border-neutral-700">
+          <div className="flex items-center rounded-lg border border-white/15">
             <button
               type="button"
-              className="px-3 py-1 text-lg font-bold text-neutral-300 hover:text-white"
+              className="px-3 py-1 text-lg font-bold text-brand-textSecondary hover:text-brand-text"
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
               aria-label="Decrease quantity"
             >
@@ -132,7 +132,7 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
             <span className="min-w-[2ch] text-center text-sm">{quantity}</span>
             <button
               type="button"
-              className="px-3 py-1 text-lg font-bold text-neutral-300 hover:text-white"
+              className="px-3 py-1 text-lg font-bold text-brand-textSecondary hover:text-brand-text"
               onClick={() => setQuantity((q) => Math.min(99, q + 1))}
               aria-label="Increase quantity"
             >
@@ -145,10 +145,10 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
             disabled={soldOut || !selectedVariant}
             className={`flex-1 rounded-lg py-2 text-sm font-bold transition ${
               soldOut || !selectedVariant
-                ? "cursor-not-allowed bg-neutral-800 text-neutral-500"
+                ? "cursor-not-allowed bg-white/10 text-brand-textFaint"
                 : justAdded
-                ? "bg-emerald-600 text-white"
-                : "bg-[#f04a22] text-white hover:bg-[#f04a22]/80"
+                ? "bg-emerald-600 text-brand-text"
+                : "bg-brand-orange text-brand-text hover:bg-brand-orange/80"
             }`}
             onClick={() => {
               if (!selectedVariant) return;
@@ -195,28 +195,28 @@ function CartBar({
 
   return (
     <div className="fixed bottom-16 left-4 right-4 z-40 md:bottom-4 md:left-auto md:right-4 md:w-96">
-      <div className="rounded-xl border border-[#f04a22] bg-[#141414] shadow-2xl">
+      <div className="rounded-xl border border-brand-orange bg-brand-panel shadow-2xl">
         {expanded && (
-          <div className="max-h-64 space-y-2 overflow-y-auto border-b border-neutral-800 p-3">
+          <div className="max-h-64 space-y-2 overflow-y-auto border-b border-white/10 p-3">
             {lines.map((line) => (
               <div key={line.variantId} className="flex items-center gap-2 text-sm">
                 {line.image ? (
                   <img src={line.image} alt="" className="h-10 w-10 rounded object-cover" />
                 ) : (
-                  <div className="h-10 w-10 rounded bg-[#1a1a1a]" />
+                  <div className="h-10 w-10 rounded bg-brand-raised" />
                 )}
                 <div className="flex-1">
                   <div className="font-bold">{line.productTitle}</div>
-                  <div className="text-xs text-neutral-400">
+                  <div className="text-xs text-brand-textMuted">
                     {line.variantTitle ? `${line.variantTitle} · ` : ""}Qty {line.quantity}
                   </div>
                 </div>
-                <div className="font-bold text-[#f04a22]">
+                <div className="font-bold text-brand-orange">
                   {formatMoney({ amount: String(Number(line.price.amount) * line.quantity), currencyCode: line.price.currencyCode })}
                 </div>
                 <button
                   type="button"
-                  className="px-2 text-neutral-500 hover:text-red-400"
+                  className="px-2 text-brand-textFaint hover:text-red-400"
                   onClick={() => onRemove(line.variantId)}
                   aria-label={`Remove ${line.productTitle} from cart`}
                 >
@@ -235,7 +235,7 @@ function CartBar({
           <span className="font-bold">
             🛒 {itemCount} item{itemCount === 1 ? "" : "s"}
           </span>
-          <span className="font-black text-[#f04a22]">{formatMoney({ amount: String(subtotal), currencyCode: currency })}</span>
+          <span className="font-bold text-brand-orange">{formatMoney({ amount: String(subtotal), currencyCode: currency })}</span>
         </button>
 
         <div className="px-4 pb-4">
@@ -244,7 +244,7 @@ function CartBar({
             type="button"
             disabled={checkingOut}
             onClick={onCheckout}
-            className="w-full rounded-lg bg-[#f04a22] py-2 font-bold text-white hover:bg-[#f04a22]/80 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-brand-orange py-2 font-bold text-brand-text hover:bg-brand-orange/80 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {checkingOut ? "Starting checkout..." : "Checkout"}
           </button>
@@ -327,10 +327,10 @@ export default function StoreTab() {
   const sortedProducts = useMemo(() => products || [], [products]);
 
   return (
-    <section className="rounded-2xl border border-neutral-800 bg-[#141414] p-4 shadow-xl">
+    <section className="rounded-2xl border border-white/10 bg-brand-panel p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-black">Store</h2>
-        <p className="text-sm text-neutral-400">Checkout is handled securely by Shopify.</p>
+        <h2 className="font-display text-xl uppercase">Store</h2>
+        <p className="text-sm text-brand-textMuted">Checkout is handled securely by Shopify.</p>
       </div>
 
       {error && (
@@ -342,11 +342,11 @@ export default function StoreTab() {
       {!products && !error && (
         <div className="grid animate-pulse gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="overflow-hidden rounded-xl border border-neutral-800 bg-[#101010]">
-              <div className="aspect-square bg-neutral-800" />
+            <div key={i} className="overflow-hidden rounded-xl border border-white/10 bg-brand-bg">
+              <div className="aspect-square bg-white/10" />
               <div className="space-y-2 p-4">
-                <div className="h-4 w-2/3 rounded bg-neutral-800" />
-                <div className="h-4 w-1/3 rounded bg-neutral-800" />
+                <div className="h-4 w-2/3 rounded bg-white/10" />
+                <div className="h-4 w-1/3 rounded bg-white/10" />
               </div>
             </div>
           ))}
@@ -354,7 +354,7 @@ export default function StoreTab() {
       )}
 
       {products && !products.length && !error && (
-        <div className="rounded-xl border border-neutral-800 bg-[#101010] p-6 text-center text-neutral-400">
+        <div className="rounded-xl border border-white/10 bg-brand-bg p-6 text-center text-brand-textMuted">
           No products available right now.
         </div>
       )}
