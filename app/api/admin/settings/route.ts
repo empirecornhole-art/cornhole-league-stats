@@ -39,6 +39,7 @@ export async function PUT(req: Request) {
       instagram_url: body?.instagram_url,
       season_label: body?.season_label,
       current_week: body?.current_week,
+      scoreholio_match: body?.scoreholio_match,
     });
 
     return NextResponse.json({ ok: true, settings });

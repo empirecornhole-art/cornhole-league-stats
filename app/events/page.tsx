@@ -17,6 +17,7 @@ function toDisplay(event: EventRow): EventDisplay {
     tag: event.tag,
     meta,
     featured: event.featured,
+    registerUrl: event.register_url || "",
   };
 }
 

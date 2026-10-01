@@ -10,6 +10,7 @@ type SettingsForm = {
   instagram_url: string;
   season_label: string;
   current_week: string;
+  scoreholio_match: string;
 };
 
 const EMPTY_SETTINGS: SettingsForm = {
@@ -20,6 +21,7 @@ const EMPTY_SETTINGS: SettingsForm = {
   instagram_url: "",
   season_label: "",
   current_week: "",
+  scoreholio_match: "",
 };
 
 const FIELDS: { key: keyof SettingsForm; label: string; placeholder: string }[] = [
@@ -30,6 +32,7 @@ const FIELDS: { key: keyof SettingsForm; label: string; placeholder: string }[] 
   { key: "instagram_url", label: "Instagram URL", placeholder: "https://instagram.com/empirecornhole" },
   { key: "season_label", label: "Season Label", placeholder: "Summer '26" },
   { key: "current_week", label: "Current Week", placeholder: "13" },
+  { key: "scoreholio_match", label: "Scoreholio Sync Phrase (name or season must contain)", placeholder: "Empire Cornhole" },
 ];
 
 export default function SettingsTab({ password }: { password: string }) {
