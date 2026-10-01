@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import EventCard from "./EventCard";
 
 export type EventDisplay = {
   id: string;
@@ -56,52 +57,13 @@ export default function EventsListToggle({
         )}
 
         {events.map((event) => (
-          <div
+          <EventCard
             key={event.id}
-            className={`flex flex-col gap-4 rounded-2xl border p-6 sm:flex-row sm:items-center sm:justify-between ${
-              event.featured
-                ? "border-brand-orange/40 bg-brand-orange/10"
-                : "border-white/10 bg-brand-bg"
-            }`}
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 flex-none flex-col items-center justify-center rounded-xl bg-brand-panel">
-                <span className="font-display text-2xl leading-none text-brand-orange">{event.day}</span>
-                <span className="mt-1 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-textMuted">
-                  {event.month}
-                </span>
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-display text-lg uppercase leading-tight text-brand-text">
-                    {event.title}
-                  </h3>
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-widest ${
-                      event.featured
-                        ? "bg-brand-orange text-brand-bg"
-                        : "bg-white/10 text-brand-textMuted"
-                    }`}
-                  >
-                    {event.tag}
-                  </span>
-                </div>
-                {event.meta && (
-                  <p className="mt-2 font-sans text-sm text-brand-textSecondary">{event.meta}</p>
-                )}
-              </div>
-            </div>
-            {view === "upcoming" && event.registerUrl && (
-              <a
-                href={event.registerUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-nav-cta flex-none self-start sm:self-auto"
-              >
-                Register
-              </a>
-            )}
-          </div>
+            event={event}
+            surface="panel"
+            layout="row"
+            showRegister={view === "upcoming"}
+          />
         ))}
       </div>
     </div>

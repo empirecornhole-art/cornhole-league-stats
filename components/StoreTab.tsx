@@ -329,7 +329,7 @@ export default function StoreTab() {
   return (
     <section className="rounded-2xl border border-white/10 bg-brand-panel p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-xl uppercase">Store</h2>
+        <h2 className="font-display text-2xl uppercase text-brand-text">Store</h2>
         <p className="text-sm text-brand-textMuted">Checkout is handled securely by Shopify.</p>
       </div>
 

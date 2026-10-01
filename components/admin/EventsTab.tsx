@@ -362,16 +362,16 @@ export default function EventsTab({ password }: { password: string }) {
                 {event.time && (
                   <span className="font-sans text-xs text-brand-textMuted">{event.time}</span>
                 )}
-                <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-textMuted">
+                <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
                   {event.tag}
                 </span>
                 {event.scoreholio_id && (
-                  <span className="rounded-full border border-white/15 px-2.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-textMuted">
+                  <span className="rounded-full border border-white/15 px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
                     Scoreholio
                   </span>
                 )}
                 {event.featured && (
-                  <span className="rounded-full bg-brand-orange px-2.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-bg">
+                  <span className="rounded-full bg-brand-orange px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-widest text-brand-bg">
                     Featured
                   </span>
                 )}

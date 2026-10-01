@@ -62,7 +62,7 @@ export default function Nav() {
             <span className="font-display text-lg uppercase tracking-wide text-brand-text md:text-xl">
               Empire Cornhole
             </span>
-            <span className="font-sans text-[11px] font-bold uppercase tracking-widest text-brand-orange">
+            <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-orange">
               League
             </span>
           </span>
@@ -98,7 +98,7 @@ export default function Nav() {
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle navigation menu"
           aria-expanded={open}
-          className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-md border border-white/15 md:hidden"
+          className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-lg border border-white/15 md:hidden"
         >
           <span
             className={`block h-0.5 w-5 bg-brand-text transition duration-200 ${open ? "translate-y-2 rotate-45" : ""}`}

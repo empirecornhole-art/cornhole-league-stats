@@ -37,6 +37,22 @@ body { background:#0d0c0b; color:#f5f5f0; }
   .btn-secondary {
     @apply inline-flex items-center justify-center rounded-full border-2 border-white/35 bg-transparent px-8 py-4 font-sans text-sm font-bold uppercase tracking-wide text-brand-text transition duration-200 ease-out hover:-translate-y-0.5 hover:border-white;
   }
+  /* Type scale: one size per role, shared by every page. */
+  .eyebrow {
+    @apply font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted;
+  }
+  .heading-page {
+    @apply font-display text-5xl uppercase leading-[0.95] text-brand-text md:text-7xl;
+  }
+  .heading-section {
+    @apply font-display text-4xl uppercase leading-none text-brand-text md:text-5xl;
+  }
+  .heading-card {
+    @apply font-display text-xl uppercase leading-tight text-brand-text;
+  }
+  .field-label {
+    @apply font-sans text-sm font-bold text-brand-textSecondary;
+  }
   .btn-nav-cta {
     @apply inline-flex items-center justify-center rounded-full bg-brand-orange px-5 py-2.5 font-sans text-xs font-bold uppercase tracking-wide text-brand-bg transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-brand-orangeHover hover:shadow-[0_10px_30px_-8px_rgba(240,74,34,0.65)];
   }

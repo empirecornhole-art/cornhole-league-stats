@@ -1,5 +1,6 @@
 import FadeIn from "../../components/site/FadeIn";
 import { getSiteSettings } from "../../lib/settings";
+import { MailIcon, PinIcon, UsersIcon } from "../../components/site/Icons";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function ContactPage() {
   const infoCards = [
     {
       label: "Email",
-      icon: <EmailIcon />,
+      icon: <MailIcon />,
       lines: [settings.contact_email || "info@empirecornhole.com", "We reply within a couple of days."],
     },
     {
@@ -40,7 +41,7 @@ export default async function ContactPage() {
     },
     {
       label: "Follow The League",
-      icon: <StarIcon />,
+      icon: <UsersIcon />,
       lines: followLines,
     },
   ];
@@ -53,10 +54,10 @@ export default async function ContactPage() {
           aria-hidden
         />
         <FadeIn className="relative mx-auto max-w-4xl px-4 py-16 text-center md:px-6 md:py-28">
-          <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+          <span className="eyebrow">
             Get In Touch
           </span>
-          <h1 className="mt-4 font-display text-5xl uppercase text-brand-text md:text-7xl">Join the League</h1>
+          <h1 className="heading-page mt-4">Join the League</h1>
           <p className="mt-5 font-sans text-brand-textSecondary">
             Questions about a season, a team, or just want to say hi? Reach out below.
           </p>
@@ -69,11 +70,11 @@ export default async function ContactPage() {
             <div className="flex flex-col gap-4">
               {infoCards.map((card) => (
                 <div key={card.label} className="flex gap-4 rounded-2xl border border-white/10 bg-brand-bg p-6">
-                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover">
+                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover text-brand-bg">
                     {card.icon}
                   </div>
                   <div>
-                    <h3 className="font-display text-lg uppercase text-brand-text">{card.label}</h3>
+                    <h3 className="heading-card">{card.label}</h3>
                     {card.lines.map((line) => (
                       <p key={line} className="mt-1 font-sans text-sm text-brand-textSecondary">
                         {line}
@@ -89,20 +90,24 @@ export default async function ContactPage() {
               <form className="flex flex-col gap-5">
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <div>
-                    <label className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+                    <label htmlFor="contact-name" className="field-label">
                       Name
                     </label>
                     <input
+                      id="contact-name"
+                      name="name"
                       type="text"
                       className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-3 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
                       placeholder="Jane Doe"
                     />
                   </div>
                   <div>
-                    <label className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+                    <label htmlFor="contact-email" className="field-label">
                       Email
                     </label>
                     <input
+                      id="contact-email"
+                      name="email"
                       type="email"
                       className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-3 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
                       placeholder="you@email.com"
@@ -111,10 +116,12 @@ export default async function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+                  <label htmlFor="contact-interest" className="field-label">
                     I&apos;m Interested In
                   </label>
                   <input
+                    id="contact-interest"
+                    name="interest"
                     type="text"
                     className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-3 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
                     placeholder="Joining a team, sponsoring an event, ..."
@@ -122,10 +129,12 @@ export default async function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+                  <label htmlFor="contact-message" className="field-label">
                     Message
                   </label>
                   <textarea
+                    id="contact-message"
+                    name="message"
                     rows={5}
                     className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-3 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
                     placeholder="Tell us a bit about what you're looking for..."
@@ -144,34 +153,3 @@ export default async function ContactPage() {
   );
 }
 
-function EmailIcon() {
-  return (
-    <div className="h-5 w-5 rounded-sm border-2 border-brand-bg" style={{ clipPath: "polygon(0 0,100% 0,100% 100%,0 100%)" }}>
-      <div
-        className="h-full w-full border-b-2 border-brand-bg"
-        style={{ clipPath: "polygon(0 0, 50% 55%, 100% 0)" }}
-      />
-    </div>
-  );
-}
-
-function PinIcon() {
-  return (
-    <div
-      className="h-5 w-5 bg-brand-bg"
-      style={{ clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)" }}
-    />
-  );
-}
-
-function StarIcon() {
-  return (
-    <div
-      className="h-5 w-5 bg-brand-bg"
-      style={{
-        clipPath:
-          "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)",
-      }}
-    />
-  );
-}

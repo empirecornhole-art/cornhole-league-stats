@@ -31,7 +31,7 @@ export default async function Footer() {
                 <span className="font-display text-base uppercase tracking-wide text-brand-text">
                   Empire Cornhole
                 </span>
-                <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-orange">
+                <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-orange">
                   League
                 </span>
               </span>
@@ -42,7 +42,7 @@ export default async function Footer() {
           </div>
 
           <div>
-            <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">Explore</h3>
+            <h3 className="eyebrow">Explore</h3>
             <ul className="mt-4 space-y-2">
               {EXPLORE_LINKS.map((link) => (
                 <li key={link.href}>
@@ -58,7 +58,7 @@ export default async function Footer() {
           </div>
 
           <div>
-            <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">Connect</h3>
+            <h3 className="eyebrow">Connect</h3>
             <ul className="mt-4 space-y-2">
               <li>
                 <a
@@ -81,15 +81,15 @@ export default async function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="font-sans text-sm text-brand-textSecondary transition duration-200 hover:text-brand-orange">
+                <Link href="/leagues?tab=store" className="font-sans text-sm text-brand-textSecondary transition duration-200 hover:text-brand-orange">
                   Store
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+            <h3 className="eyebrow">
               Get Season Updates
             </h3>
             <p className="mt-4 font-sans text-sm text-brand-textSecondary">
@@ -109,16 +109,8 @@ export default async function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 font-sans text-xs text-brand-textFaint md:flex-row">
+        <div className="mt-12 flex flex-col items-center justify-center gap-4 border-t border-white/10 pt-8 font-sans text-xs text-brand-textFaint md:flex-row">
           <span>&copy; 2026 Empire Cornhole League. All rights reserved.</span>
-          <div className="flex items-center gap-6">
-            <a href="#" className="transition duration-200 hover:text-brand-textSecondary">
-              Privacy
-            </a>
-            <a href="#" className="transition duration-200 hover:text-brand-textSecondary">
-              Terms
-            </a>
-          </div>
         </div>
       </div>
     </footer>

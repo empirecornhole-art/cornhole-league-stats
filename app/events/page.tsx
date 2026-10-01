@@ -41,10 +41,10 @@ export default async function EventsPage() {
           aria-hidden
         />
         <FadeIn className="relative mx-auto max-w-4xl px-4 py-16 text-center md:px-6 md:py-28">
-          <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+          <span className="eyebrow">
             Schedule
           </span>
-          <h1 className="mt-4 font-display text-5xl uppercase text-brand-text md:text-7xl">Upcoming Events</h1>
+          <h1 className="heading-page mt-4">Events</h1>
           <p className="mt-5 font-sans text-brand-textSecondary">
             Blind draws, swap nights, and the events that decide who takes home the season.
           </p>

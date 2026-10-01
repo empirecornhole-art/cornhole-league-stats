@@ -1,6 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import FadeIn from "../components/site/FadeIn";
+import EventCard from "../components/site/EventCard";
+import { StandingsIcon, CalendarIcon, TrophyIcon, BadgeIcon } from "../components/site/Icons";
+import { getStorePreview, StorePreviewItem } from "../lib/storePreview";
 import { getUpcomingEvents } from "../lib/events";
 import { getSiteSettings } from "../lib/settings";
 import { formatEventDateParts, formatEventDateShort } from "../lib/format";
@@ -18,19 +21,19 @@ const FEATURES = [
     href: "/leagues?tab=weeks",
     title: "Weekly Results",
     desc: "Dig into scores, matchups, and results from any week of the season.",
-    icon: <WeeklyIcon />,
+    icon: <CalendarIcon />,
   },
   {
     href: "/leagues?tab=alltime",
     title: "All-Time Leaders",
     desc: "Career stats and records for every player who's ever picked up a bag.",
-    icon: <AllTimeIcon />,
+    icon: <TrophyIcon />,
   },
   {
     href: "/leagues?tab=badges",
     title: "Badges",
     desc: "Track the achievements and milestones players earn week to week.",
-    icon: <BadgesIcon />,
+    icon: <BadgeIcon />,
   },
 ];
 
@@ -44,11 +47,17 @@ export default async function Home() {
     event_date: string;
     registerUrl: string;
   }[] = [];
+  let storeItems: StorePreviewItem[] = [];
   let seasonLabel = "";
   let currentWeek = "";
 
   try {
-    const [events, settings] = await Promise.all([getUpcomingEvents(3), getSiteSettings()]);
+    const [events, settings, products] = await Promise.all([
+      getUpcomingEvents(3),
+      getSiteSettings(),
+      getStorePreview(4),
+    ]);
+    storeItems = products;
     upcomingEvents = events.map((event) => {
       const { day, month } = formatEventDateParts(event.event_date);
       return {
@@ -106,7 +115,7 @@ export default async function Home() {
         </div>
 
         <FadeIn className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-16 text-center sm:py-24 md:px-6 md:py-36">
-          <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+          <span className="eyebrow">
             Empire Cornhole League
           </span>
           <h1 className="mt-5 font-display text-5xl uppercase leading-[0.95] text-brand-text sm:text-6xl md:text-8xl">
@@ -136,10 +145,10 @@ export default async function Home() {
       <section className="bg-brand-panel">
         <FadeIn className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
           <div className="mx-auto max-w-2xl text-center">
-            <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+            <span className="eyebrow">
               What&apos;s Inside
             </span>
-            <h2 className="mt-4 font-display text-4xl uppercase text-brand-text md:text-5xl">
+            <h2 className="heading-section mt-4">
               Everything you need to compete.
             </h2>
             <p className="mt-4 font-sans text-brand-textSecondary">
@@ -154,10 +163,10 @@ export default async function Home() {
                 href={feature.href}
                 className="group flex flex-col rounded-2xl border border-white/10 bg-brand-bg p-6 transition duration-200 hover:-translate-y-1 hover:border-white/20"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover text-brand-bg">
                   {feature.icon}
                 </div>
-                <h3 className="mt-5 font-display text-xl uppercase text-brand-text">{feature.title}</h3>
+                <h3 className="heading-card mt-5">{feature.title}</h3>
                 <p className="mt-2 font-sans text-sm text-brand-textSecondary">{feature.desc}</p>
                 <span className="mt-4 font-sans text-xs font-bold uppercase tracking-wide text-brand-orange transition duration-200 group-hover:translate-x-1">
                   View &rarr;
@@ -173,10 +182,10 @@ export default async function Home() {
         <FadeIn className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
-              <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+              <span className="eyebrow">
                 Don&apos;t Miss Out
               </span>
-              <h2 className="mt-4 font-display text-4xl uppercase text-brand-text md:text-5xl">Upcoming Events</h2>
+              <h2 className="heading-section mt-4">Upcoming Events</h2>
             </div>
             <Link href="/events" className="btn-secondary">
               View Full Schedule
@@ -190,33 +199,7 @@ export default async function Home() {
           ) : (
             <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
               {upcomingEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex gap-4 rounded-2xl border border-white/10 bg-brand-panel p-6"
-                >
-                  <div className="flex h-16 w-16 flex-none flex-col items-center justify-center rounded-xl bg-brand-bg">
-                    <span className="font-display text-2xl leading-none text-brand-orange">{event.day}</span>
-                    <span className="mt-1 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-textMuted">
-                      {event.month}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="font-display text-lg uppercase leading-tight text-brand-text">{event.title}</h3>
-                    {event.meta && (
-                      <p className="mt-2 font-sans text-sm text-brand-textSecondary">{event.meta}</p>
-                    )}
-                    {event.registerUrl && (
-                      <a
-                        href={event.registerUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-3 inline-block font-sans text-xs font-bold uppercase tracking-wide text-brand-orange hover:text-brand-orangeHover"
-                      >
-                        Register &rarr;
-                      </a>
-                    )}
-                  </div>
-                </div>
+                <EventCard key={event.id} event={event} surface="bg" />
               ))}
             </div>
           )}
@@ -228,10 +211,10 @@ export default async function Home() {
         <FadeIn className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
           <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
             <div>
-              <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+              <span className="eyebrow">
                 Repping The League
               </span>
-              <h2 className="mt-4 font-display text-4xl uppercase text-brand-text md:text-5xl">
+              <h2 className="heading-section mt-4">
                 Gear up for game night.
               </h2>
               <p className="mt-4 max-w-md font-sans text-brand-textSecondary">
@@ -242,22 +225,45 @@ export default async function Home() {
               </Link>
             </div>
 
-            <div className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 bg-brand-bg">
-              <div
-                className="pointer-events-none absolute inset-0 opacity-[0.1]"
-                style={{
-                  transform: "rotate(-9deg) scale(1.3)",
-                  maskImage: "radial-gradient(ellipse at center, black 40%, transparent 75%)",
-                  WebkitMaskImage: "radial-gradient(ellipse at center, black 40%, transparent 75%)",
-                }}
-                aria-hidden
-              >
-                <Image src="/ec-logo-full.png" alt="" fill className="object-contain" />
+            {storeItems.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {storeItems.map((item) => (
+                  <Link
+                    key={item.id}
+                    href="/leagues?tab=store"
+                    className="group overflow-hidden rounded-2xl border border-white/10 bg-brand-bg"
+                  >
+                    <div className="aspect-square overflow-hidden bg-white/5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.imageUrl}
+                        alt={item.imageAlt}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+                      />
+                    </div>
+                    <div className="p-3 sm:p-4">
+                      <div className="truncate font-sans text-sm font-bold text-brand-text">{item.title}</div>
+                      <div className="mt-0.5 font-sans text-sm text-brand-orange">{item.price}</div>
+                    </div>
+                  </Link>
+                ))}
               </div>
-              <div className="absolute inset-0 flex items-center justify-center font-display text-2xl uppercase tracking-wide text-brand-textMuted">
-                Store Preview
+            ) : (
+              <div className="relative hidden aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-brand-bg md:block">
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-[0.14]"
+                  style={{
+                    transform: "rotate(-9deg) scale(1.2)",
+                    maskImage: "radial-gradient(ellipse at center, black 40%, transparent 75%)",
+                    WebkitMaskImage: "radial-gradient(ellipse at center, black 40%, transparent 75%)",
+                  }}
+                  aria-hidden
+                >
+                  <Image src="/ec-logo-full.png" alt="" fill className="object-contain" />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </FadeIn>
       </section>
@@ -265,35 +271,3 @@ export default async function Home() {
   );
 }
 
-function StandingsIcon() {
-  return (
-    <div className="flex items-end gap-1">
-      <div className="h-4 w-1.5 rounded-sm bg-brand-bg" />
-      <div className="h-6 w-1.5 rounded-sm bg-brand-bg" />
-      <div className="h-3 w-1.5 rounded-sm bg-brand-bg" />
-    </div>
-  );
-}
-
-function WeeklyIcon() {
-  return <div className="h-5 w-5 bg-brand-bg" style={{ clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }} />;
-}
-
-function AllTimeIcon() {
-  return (
-    <div className="relative flex h-6 w-6 items-center justify-center rounded-full border-2 border-brand-bg">
-      <div className="h-1.5 w-1.5 rounded-full bg-brand-bg" />
-    </div>
-  );
-}
-
-function BadgesIcon() {
-  return (
-    <div
-      className="h-6 w-6 bg-brand-bg"
-      style={{
-        clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
-      }}
-    />
-  );
-}

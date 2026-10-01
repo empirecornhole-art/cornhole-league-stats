@@ -1734,7 +1734,7 @@ export default function LeagueClient() {
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
-              className={`rounded-full border px-1 py-3 font-sans text-[11px] font-bold uppercase tracking-wide transition duration-200 ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
+              className={`rounded-full border px-1 py-3 font-sans text-xs font-bold uppercase tracking-wide transition duration-200 ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
             >
               {item.label}
             </button>
@@ -1749,7 +1749,7 @@ function Card({ title, actions, children }: { title: string; actions?: React.Rea
   return (
     <section className="rounded-2xl border border-white/10 bg-brand-panel p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-xl uppercase">{title}</h2>
+        <h2 className="font-display text-2xl uppercase text-brand-text">{title}</h2>
         {actions}
       </div>
       {children}
@@ -2026,7 +2026,7 @@ function RankChangeBadge({ change }: { change: number | null }) {
 function WeeklyTable({ rows }: { rows: any[] }) {
   return (
     <div className="scroll-shadow-x overflow-x-auto">
-      <table className="w-full text-[12px]">
+      <table className="w-full text-[13px]">
         <thead>
           <tr className="text-left text-brand-textMuted">
             <th className="p-2">Rank</th><th className="p-2">Player</th><th className="p-2">Team</th><th className="p-2">Finish Pts</th><th className="p-2">+/-</th>
@@ -2077,7 +2077,7 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
         ))}
       </div>
       <div className="scroll-shadow-x hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[1150px] text-[12px]">
+        <table className="w-full min-w-[1150px] text-[13px]">
           <thead>
             <tr className="text-left text-brand-textMuted">
               <th className="sticky left-0 z-10 bg-brand-panel p-2">Player</th>
@@ -2140,7 +2140,7 @@ function CareerStatsTable({
         ))}
       </div>
       <div className="scroll-shadow-x hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[1150px] text-[12px]">
+        <table className="w-full min-w-[1150px] text-[13px]">
           <thead>
             <tr className="text-left text-brand-textMuted">
               <th className="sticky left-0 z-10 bg-brand-panel p-2">Player</th>
