@@ -10,6 +10,7 @@ type EventRow = {
   location: string;
   tag: string;
   featured: boolean;
+  scoreholio_id: string | null;
 };
 
 type EventFormState = {
@@ -33,6 +34,7 @@ const EMPTY_FORM: EventFormState = {
 export default function EventsTab({ password }: { password: string }) {
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -158,6 +160,37 @@ export default function EventsTab({ password }: { password: string }) {
     }
   }
 
+  async function handleSync() {
+    if (!password) {
+      setMessage("Enter the admin password.");
+      return;
+    }
+
+    setSyncing(true);
+    setMessage("Syncing from Scoreholio...");
+
+    try {
+      const res = await fetch("/api/admin/scoreholio-sync", {
+        method: "POST",
+        headers: { "x-admin-password": password },
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        setMessage(data.error || "Scoreholio sync failed.");
+        return;
+      }
+
+      const skipped = data.skipped?.length ? ` Skipped (not ours): ${data.skipped.join(", ")}.` : "";
+      setMessage(`Synced ${data.upserted} tournament(s) from Scoreholio, removed ${data.removed}.${skipped}`);
+      await loadEvents();
+    } catch (err: any) {
+      setMessage(err?.message || "Scoreholio sync failed.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   async function handleDelete(event: EventRow) {
     if (!password) {
       setMessage("Enter the admin password.");
@@ -192,11 +225,15 @@ export default function EventsTab({ password }: { password: string }) {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-sans text-sm text-brand-textSecondary">
-          Manage upcoming and past events shown on the public site.
+          Manage upcoming and past events shown on the public site. Scoreholio events sync daily; edits to
+          their date, time, title, or location are overwritten on the next sync (Featured is kept).
         </p>
         <div className="flex gap-2">
           <button type="button" onClick={loadEvents} className="btn-secondary" disabled={loading}>
             {loading ? "Loading..." : "Refresh"}
+          </button>
+          <button type="button" onClick={handleSync} className="btn-secondary" disabled={syncing}>
+            {syncing ? "Syncing..." : "Sync from Scoreholio"}
           </button>
           <button type="button" onClick={openAddForm} className="btn-primary">
             Add Event
@@ -328,6 +365,11 @@ export default function EventsTab({ password }: { password: string }) {
                 <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-textMuted">
                   {event.tag}
                 </span>
+                {event.scoreholio_id && (
+                  <span className="rounded-full border border-white/15 px-2.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-textMuted">
+                    Scoreholio
+                  </span>
+                )}
                 {event.featured && (
                   <span className="rounded-full bg-brand-orange px-2.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-widest text-brand-bg">
                     Featured

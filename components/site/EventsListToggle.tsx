@@ -10,6 +10,7 @@ export type EventDisplay = {
   tag: string;
   meta: string;
   featured: boolean;
+  registerUrl: string;
 };
 
 export default function EventsListToggle({
@@ -90,6 +91,16 @@ export default function EventsListToggle({
                 )}
               </div>
             </div>
+            {view === "upcoming" && event.registerUrl && (
+              <a
+                href={event.registerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-nav-cta flex-none self-start sm:self-auto"
+              >
+                Register
+              </a>
+            )}
           </div>
         ))}
       </div>

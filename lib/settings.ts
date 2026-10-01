@@ -8,6 +8,7 @@ export type SiteSettings = {
   instagram_url: string;
   season_label: string;
   current_week: string;
+  scoreholio_match: string;
 };
 
 const DEFAULT_SETTINGS: SiteSettings = {
@@ -18,6 +19,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   instagram_url: "",
   season_label: "",
   current_week: "",
+  scoreholio_match: "",
 };
 
 function toSiteSettings(row: any): SiteSettings {
@@ -29,6 +31,7 @@ function toSiteSettings(row: any): SiteSettings {
     instagram_url: row?.instagram_url ?? "",
     season_label: row?.season_label ?? "",
     current_week: row?.current_week ?? "",
+    scoreholio_match: row?.scoreholio_match ?? "",
   };
 }
 
@@ -74,6 +77,7 @@ export async function updateSiteSettings(input: Partial<SiteSettings>): Promise<
   if (input.instagram_url !== undefined) patch.instagram_url = input.instagram_url;
   if (input.season_label !== undefined) patch.season_label = input.season_label;
   if (input.current_week !== undefined) patch.current_week = input.current_week;
+  if (input.scoreholio_match !== undefined) patch.scoreholio_match = input.scoreholio_match;
 
   const { data, error } = await supabase
     .from("site_settings")

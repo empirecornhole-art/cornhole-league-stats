@@ -9,6 +9,8 @@ export type EventRow = {
   location: string;
   tag: string;
   featured: boolean;
+  scoreholio_id: string | null;
+  register_url: string | null;
   created_at: string;
 };
 

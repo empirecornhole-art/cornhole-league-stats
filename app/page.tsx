@@ -42,6 +42,7 @@ export default async function Home() {
     title: string;
     meta: string;
     event_date: string;
+    registerUrl: string;
   }[] = [];
   let seasonLabel = "";
   let currentWeek = "";
@@ -57,6 +58,7 @@ export default async function Home() {
         title: event.title,
         meta: [event.time, event.location].filter(Boolean).join(" · "),
         event_date: event.event_date,
+        registerUrl: event.register_url || "",
       };
     });
     seasonLabel = settings.season_label;
@@ -202,6 +204,16 @@ export default async function Home() {
                     <h3 className="font-display text-lg uppercase leading-tight text-brand-text">{event.title}</h3>
                     {event.meta && (
                       <p className="mt-2 font-sans text-sm text-brand-textSecondary">{event.meta}</p>
+                    )}
+                    {event.registerUrl && (
+                      <a
+                        href={event.registerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-block font-sans text-xs font-bold uppercase tracking-wide text-brand-orange hover:text-brand-orangeHover"
+                      >
+                        Register &rarr;
+                      </a>
                     )}
                   </div>
                 </div>
