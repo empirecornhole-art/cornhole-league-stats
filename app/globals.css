@@ -96,3 +96,13 @@ body { background:#0d0c0b; color:#f5f5f0; }
 @media (prefers-reduced-motion: reduce) {
   .menu-in { animation: menuIn 1ms; }
 }
+
+/* iOS Safari zooms the page when focusing a field under 16px. Keep form
+   text at 16px on touch devices; desktop keeps the smaller design size. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

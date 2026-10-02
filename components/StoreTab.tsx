@@ -194,7 +194,10 @@ function CartBar({
   if (!lines.length) return null;
 
   return (
-    <div className="fixed bottom-16 left-4 right-4 z-40 md:bottom-4 md:left-auto md:right-4 md:w-96">
+    // Sticky (not fixed) at the end of the store section: it rides just above
+    // the league's mobile tab bar (~57px tall) while you browse, and stops at
+    // the end of the store instead of floating over the tab bar or footer.
+    <div className="sticky bottom-[4.25rem] z-30 mt-4 md:bottom-4 md:ml-auto md:w-96">
       <div className="rounded-xl border border-brand-orange bg-brand-panel shadow-2xl">
         {expanded && (
           <div className="max-h-64 space-y-2 overflow-y-auto border-b border-white/10 p-3">

@@ -921,6 +921,27 @@ function AnimatedNumber({ value }: { value: any }) {
   );
 }
 
+// Recharts defaults to a white tooltip and mid-grey axes; match the dark
+// brand surfaces instead (brand.raised / textMuted / textSecondary).
+const CHART_AXIS = {
+  stroke: "rgba(255,255,255,0.15)",
+  tick: { fill: "#9a9a9a", fontSize: 12 },
+  tickLine: false,
+} as const;
+
+const CHART_TOOLTIP = {
+  contentStyle: {
+    background: "#1c1a17",
+    border: "1px solid rgba(255,255,255,0.15)",
+    borderRadius: 12,
+    color: "#f5f5f0",
+    fontSize: 13,
+  },
+  labelStyle: { color: "#c9c5bf", fontWeight: 700, marginBottom: 4 },
+  itemStyle: { color: "#f5f5f0" },
+  cursor: { stroke: "rgba(255,255,255,0.2)" },
+} as const;
+
 export default function LeagueClient() {
   const router = useRouter();
   const pathname = usePathname();
@@ -1648,10 +1669,10 @@ export default function LeagueClient() {
                   <div className="h-72 rounded-xl border border-white/10 p-3">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={progressData}>
-                        <XAxis dataKey="season" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
+                        <XAxis dataKey="season" {...CHART_AXIS} />
+                        <YAxis {...CHART_AXIS} />
+                        <Tooltip {...CHART_TOOLTIP} />
+                        <Legend wrapperStyle={{ color: "#c9c5bf", fontSize: 13 }} />
                         <Line type="monotone" dataKey="DPR" stroke="#ffffff" strokeWidth={3} />
                         <Line type="monotone" dataKey="PPR" stroke="#f04a22" strokeWidth={3} />
                       </LineChart>
