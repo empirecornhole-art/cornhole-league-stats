@@ -28,10 +28,10 @@ export default async function Footer() {
                 className="h-10 w-10 rounded-lg object-contain"
               />
               <span className="flex flex-col leading-none">
-                <span className="font-display text-base uppercase tracking-wide text-brand-text">
+                <span className="font-display text-base uppercase tracking-[0.01em] text-brand-text">
                   Empire Cornhole
                 </span>
-                <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-orange">
+                <span className="font-sans text-xs font-bold uppercase tracking-[0.12em] text-brand-orange">
                   League
                 </span>
               </span>

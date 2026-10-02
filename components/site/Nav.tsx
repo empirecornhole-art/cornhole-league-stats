@@ -47,7 +47,7 @@ export default function Nav() {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-brand-bg/95 backdrop-blur supports-[backdrop-filter]:bg-brand-bg/85">
+    <header className={`chrome sticky top-0 z-50 ${pathname.startsWith("/leagues") ? "" : "chrome-edge"}`}>
       <div className="mx-auto flex h-[var(--nav-h)] max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
         <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
           <Image
@@ -59,10 +59,10 @@ export default function Nav() {
             priority
           />
           <span className="flex flex-col leading-none">
-            <span className="font-display text-lg uppercase tracking-wide text-brand-text md:text-xl">
+            <span className="font-display text-lg uppercase tracking-[0.01em] text-brand-text md:text-xl">
               Empire Cornhole
             </span>
-            <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-orange">
+            <span className="font-sans text-xs font-bold uppercase tracking-[0.12em] text-brand-orange">
               League
             </span>
           </span>
@@ -75,7 +75,7 @@ export default function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`font-sans text-sm font-bold uppercase tracking-wide transition duration-200 ${
+                className={`font-sans text-[15px] font-semibold transition-colors duration-200 ${
                   active
                     ? "text-brand-orange underline decoration-2 underline-offset-8"
                     : "text-brand-textSecondary hover:text-brand-text"
@@ -120,7 +120,7 @@ export default function Nav() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className={`rounded-lg px-3 py-3 font-sans text-base font-bold uppercase tracking-wide transition duration-200 ${
+                  className={`rounded-lg px-3 py-3 font-sans text-lg font-semibold transition-colors duration-200 ${
                     active ? "bg-white/5 text-brand-orange" : "text-brand-textSecondary hover:bg-white/5 hover:text-brand-text"
                   }`}
                 >

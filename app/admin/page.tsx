@@ -26,7 +26,7 @@ export default function AdminPage() {
         </p>
 
         <label className="mt-6 block">
-          <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+          <span className="field-label">
             Admin password
           </span>
           <input
@@ -44,7 +44,7 @@ export default function AdminPage() {
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`rounded-full px-4 py-2 font-sans text-xs font-bold uppercase tracking-wide transition duration-200 ${
+              className={`rounded-full px-4 py-2 font-sans text-sm font-semibold transition duration-200 ${
                 tab === t.id
                   ? "bg-brand-orange text-brand-bg"
                   : "bg-white/5 text-brand-textMuted hover:bg-white/10"

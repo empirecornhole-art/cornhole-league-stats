@@ -255,7 +255,7 @@ export default function EventsTab({ password }: { password: string }) {
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+              <span className="field-label">
                 Date
               </span>
               <input
@@ -267,7 +267,7 @@ export default function EventsTab({ password }: { password: string }) {
             </label>
 
             <label className="block">
-              <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+              <span className="field-label">
                 Time
               </span>
               <input
@@ -280,7 +280,7 @@ export default function EventsTab({ password }: { password: string }) {
             </label>
 
             <label className="block sm:col-span-2">
-              <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+              <span className="field-label">
                 Title
               </span>
               <input
@@ -293,7 +293,7 @@ export default function EventsTab({ password }: { password: string }) {
             </label>
 
             <label className="block sm:col-span-2">
-              <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+              <span className="field-label">
                 Location
               </span>
               <input
@@ -306,7 +306,7 @@ export default function EventsTab({ password }: { password: string }) {
             </label>
 
             <label className="block">
-              <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+              <span className="field-label">
                 Tag
               </span>
               <input
@@ -356,22 +356,22 @@ export default function EventsTab({ password }: { password: string }) {
           >
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-orange">
+                <span className="font-sans text-xs font-semibold text-brand-orange">
                   {event.event_date}
                 </span>
                 {event.time && (
                   <span className="font-sans text-xs text-brand-textMuted">{event.time}</span>
                 )}
-                <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+                <span className="rounded-full bg-white/10 px-2.5 py-0.5 field-label">
                   {event.tag}
                 </span>
                 {event.scoreholio_id && (
-                  <span className="rounded-full border border-white/15 px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+                  <span className="rounded-full border border-white/15 px-2.5 py-0.5 field-label">
                     Scoreholio
                   </span>
                 )}
                 {event.featured && (
-                  <span className="rounded-full bg-brand-orange px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-widest text-brand-bg">
+                  <span className="rounded-full bg-brand-orange px-2.5 py-0.5 font-sans text-xs font-semibold text-brand-bg">
                     Featured
                   </span>
                 )}
@@ -388,7 +388,7 @@ export default function EventsTab({ password }: { password: string }) {
               <button
                 type="button"
                 onClick={() => handleDelete(event)}
-                className="rounded-full border border-red-500/40 px-4 py-2 font-sans text-xs font-bold uppercase tracking-wide text-red-400 transition duration-200 hover:bg-red-500/10"
+                className="rounded-full border border-red-500/40 px-4 py-2 font-sans text-xs font-semibold text-red-400 transition duration-200 hover:bg-red-500/10"
               >
                 Delete
               </button>

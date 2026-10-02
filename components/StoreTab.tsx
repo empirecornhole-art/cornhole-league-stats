@@ -101,7 +101,7 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
 
         {product.options.map((option) => (
           <div key={option.name}>
-            <label className="text-xs font-bold uppercase text-brand-textMuted">{option.name}</label>
+            <label className="field-label">{option.name}</label>
             <select
               className="block w-full rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-sm text-brand-text"
               value={picks[option.name] || ""}

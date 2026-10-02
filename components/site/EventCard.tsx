@@ -39,7 +39,7 @@ export default function EventCard({
       <div className="flex items-start gap-4">
         <div className={`flex h-16 w-16 flex-none flex-col items-center justify-center rounded-xl ${dateBg}`}>
           <span className="font-display text-2xl leading-none text-brand-orange">{event.day}</span>
-          <span className="mt-1 font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+          <span className="mt-1 font-sans text-xs font-bold uppercase tracking-[0.08em] text-brand-textMuted">
             {event.month}
           </span>
         </div>
@@ -48,7 +48,7 @@ export default function EventCard({
           {event.meta && <p className="mt-1.5 font-sans text-sm text-brand-textSecondary">{event.meta}</p>}
           {event.tag && (
             <span
-              className={`mt-3 inline-block rounded-full px-2.5 py-1 font-sans text-xs font-bold uppercase tracking-wide ${
+              className={`mt-3 inline-block rounded-full px-2.5 py-1 font-sans text-xs font-semibold ${
                 event.featured ? "bg-brand-orange text-brand-bg" : "bg-white/10 text-brand-textSecondary"
               }`}
             >

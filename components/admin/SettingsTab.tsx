@@ -132,7 +132,7 @@ export default function SettingsTab({ password }: { password: string }) {
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {FIELDS.map((field) => (
           <label key={field.key} className="block">
-            <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+            <span className="field-label">
               {field.label}
             </span>
             <input

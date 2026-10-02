@@ -1407,7 +1407,7 @@ export default function LeagueClient() {
               <button
                 key={item.id}
                 onClick={() => setTab(item.id)}
-                className={`rounded-full border px-4 py-2 font-sans text-sm font-bold uppercase tracking-wide transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary hover:border-white/35 hover:text-brand-text"}`}
+                className={`rounded-full border px-4 py-2 font-sans text-[15px] font-semibold transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary hover:border-white/35 hover:text-brand-text"}`}
               >
                 {item.label}
               </button>
@@ -1417,11 +1417,11 @@ export default function LeagueClient() {
       </header>
 
       {tab !== "store" && (
-        <section className="sticky top-[calc(var(--nav-h)+1px)] z-20 mx-auto max-w-7xl bg-brand-bg/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-brand-bg/85">
-          <div className="rounded-2xl border border-white/10 bg-brand-panel p-4">
+        <section className="chrome chrome-edge sticky top-[var(--nav-h)] z-20">
+          <div className="mx-auto max-w-7xl px-4 py-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-end">
               <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-brand-textMuted">Season</label>
+                <label className="field-label">Season</label>
                 <select
                   className="block rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-brand-text"
                   value={season}
@@ -1437,12 +1437,12 @@ export default function LeagueClient() {
               </div>
 
               <div className="w-full md:w-64">
-                <label className="text-xs font-bold uppercase tracking-widest text-brand-textMuted">Player</label>
+                <label className="field-label">Player</label>
                 <PlayerCombobox players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-brand-textMuted">Dashboard Week</label>
+                <label className="field-label">Dashboard Week</label>
                 <select className="block rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-brand-text" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
                   {dashboardWeeks.map((w) => (
                     <option key={w}>{w}</option>
@@ -1565,7 +1565,7 @@ export default function LeagueClient() {
               <div className="grid gap-4 md:grid-cols-3">
                 {Object.entries(careerLeaders).map(([label, { rows, key, decimals }]) => (
                   <div key={label} className="rounded-xl border border-white/10 bg-brand-bg p-4">
-                    <div className="mb-2 text-xs font-bold uppercase tracking-widest text-brand-textMuted">{label}</div>
+                    <div className="mb-2 eyebrow">{label}</div>
                     <div className="space-y-1">
                       {rows.length === 0 && <div className="text-sm text-brand-textFaint">Not enough data yet</div>}
                       {rows.map((row, index) => (
@@ -1613,7 +1613,7 @@ export default function LeagueClient() {
 
             <Card title="Weekly Badges">
               <div className="mb-4 flex flex-wrap items-center gap-3">
-                <label className="text-xs font-bold uppercase tracking-widest text-brand-textMuted">Week</label>
+                <label className="field-label">Week</label>
                 <select className="rounded-lg bg-brand-raisedHover p-2" value={badgeWeek} onChange={(e) => setBadgeWeek(e.target.value)}>
                   {badgeWeeks.map((w) => (
                     <option key={w}>{w}</option>
@@ -1755,7 +1755,7 @@ export default function LeagueClient() {
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
-              className={`rounded-full border px-1 py-3 font-sans text-xs font-bold uppercase tracking-wide transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
+              className={`rounded-full border px-1 py-3 font-sans text-[13px] font-semibold transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
             >
               {item.label}
             </button>
@@ -1950,7 +1950,7 @@ function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlay
     <div className="rounded-xl border border-white/10 bg-brand-bg p-4">
       <div className="mb-1 flex items-center gap-2">
         <span className="text-2xl">{badge.icon}</span>
-        <div className="text-sm font-bold uppercase text-brand-orange">{badge.title}</div>
+        <div className="font-display text-base uppercase tracking-[0.01em] text-brand-orange">{badge.title}</div>
       </div>
       <p className="mb-3 text-xs text-brand-textFaint">{badge.description}</p>
       <div className="space-y-1">
@@ -1978,7 +1978,7 @@ function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlay
 function MiniStat({ label, value }: { label: string; value: any }) {
   return (
     <div className="rounded-xl border border-white/10 bg-brand-bg p-4">
-      <div className="text-xs font-bold uppercase text-brand-textMuted">{label}</div>
+      <div className="eyebrow">{label}</div>
       <div className="mt-1 text-3xl font-bold text-brand-orange"><AnimatedNumber value={value} /></div>
     </div>
   );

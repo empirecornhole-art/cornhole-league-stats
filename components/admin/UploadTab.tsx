@@ -73,7 +73,7 @@ export default function UploadTab({ password }: { password: string }) {
       </p>
 
       <label className="mt-6 block">
-        <span className="font-sans text-xs font-bold uppercase tracking-widest text-brand-textMuted">
+        <span className="field-label">
           Excel workbook
         </span>
         <input

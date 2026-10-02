@@ -118,7 +118,7 @@ export default async function Home() {
           <span className="eyebrow">
             Empire Cornhole League
           </span>
-          <h1 className="mt-5 font-display text-5xl uppercase leading-[0.95] text-brand-text sm:text-6xl md:text-8xl">
+          <h1 className="mt-5 font-display text-5xl uppercase leading-[0.92] tracking-[-0.015em] text-brand-text sm:text-6xl md:text-8xl">
             Where every <span className="text-brand-orange">bag</span> counts.
           </h1>
           <p className="mt-6 max-w-2xl font-sans text-base text-brand-textSecondary sm:text-lg">
@@ -134,7 +134,7 @@ export default async function Home() {
           </div>
 
           {(weekLine || nextEventLine) && (
-            <div className="mt-12 rounded-2xl border border-white/10 bg-brand-panel/60 px-5 py-3 font-sans text-xs font-bold uppercase leading-relaxed tracking-wide text-brand-textMuted sm:mt-16 sm:rounded-full sm:px-6 sm:tracking-widest">
+            <div className="mt-12 rounded-2xl border border-white/10 bg-brand-panel/60 px-5 py-3 font-sans text-sm font-semibold leading-relaxed text-brand-textSecondary sm:mt-16 sm:rounded-full sm:px-6">
               {[weekLine, nextEventLine].filter(Boolean).join(" · ")}
             </div>
           )}
@@ -168,7 +168,7 @@ export default async function Home() {
                 </div>
                 <h3 className="heading-card mt-5">{feature.title}</h3>
                 <p className="mt-2 font-sans text-sm text-brand-textSecondary">{feature.desc}</p>
-                <span className="mt-4 font-sans text-xs font-bold uppercase tracking-wide text-brand-orange transition duration-200 group-hover:translate-x-1">
+                <span className="mt-4 font-sans text-sm font-bold text-brand-orange transition-transform duration-200 group-hover:translate-x-1">
                   View &rarr;
                 </span>
               </Link>
