@@ -13,16 +13,19 @@ type Recap = {
 const inputClass =
   "mt-2 block w-full rounded-lg border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text";
 
+// Between the Switch recap and the Blind Draw recap in the combined post.
+const POST_DIVIDER = "\n\n━━━━━━━━━━━━\n\n";
+
 function RecapCard({
   title,
   text,
   onChange,
-  missingLog,
+  hints,
 }: {
   title: string;
   text: string;
   onChange: (value: string) => void;
-  missingLog: boolean;
+  hints: string[];
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -44,15 +47,15 @@ function RecapCard({
           {copied ? "Copied!" : "Copy text"}
         </button>
       </div>
-      {missingLog && (
-        <p className="mt-2 font-sans text-xs text-brand-textMuted">
-          No match log was uploaded for this event, so the game-by-game story is left out.
+      {hints.map((hint) => (
+        <p key={hint} className="mt-2 font-sans text-xs text-brand-textMuted">
+          {hint}
         </p>
-      )}
+      ))}
       <textarea
         value={text}
         onChange={(e) => onChange(e.target.value)}
-        rows={Math.min(36, Math.max(10, text.split("\n").length + 1))}
+        rows={Math.min(60, Math.max(10, text.split("\n").length + 1))}
         className="mt-3 block w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-3 font-sans text-sm leading-relaxed text-brand-text"
       />
       <p className="mt-1 font-sans text-xs text-brand-textFaint">{text.length} characters. Edit freely before copying.</p>
@@ -68,8 +71,7 @@ export default function RecapTab({ password }: { password: string }) {
   const [blindNotes, setBlindNotes] = useState("");
   const [switchLink, setSwitchLink] = useState("");
   const [blindLink, setBlindLink] = useState("");
-  const [switchText, setSwitchText] = useState("");
-  const [blindText, setBlindText] = useState("");
+  const [postText, setPostText] = useState("");
   const [recap, setRecap] = useState<Recap | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -118,8 +120,8 @@ export default function RecapTab({ password }: { password: string }) {
         blindLink,
       });
       setRecap(data);
-      setSwitchText(data.switch.text);
-      setBlindText(data.blind.text);
+      // One post: the Switch recap first (it's played first), then the Blind Draw recap.
+      setPostText([data.switch.text, data.blind.text].filter(Boolean).join(POST_DIVIDER));
       if (!data.switch.available && !data.blind.available) setMessage("Nothing imported for that week yet.");
     } catch (err: any) {
       setMessage(err.message);
@@ -214,11 +216,22 @@ export default function RecapTab({ password }: { password: string }) {
         </div>
       )}
 
-      {recap?.switch.available && (
-        <RecapCard title="Switch recap" text={switchText} onChange={setSwitchText} missingLog={!recap.hasMatchLog.switch} />
-      )}
-      {recap?.blind.available && (
-        <RecapCard title="Blind Draw recap" text={blindText} onChange={setBlindText} missingLog={!recap.hasMatchLog.blind} />
+      {recap && (recap.switch.available || recap.blind.available) && (
+        <RecapCard
+          title={`Week ${week} recap${
+            recap.switch.available && recap.blind.available ? " (Switch + Blind Draw)" : recap.switch.available ? " (Switch)" : " (Blind Draw)"
+          }`}
+          text={postText}
+          onChange={setPostText}
+          hints={[
+            ...(recap.switch.available && !recap.hasMatchLog.switch
+              ? ["No Switch match log was uploaded, so the Switch games section is left out."]
+              : []),
+            ...(recap.blind.available && !recap.hasMatchLog.blind
+              ? ["No Blind Draw match log was uploaded, so the bracket story is left out."]
+              : []),
+          ]}
+        />
       )}
 
       {recap && (
