@@ -24,6 +24,13 @@ export async function POST(req: Request) {
 
     const parsed = await parseWorkbook(arrayBuffer, file.name);
 
+    if (!parsed.standings.length && !parsed.stats.length && !parsed.weekly.length && !parsed.eventStats.length) {
+      return NextResponse.json(
+        { error: "That file has no league workbook data (no Overall, Blind, Swap or Stats sheets). Scoreholio exports go in the Weekly Scoreholio results section." },
+        { status: 400 }
+      );
+    }
+
     const result = await importLeagueDataToSupabase(parsed);
 
     return NextResponse.json({

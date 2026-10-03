@@ -174,7 +174,7 @@ function seasonSort(a: string, b: string) {
 type StatColumn = { label: string; keys: string[]; decimals: number; hideWhenEmpty?: boolean };
 
 const statColumns: StatColumn[] = [
-  { label: "Finish", keys: ["Finish", "Rank"], decimals: 0 },
+  { label: "Finish", keys: ["Finish", "Rank"], decimals: 0, hideWhenEmpty: true },
   { label: "Total Rounds", keys: ["Total Rounds"], decimals: 0 },
   { label: "Total Pts", keys: ["Total Pts", "Total Points"], decimals: 0 },
   { label: "Average PPR", keys: ["Average PPR", "PPR"], decimals: 2 },
@@ -190,7 +190,7 @@ const statColumns: StatColumn[] = [
   { label: "Avg 4-Bagger %", keys: ["Avg 4-Bagger %"], decimals: 2 },
   { label: "Total 4-Baggers", keys: ["Total 4-Baggers", "4 Baggers"], decimals: 0 },
   { label: "1st in Stats", keys: ["1st in Stats"], decimals: 0 },
-  { label: "Avg Rounds/Switch", keys: ["Avg Rounds/Swap Game", "Avg Rounds/Swap"], decimals: 2 },
+  { label: "Avg Rounds/Switch", keys: ["Avg Rounds/Swap Game", "Avg Rounds/Swap"], decimals: 2, hideWhenEmpty: true },
 ];
 
 // Columns flagged hideWhenEmpty (Avg Bags In: retired with the Scoreholio
@@ -286,6 +286,83 @@ function summarizeEvent(rows: any[]) {
     { label: "Opp Points", value: sum("Opp Pts") },
     { label: "4 Baggers", value: sum("4 Baggers") },
   ];
+}
+
+type EventView = "Overall" | "Blind" | "Swap";
+const EVENT_VIEW_OPTIONS: { value: EventView; label: string }[] = [
+  { value: "Overall", label: "Overall (Blind Draw + Switch)" },
+  { value: "Blind", label: "Blind Draw only" },
+  { value: "Swap", label: "Switch only" },
+];
+
+// Season stat rows (same shape as the stored season stats) built from one
+// event type's per-week stats, so the Stats and All-Time tabs can show Blind
+// Draw or Switch on its own. Totals are sums; averages come from those totals.
+function buildTypeSeasonStats(eventStatsRows: any[], weeklyRows: any[], type: "Blind" | "Swap") {
+  const rows = eventStatsRows.filter((r) => getType(r) === type && isValidPlayerName(getPlayer(r)));
+
+  // "1st in Stats": top PPR of each week's import for this event type.
+  const topPpr = new Map<string, { player: string; ppr: number }>();
+  for (const r of rows) {
+    const key = `${getSeason(r)}|${getWeek(r)}`;
+    const ppr = numberVal(r.PPR);
+    const best = topPpr.get(key);
+    if (!best || ppr > best.ppr) topPpr.set(key, { player: getPlayer(r), ppr });
+  }
+
+  // Switch games played, for Avg Rounds/Switch.
+  const games = new Map<string, number>();
+  for (const w of weeklyRows) {
+    if (getType(w) !== type) continue;
+    games.set(`${getSeason(w)}|${getWeek(w)}|${getPlayer(w)}`, numberVal(w.Wins) + numberVal(w.Losses));
+  }
+
+  const byKey = new Map<string, any>();
+  for (const r of rows) {
+    const season = getSeason(r);
+    const name = getPlayer(r);
+    const key = `${season}|${name}`;
+    let a = byKey.get(key);
+    if (!a) {
+      a = { season, name, rounds: 0, pts: 0, oppPts: 0, fours: 0, bagsIn: 0, bagsOn: 0, bagsOff: 0, bags: 0, hasBags: false, firsts: 0, games: 0 };
+      byKey.set(key, a);
+    }
+    a.rounds += numberVal(r.Rounds);
+    a.pts += numberVal(r.Points);
+    a.oppPts += numberVal(r["Opp Pts"]);
+    a.fours += numberVal(r["4 Baggers"]);
+    if (r.TotalBags !== null && r.TotalBags !== undefined) {
+      a.hasBags = true;
+      a.bags += numberVal(r.TotalBags);
+      a.bagsIn += numberVal(r.BagsIn);
+      a.bagsOn += numberVal(r.BagsOn);
+      a.bagsOff += numberVal(r.BagsOff);
+    }
+    if (topPpr.get(`${season}|${getWeek(r)}`)?.player === name) a.firsts += 1;
+    a.games += games.get(`${season}|${getWeek(r)}|${name}`) || 0;
+  }
+
+  const round2 = (v: number) => Math.round(v * 100) / 100;
+  return Array.from(byKey.values()).map((a) => ({
+    Season: a.season,
+    Player: a.name,
+    playerName: a.name,
+    "Total Rounds": a.rounds,
+    "Total Pts": a.pts,
+    "Average PPR": a.rounds ? round2(a.pts / a.rounds) : "",
+    "Opponents Avg PPR": a.rounds ? round2(a.oppPts / a.rounds) : "",
+    "Average DPR": a.rounds ? round2((a.pts - a.oppPts) / a.rounds) : "",
+    "Opponents Pts": a.oppPts,
+    "Total Bags In": a.hasBags ? a.bagsIn : "",
+    "Avg Bags In per Rd": a.hasBags && a.rounds ? round2(a.bagsIn / a.rounds) : "",
+    "Bags On %": a.hasBags && a.bags ? round2((a.bagsOn / a.bags) * 100) : "",
+    "Bags Off %": a.hasBags && a.bags ? round2((a.bagsOff / a.bags) * 100) : "",
+    "Total Bags Thrown": a.hasBags ? a.bags : "",
+    "Avg 4-Bagger %": a.rounds ? round2((a.fours / a.rounds) * 100) : "",
+    "Total 4-Baggers": a.fours,
+    "1st in Stats": a.firsts,
+    "Avg Rounds/Swap Game": type === "Swap" && a.games ? round2(a.rounds / a.games) : "",
+  }));
 }
 
 // Career (all-time, cross-season) totals per player, built from the same
@@ -968,6 +1045,7 @@ export default function LeagueClient() {
   const [data, setData] = useState<Data | null>(null);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [season, setSeason] = useState("");
+  const [eventView, setEventView] = useState<EventView>("Overall");
   const [player, setPlayer] = useState("All Players");
   const [dashboardWeek, setDashboardWeek] = useState("All Weeks");
   const [type, setType] = useState<"Blind" | "Swap">("Blind");
@@ -1052,6 +1130,12 @@ export default function LeagueClient() {
   const seasonStatsAll = useMemo(
     () => (data?.stats || []).filter((row) => isValidPlayerName(getPlayer(row))),
     [data]
+  );
+
+  // Stats and All-Time can be narrowed to just Blind Draw or just Switch.
+  const typeSeasonStatsAll = useMemo(
+    () => (eventView === "Overall" ? seasonStatsAll : buildTypeSeasonStats(eventStats, data?.weekly || [], eventView)),
+    [eventView, seasonStatsAll, eventStats, data]
   );
 
   const selectedSeasonStats = useMemo(
@@ -1185,7 +1269,10 @@ export default function LeagueClient() {
 
     const selectedColumn = statColumns.find((col) => col.label === sortKey);
 
-    return selectedSeasonStats
+    const baseRows =
+      eventView === "Overall" ? selectedSeasonStats : typeSeasonStatsAll.filter((row) => !season || getSeason(row) === season);
+
+    return baseRows
       .filter((row) => !selected.length || selected.includes(getPlayer(row)))
       .sort((a, b) => {
         if (!selectedColumn) return getPlayer(a).localeCompare(getPlayer(b));
@@ -1194,7 +1281,7 @@ export default function LeagueClient() {
         if (av === bv) return getPlayer(a).localeCompare(getPlayer(b));
         return sortDirection === "asc" ? av - bv : bv - av;
       });
-  }, [selectedSeasonStats, selectedStatsPlayers, player, sortKey, sortDirection]);
+  }, [selectedSeasonStats, typeSeasonStatsAll, eventView, season, selectedStatsPlayers, player, sortKey, sortDirection]);
 
   const selectedProfilePlayer = player !== "All Players" ? player : "";
 
@@ -1321,27 +1408,32 @@ export default function LeagueClient() {
 
   const careerRows = useMemo(() => aggregateCareerStats(seasonStatsAll), [seasonStatsAll]);
 
+  const allTimeRows = useMemo(
+    () => (eventView === "Overall" ? careerRows : aggregateCareerStats(typeSeasonStatsAll)),
+    [eventView, careerRows, typeSeasonStatsAll]
+  );
+
   const sortedCareerRows = useMemo(() => {
-    return [...careerRows].sort((a, b) => {
+    return [...allTimeRows].sort((a, b) => {
       const av = Number((a as any)[careerSortKey]) || 0;
       const bv = Number((b as any)[careerSortKey]) || 0;
       if (av === bv) return a.name.localeCompare(b.name);
       return careerSortDirection === "asc" ? av - bv : bv - av;
     });
-  }, [careerRows, careerSortKey, careerSortDirection]);
+  }, [allTimeRows, careerSortKey, careerSortDirection]);
 
   const MIN_CAREER_ROUNDS_FOR_RATE_LEADERS = 200;
   const careerLeaders = useMemo(() => {
-    const eligibleForRates = careerRows.filter((r) => r.totalRounds >= MIN_CAREER_ROUNDS_FOR_RATE_LEADERS);
+    const eligibleForRates = allTimeRows.filter((r) => r.totalRounds >= MIN_CAREER_ROUNDS_FOR_RATE_LEADERS);
     const top = (rows: typeof careerRows, key: keyof (typeof careerRows)[number], n = 3) =>
       [...rows].sort((a, b) => (Number(b[key]) || 0) - (Number(a[key]) || 0)).slice(0, n);
 
     return {
-      "Career Points": { rows: top(careerRows, "totalPts"), key: "totalPts" as const, decimals: 0 },
+      "Career Points": { rows: top(allTimeRows, "totalPts"), key: "totalPts" as const, decimals: 0 },
       "Career PPR": { rows: top(eligibleForRates, "avgPPR"), key: "avgPPR" as const, decimals: 2 },
-      "Career 4-Baggers": { rows: top(careerRows, "total4Baggers"), key: "total4Baggers" as const, decimals: 0 },
+      "Career 4-Baggers": { rows: top(allTimeRows, "total4Baggers"), key: "total4Baggers" as const, decimals: 0 },
     };
-  }, [careerRows]);
+  }, [allTimeRows]);
 
   // Badges tab: season-long badges recompute from whatever's uploaded so far
   // for the selected season, and weekly badges are scoped to one week at a
@@ -1548,6 +1640,14 @@ export default function LeagueClient() {
         {tab === "stats" && (
           <Card title="Season Stats">
             <div className="mb-4 space-y-3">
+              <div className="min-w-0">
+                <label htmlFor="stats-event" className="field-label mb-1 block">Event</label>
+                <select id="stats-event" className="field-control block w-full sm:w-auto" value={eventView} onChange={(e) => setEventView(e.target.value as EventView)}>
+                  {EVENT_VIEW_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <div className="mb-2 text-sm font-bold text-brand-textSecondary">Multi-select players for this tab</div>
                 <input
@@ -1598,6 +1698,16 @@ export default function LeagueClient() {
         {tab === "alltime" && (
           <>
             <Card title="All-Time Leaders">
+              <div className="mb-4">
+                <div className="min-w-0">
+                  <label htmlFor="alltime-event" className="field-label mb-1 block">Event</label>
+                  <select id="alltime-event" className="field-control block w-full sm:w-auto" value={eventView} onChange={(e) => setEventView(e.target.value as EventView)}>
+                    {EVENT_VIEW_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <p className="mb-4 text-sm text-brand-textMuted">
                 Career totals across every season on record. PPR leaders require at least {MIN_CAREER_ROUNDS_FOR_RATE_LEADERS} career
                 rounds played so a short cameo season can&apos;t top the list.

@@ -169,6 +169,23 @@ function statMetricFromRaw(raw: Record<string, any> | null | undefined, metric: 
   }
 }
 
+// Bag counts for one event, from whichever shape the row's raw data has: the
+// Scoreholio import stores bagsIn/bagsOn/bagsOff directly; older uploads carry
+// Scoreholio's event-stats columns (bagsIn + totalBags + percentages).
+function bagCounts(raw: Record<string, any> | null | undefined) {
+  const r = raw || {};
+  const totalFromRaw = num(r.totalBags);
+  const bagsIn = num(r.bagsIn);
+  let bagsOn = num(r.bagsOn);
+  let bagsOff = num(r.bagsOff);
+  const total = totalFromRaw ?? (bagsIn !== null && bagsOn !== null && bagsOff !== null ? bagsIn + bagsOn + bagsOff : null);
+  if (total !== null) {
+    if (bagsOn === null && num(r.bagsOnPct) !== null) bagsOn = Math.round((num(r.bagsOnPct)! * total) / 100);
+    if (bagsOff === null && num(r.bagsOffPct) !== null) bagsOff = Math.round((num(r.bagsOffPct)! * total) / 100);
+  }
+  return { bagsIn, bagsOn, bagsOff, total };
+}
+
 function seasonStatsPayload(parsed: LeagueData, seasonId: string, playerMap: Map<string, string>) {
   return (parsed.stats || [])
     .map((row) => {
@@ -301,6 +318,15 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
 
   if (!seasonName) {
     throw new Error("Could not determine the season from the workbook filename.");
+  }
+
+  // seasonFromFileName falls back to the raw file name when it can't find a
+  // "Fall 26"-style season in it, so a wrong file (e.g. a Scoreholio export
+  // dropped into the legacy uploader) would otherwise create a junk season.
+  if (!/(spring|summer|fall|winter)/i.test(seasonName) || !/\d{2}/.test(seasonName)) {
+    throw new Error(
+      `"${seasonName}" doesn't look like a season. Name the workbook like "Spring26.xlsx". Scoreholio exports go in the Weekly Scoreholio results section, not this uploader.`
+    );
   }
 
   const seasonMeta = parseSeasonName(seasonName);
@@ -526,6 +552,7 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
   const eventStats = dedupeBy(
     (eventStatRows || []).map((row: any) => {
       const raw = row.raw || {};
+      const bags = bagCounts(raw);
       return {
         Season: row.events?.seasons?.name || "",
         Player: row.player_name,
@@ -540,6 +567,10 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
         "Opp Pts": firstNumber(row.opponent_points, statMetricFromRaw(raw, "oppPoints")),
         DPR: firstNumber(row.dpr, statMetricFromRaw(raw, "dpr")),
         "4 Baggers": firstNumber(row.four_baggers, statMetricFromRaw(raw, "fourBaggers")),
+        BagsIn: bags.bagsIn,
+        BagsOn: bags.bagsOn,
+        BagsOff: bags.bagsOff,
+        TotalBags: bags.total,
       };
     }),
     (row: any) => `${row.Season}|${row.Week}|${row.Type}|${normalizeName(row.Player)}`
