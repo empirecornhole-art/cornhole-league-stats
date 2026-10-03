@@ -35,11 +35,22 @@ function wrap(error: any) {
   return error;
 }
 
-export async function listMedia(filter: { season?: string; week?: number } = {}): Promise<MediaItem[]> {
+// Files uploaded before their week's results are imported wait here (season "" and week 0)
+// until an admin pairs them to a week. They are never shown on the public site.
+export const UNASSIGNED_SEASON = "";
+export const UNASSIGNED_WEEK = 0;
+
+export async function listMedia(
+  filter: { season?: string; week?: number; unassigned?: boolean } = {}
+): Promise<MediaItem[]> {
   const supabase = getSupabaseAdmin();
   let q = supabase.from("week_media").select("*");
-  if (filter.season) q = q.eq("season_name", filter.season);
-  if (filter.week) q = q.eq("week_number", filter.week);
+  if (filter.unassigned) {
+    q = q.eq("season_name", UNASSIGNED_SEASON).eq("week_number", UNASSIGNED_WEEK);
+  } else {
+    if (filter.season) q = q.eq("season_name", filter.season);
+    if (filter.week) q = q.eq("week_number", filter.week);
+  }
   const { data, error } = await q
     .order("season_name", { ascending: true })
     .order("week_number", { ascending: true })
@@ -55,7 +66,12 @@ export async function addMedia(
   items: { url: string; pathname: string; kind: "photo" | "video"; caption?: string }[]
 ) {
   const supabase = getSupabaseAdmin();
-  const existing = await listMedia({ season, week });
+  const unassigned = !season || !week;
+  if (unassigned) {
+    season = UNASSIGNED_SEASON;
+    week = UNASSIGNED_WEEK;
+  }
+  const existing = await listMedia(unassigned ? { unassigned: true } : { season, week });
   let order = existing.reduce((m, r) => Math.max(m, r.sort_order), -1) + 1;
   const rows = items.map((i) => ({
     season_name: season,
@@ -69,6 +85,31 @@ export async function addMedia(
   const { data, error } = await supabase.from("week_media").insert(rows).select("*");
   if (error) throw wrap(error);
   return (data || []) as MediaItem[];
+}
+
+/** True if that season/week has imported results (so photos for it can go live straight away). */
+export async function weekHasData(season: string, week: number): Promise<boolean> {
+  if (!season || !week) return false;
+  const supabase = getSupabaseAdmin();
+  const { data: s } = await supabase.from("seasons").select("id").eq("name", season).maybeSingle();
+  if (!s) return false;
+  const { data: e } = await supabase.from("events").select("id").eq("season_id", s.id).eq("week_number", week).limit(1);
+  return !!(e && e.length);
+}
+
+/** Pairs files (usually from the Unassigned pool) to a season/week. */
+export async function assignMedia(ids: string[], season: string, week: number) {
+  if (!ids.length) return;
+  const supabase = getSupabaseAdmin();
+  const existing = await listMedia({ season, week });
+  let order = existing.reduce((m, r) => Math.max(m, r.sort_order), -1) + 1;
+  for (const id of ids) {
+    const { error } = await supabase
+      .from("week_media")
+      .update({ season_name: season, week_number: week, sort_order: order++ })
+      .eq("id", id);
+    if (error) throw wrap(error);
+  }
 }
 
 export async function updateCaption(id: string, caption: string) {

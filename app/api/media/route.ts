@@ -12,14 +12,16 @@ export async function GET() {
     const items = await listMedia();
     return NextResponse.json(
       {
-        items: items.map((i) => ({
-          id: i.id,
-          season: i.season_name,
-          week: i.week_number,
-          kind: i.kind,
-          url: i.url,
-          caption: i.caption,
-        })),
+        items: items
+          .filter((i) => i.week_number > 0 && i.season_name)
+          .map((i) => ({
+            id: i.id,
+            season: i.season_name,
+            week: i.week_number,
+            kind: i.kind,
+            url: i.url,
+            caption: i.caption,
+          })),
       },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
     );

@@ -14,6 +14,9 @@ type Item = {
   caption: string;
 };
 
+// Picker value for "I don't know the week / it isn't imported yet".
+const UNASSIGNED = "__unassigned";
+
 const inputClass =
   "mt-2 block w-full rounded-lg border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text";
 
@@ -49,11 +52,27 @@ function CaptionInput({ item, password }: { item: Item; password: string }) {
   );
 }
 
-export default function MediaTab({ password }: { password: string }) {
+function Thumb({ item }: { item: Item }) {
+  return item.kind === "video" ? (
+    <video src={`${item.url}#t=0.1`} preload="metadata" muted playsInline className="aspect-square w-full rounded-lg bg-black object-cover" />
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={item.url} alt={item.caption || "Uploaded photo"} loading="lazy" className="aspect-square w-full rounded-lg object-cover" />
+  );
+}
+
+export default function MediaTab({ password, role = "admin" }: { password: string; role?: "admin" | "uploader" }) {
+  const isAdmin = role === "admin";
+
   const [options, setOptions] = useState<Options>([]);
   const [season, setSeason] = useState("");
   const [week, setWeek] = useState("");
   const [items, setItems] = useState<Item[]>([]);
+  const [pool, setPool] = useState<Item[]>([]);
+  const [poolSelected, setPoolSelected] = useState<Set<string>>(new Set());
+  const [assignSeason, setAssignSeason] = useState("");
+  const [assignWeek, setAssignWeek] = useState("");
+  const [sessionUploads, setSessionUploads] = useState<{ name: string; where: string }[]>([]);
   const [configured, setConfigured] = useState(true);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,15 +89,25 @@ export default function MediaTab({ password }: { password: string }) {
   }
 
   async function loadItems(forSeason = season, forWeek = week) {
-    if (!forSeason || !forWeek) return;
+    if (!isAdmin || !forSeason || !forWeek || forWeek === UNASSIGNED) {
+      setItems([]);
+      return;
+    }
     const data = await api(`/api/admin/media?season=${encodeURIComponent(forSeason)}&week=${forWeek}`);
     setConfigured(!!data.configured);
     setItems(data.items || []);
   }
 
+  async function loadPool() {
+    if (!isAdmin) return;
+    const data = await api("/api/admin/media?unassigned=1");
+    setPool(data.items || []);
+    setPoolSelected(new Set());
+  }
+
   async function loadWeeks() {
     setMessage("");
-    if (!password) return setMessage("Enter the admin password.");
+    if (!password) return setMessage("Enter the password.");
     setBusy(true);
     try {
       const res = await fetch("/api/admin/recap", {
@@ -90,12 +119,27 @@ export default function MediaTab({ password }: { password: string }) {
       if (!res.ok || !data.ok) throw new Error(data.error || "Request failed.");
       const opts: Options = data.options || [];
       setOptions(opts);
-      if (!opts.length) return setMessage("No weeks found yet. Import a week first.");
-      const s = opts[0].season;
-      const w = String(opts[0].weeks[0]);
-      setSeason(s);
-      setWeek(w);
-      await loadItems(s, w);
+
+      if (!opts.length) {
+        // Nothing imported yet: files can still go in, waiting to be paired.
+        setSeason("");
+        setWeek(UNASSIGNED);
+      } else {
+        const s = opts[0].season;
+        const w = String(opts[0].weeks[0]);
+        setSeason(s);
+        setWeek(w);
+        setAssignSeason(s);
+        setAssignWeek(w);
+        await loadItems(s, w);
+      }
+      await loadPool();
+      if (!isAdmin) {
+        // Uploaders can't read the library, so just confirm the storage is set up.
+        const check = await fetch("/api/admin/media", { headers: { "x-admin-password": password } });
+        const checkData = await check.json();
+        if (check.ok && checkData.ok) setConfigured(!!checkData.configured);
+      }
     } catch (err: any) {
       setMessage(err.message);
     } finally {
@@ -107,7 +151,8 @@ export default function MediaTab({ password }: { password: string }) {
     if (!files?.length) return;
     setMessage("");
     setBusy(true);
-    const uploaded: { url: string; pathname: string; kind: "photo" | "video" }[] = [];
+    const toUnassigned = week === UNASSIGNED || !season || !week;
+    const uploaded: { url: string; pathname: string; kind: "photo" | "video"; name: string }[] = [];
     const failed: string[] = [];
 
     for (const file of Array.from(files)) {
@@ -116,27 +161,39 @@ export default function MediaTab({ password }: { password: string }) {
         continue;
       }
       try {
-        const blob = await upload(`media/${slug(season)}/week-${week}/${file.name}`, file, {
+        const folder = toUnassigned ? "media/unassigned" : `media/${slug(season)}/week-${week}`;
+        const blob = await upload(`${folder}/${file.name}`, file, {
           access: "public",
           handleUploadUrl: "/api/admin/media/upload",
           clientPayload: JSON.stringify({ password }),
           multipart: file.size > 20 * 1024 * 1024,
           onUploadProgress: ({ percentage }) => setProgress((p) => ({ ...p, [file.name]: Math.round(percentage) })),
         });
-        uploaded.push({ url: blob.url, pathname: blob.pathname, kind: file.type.startsWith("video/") ? "video" : "photo" });
+        uploaded.push({ url: blob.url, pathname: blob.pathname, kind: file.type.startsWith("video/") ? "video" : "photo", name: file.name });
       } catch (err: any) {
         failed.push(`${file.name} (${err.message})`);
       }
     }
 
     try {
-      if (uploaded.length) await api("/api/admin/media", { method: "POST", body: JSON.stringify({ season, week: Number(week), items: uploaded }) });
+      let lines: string[] = [];
+      if (uploaded.length) {
+        const saved = await api("/api/admin/media", {
+          method: "POST",
+          body: JSON.stringify({
+            season: toUnassigned ? "" : season,
+            week: toUnassigned ? 0 : Number(week),
+            items: uploaded.map(({ url, pathname, kind }) => ({ url, pathname, kind })),
+          }),
+        });
+        const where = saved.unassigned ? "waiting for an admin to pair them to a week" : `added to Week ${week} (live now)`;
+        lines.push(`${uploaded.length} file${uploaded.length === 1 ? "" : "s"} uploaded: ${where}.`);
+        setSessionUploads((current) => [...uploaded.map((u) => ({ name: u.name, where: saved.unassigned ? "Waiting for pairing" : `Week ${week}` })), ...current]);
+      }
+      if (failed.length) lines.push(`Couldn't upload: ${failed.join("; ")}`);
+      setMessage(lines.join("\n"));
       await loadItems();
-      setMessage(
-        [uploaded.length ? `Added ${uploaded.length} file${uploaded.length === 1 ? "" : "s"} to Week ${week}.` : "", failed.length ? `Couldn't upload: ${failed.join("; ")}` : ""]
-          .filter(Boolean)
-          .join("\n")
-      );
+      await loadPool();
     } catch (err: any) {
       setMessage(err.message);
     } finally {
@@ -155,28 +212,82 @@ export default function MediaTab({ password }: { password: string }) {
     }
   }
 
+  function togglePool(id: string) {
+    setPoolSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function assignSelected() {
+    if (!poolSelected.size || !assignSeason || !assignWeek) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      await api("/api/admin/media", {
+        method: "PATCH",
+        body: JSON.stringify({ action: "assign", ids: Array.from(poolSelected), season: assignSeason, week: Number(assignWeek) }),
+      });
+      setMessage(`Paired ${poolSelected.size} file${poolSelected.size === 1 ? "" : "s"} to ${assignSeason} Week ${assignWeek}. They're live on the site now.`);
+      await loadPool();
+      await loadItems();
+    } catch (err: any) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteSelected() {
+    if (!poolSelected.size) return;
+    if (!window.confirm(`Delete ${poolSelected.size} selected file${poolSelected.size === 1 ? "" : "s"}? This can't be undone.`)) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      for (const id of Array.from(poolSelected)) {
+        await api("/api/admin/media", { method: "DELETE", body: JSON.stringify({ id }) });
+      }
+      await loadPool();
+    } catch (err: any) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const weeks = options.find((o) => o.season === season)?.weeks || [];
+  const assignWeeks = options.find((o) => o.season === assignSeason)?.weeks || [];
+  const loaded = options.length > 0 || week === UNASSIGNED;
 
   return (
     <div>
       <p className="font-sans text-sm text-brand-textSecondary">
-        Add photos and videos to a week. They show up on the site&apos;s Photos tab and can be reused for Facebook and Instagram posts later.
+        {isAdmin
+          ? "Add photos and videos to a week. They show up on the site's Photos tab and under that week's recap, and can be reused for Facebook and Instagram posts."
+          : "Add photos and videos from league night. If the week's results are already on the site, your photos go live right away. If not, choose \"Not sure\" and an admin will pair them to the right week."}
       </p>
 
       <button type="button" onClick={loadWeeks} disabled={busy} className="btn-primary mt-5 disabled:opacity-60">
-        {options.length ? "Reload weeks" : "Load weeks"}
+        {loaded ? "Reload weeks" : "Load weeks"}
       </button>
 
-      {options.length > 0 && (
+      {loaded && (
         <>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="field-label">Season</span>
               <select
                 className={inputClass}
-                value={season}
+                value={week === UNASSIGNED ? UNASSIGNED : season}
+                disabled={week === UNASSIGNED && !options.length}
                 onChange={async (e) => {
                   const s = e.target.value;
+                  if (s === UNASSIGNED) {
+                    setWeek(UNASSIGNED);
+                    return;
+                  }
                   const w = String(options.find((o) => o.season === s)?.weeks[0] ?? "");
                   setSeason(s);
                   setWeek(w);
@@ -190,30 +301,39 @@ export default function MediaTab({ password }: { password: string }) {
                 {options.map((o) => (
                   <option key={o.season}>{o.season}</option>
                 ))}
+                <option value={UNASSIGNED}>Not sure / week not on the site yet</option>
               </select>
             </label>
-            <label className="block">
-              <span className="field-label">Week</span>
-              <select
-                className={inputClass}
-                value={week}
-                onChange={async (e) => {
-                  setWeek(e.target.value);
-                  try {
-                    await loadItems(season, e.target.value);
-                  } catch (err: any) {
-                    setMessage(err.message);
-                  }
-                }}
-              >
-                {weeks.map((w) => (
-                  <option key={w} value={w}>
-                    Week {w}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {week !== UNASSIGNED && (
+              <label className="block">
+                <span className="field-label">Week</span>
+                <select
+                  className={inputClass}
+                  value={week}
+                  onChange={async (e) => {
+                    setWeek(e.target.value);
+                    try {
+                      await loadItems(season, e.target.value);
+                    } catch (err: any) {
+                      setMessage(err.message);
+                    }
+                  }}
+                >
+                  {weeks.map((w) => (
+                    <option key={w} value={w}>
+                      Week {w}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
+
+          {week === UNASSIGNED && (
+            <p className="mt-3 font-sans text-xs text-brand-textMuted">
+              These files will be saved but kept hidden from the public until an admin pairs them to a week.
+            </p>
+          )}
 
           {!configured ? (
             <div className="mt-5 rounded-lg border border-brand-orange/40 bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
@@ -226,7 +346,9 @@ export default function MediaTab({ password }: { password: string }) {
             </div>
           ) : (
             <label className="mt-5 block">
-              <span className="field-label">Add photos or videos to Week {week}</span>
+              <span className="field-label">
+                {week === UNASSIGNED ? "Add photos or videos (waiting to be paired)" : `Add photos or videos to Week ${week}`}
+              </span>
               <input
                 type="file"
                 multiple
@@ -259,7 +381,116 @@ export default function MediaTab({ password }: { password: string }) {
         </div>
       )}
 
-      {options.length > 0 && (
+      {/* Uploaders can't browse the library; they just see what they've added on this visit. */}
+      {!isAdmin && sessionUploads.length > 0 && (
+        <div className="mt-6">
+          <h4 className="font-display text-base uppercase text-brand-orange">Added this visit</h4>
+          <ul className="mt-2 space-y-1 font-sans text-xs text-brand-textSecondary">
+            {sessionUploads.map((u, i) => (
+              <li key={`${u.name}-${i}`}>
+                {u.name} &middot; {u.where}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isAdmin && loaded && pool.length > 0 && (
+        <div className="mt-8 rounded-xl border border-brand-orange/40 bg-brand-bg p-4">
+          <h4 className="font-display text-base uppercase text-brand-orange">
+            Unassigned ({pool.length}) &mdash; waiting to be paired
+          </h4>
+          <p className="mt-1 font-sans text-xs text-brand-textMuted">
+            These were uploaded before their week was on the site. They stay hidden until you pair them to a week.
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3 font-sans text-xs">
+            <button type="button" className="underline" onClick={() => setPoolSelected(new Set(pool.map((p) => p.id)))}>
+              Select all
+            </button>
+            <button type="button" className="underline" onClick={() => setPoolSelected(new Set())}>
+              Clear
+            </button>
+            <span className="text-brand-textFaint">{poolSelected.size} selected</span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+            {pool.map((item) => {
+              const on = poolSelected.has(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => togglePool(item.id)}
+                  aria-pressed={on}
+                  aria-label={`${item.kind === "video" ? "Video" : "Photo"} ${on ? "selected" : "not selected"}`}
+                  className={`relative overflow-hidden rounded-lg border-2 ${on ? "border-brand-orange" : "border-white/10"}`}
+                >
+                  <Thumb item={item} />
+                  {item.kind === "video" && (
+                    <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[0.625rem] font-bold uppercase text-white">Video</span>
+                  )}
+                  <span
+                    className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${on ? "bg-brand-orange text-brand-bg" : "bg-black/60 text-white"}`}
+                    aria-hidden="true"
+                  >
+                    {on ? "✓" : ""}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {options.length > 0 ? (
+            <div className="mt-4 flex flex-wrap items-end gap-3">
+              <label className="block">
+                <span className="field-label">Pair to season</span>
+                <select
+                  className="mt-1 block rounded-lg border border-white/10 bg-brand-panel px-3 py-2 font-sans text-sm text-brand-text"
+                  value={assignSeason}
+                  onChange={(e) => {
+                    setAssignSeason(e.target.value);
+                    setAssignWeek(String(options.find((o) => o.season === e.target.value)?.weeks[0] ?? ""));
+                  }}
+                >
+                  {options.map((o) => (
+                    <option key={o.season}>{o.season}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="field-label">Week</span>
+                <select
+                  className="mt-1 block rounded-lg border border-white/10 bg-brand-panel px-3 py-2 font-sans text-sm text-brand-text"
+                  value={assignWeek}
+                  onChange={(e) => setAssignWeek(e.target.value)}
+                >
+                  {assignWeeks.map((w) => (
+                    <option key={w} value={w}>
+                      Week {w}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" onClick={assignSelected} disabled={busy || !poolSelected.size} className="btn-primary disabled:opacity-50">
+                Pair selected to Week {assignWeek}
+              </button>
+              <button
+                type="button"
+                onClick={deleteSelected}
+                disabled={busy || !poolSelected.size}
+                className="font-sans text-xs font-bold uppercase text-red-400 hover:text-red-300 disabled:opacity-40"
+              >
+                Delete selected
+              </button>
+            </div>
+          ) : (
+            <p className="mt-4 font-sans text-xs text-brand-textMuted">No weeks are imported yet. Import a week, then come back to pair these.</p>
+          )}
+        </div>
+      )}
+
+      {isAdmin && loaded && week !== UNASSIGNED && (
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
           {items.length === 0 && <p className="col-span-full font-sans text-sm text-brand-textMuted">Nothing uploaded for this week yet.</p>}
           {items.map((item) => (

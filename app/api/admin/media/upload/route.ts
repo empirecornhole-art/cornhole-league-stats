@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { roleFor } from "../../../../../lib/adminAuth";
 import { mediaConfigured, mediaToken } from "../../../../../lib/media";
 
 export const runtime = "nodejs";
@@ -31,7 +32,8 @@ export async function POST(req: Request) {
         } catch {
           /* fall through to the password check */
         }
-        if (password !== process.env.ADMIN_PASSWORD) throw new Error("Invalid password");
+        // Admins and photo uploaders may both upload; nothing else here.
+        if (!roleFor(password)) throw new Error("Invalid password");
         return {
           allowedContentTypes: ["image/*", "video/*"],
           maximumSizeInBytes: 1024 * 1024 * 1024, // 1 GB

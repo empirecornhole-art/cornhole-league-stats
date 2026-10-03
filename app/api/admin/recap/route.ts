@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildRecaps, getRecapOptions } from "../../../../lib/recap";
 import { getSavedRecap, saveRecap } from "../../../../lib/recapStore";
+import { roleFor } from "../../../../lib/adminAuth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -8,12 +9,17 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    if (body?.password !== process.env.ADMIN_PASSWORD) {
+    const role = roleFor(body?.password);
+    if (!role) {
       return NextResponse.json({ ok: false, error: "Invalid password" }, { status: 401 });
     }
 
+    // Photo uploaders may only list the weeks (for the upload picker). Everything below is admin-only.
     if (body.action === "options") {
       return NextResponse.json({ ok: true, options: await getRecapOptions() });
+    }
+    if (role !== "admin") {
+      return NextResponse.json({ ok: false, error: "That needs the admin password." }, { status: 403 });
     }
 
     const season = String(body.season || "").trim();
