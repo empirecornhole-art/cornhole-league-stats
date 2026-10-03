@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LineChart,
@@ -853,7 +853,7 @@ function LastUpdated({ value }: { value?: string }) {
   }, []);
 
   return (
-    <div className="text-sm text-brand-textMuted" title={value ? new Date(value).toLocaleString() : undefined}>
+    <div className="text-xs text-brand-textMuted md:text-sm" title={value ? new Date(value).toLocaleString() : undefined}>
       Last updated: {formatRelativeTime(value)}
     </div>
   );
@@ -1374,6 +1374,25 @@ export default function LeagueClient() {
       ? `${window.location.origin}${pathname}?tab=players&player=${slugify(selectedProfilePlayer)}`
       : "";
 
+  const tabScrollerRef = useRef<HTMLDivElement | null>(null);
+  const hasData = !!data;
+
+  // Keep the active tab visible in the scrolling mobile tab bar (e.g. when
+  // arriving via ?tab=store, or switching tabs from inside a page).
+  const tabBarPositioned = useRef(false);
+  useEffect(() => {
+    const scroller = tabScrollerRef.current;
+    if (!scroller) return;
+    scroller.querySelector<HTMLElement>(`[data-tab="${tab}"]`)?.scrollIntoView({
+      block: "nearest",
+      inline: "center",
+      // Jump into place on first load; glide when the user changes tabs.
+      behavior: tabBarPositioned.current ? "smooth" : "auto",
+    });
+    tabBarPositioned.current = true;
+    // The tab bar only exists once data has loaded, so re-run then too.
+  }, [tab, hasData]);
+
   if (!data) {
     return <LoadingSkeleton />;
   }
@@ -1417,13 +1436,19 @@ export default function LeagueClient() {
       </header>
 
       {tab !== "store" && (
-        <section className="chrome chrome-edge sticky top-[var(--nav-h)] z-20">
+        <section className="border-b border-white/5 md:chrome md:chrome-edge md:sticky md:top-[var(--nav-h)] md:z-20 md:border-b-0">
           <div className="mx-auto max-w-7xl px-4 py-3">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end">
-              <div>
-                <label className="field-label">Season</label>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 md:flex md:flex-row md:items-end md:gap-3">
+              <div className="col-span-2 md:order-2 md:w-64">
+                <label htmlFor="filter-player" className="field-label mb-1 block">Player</label>
+                <PlayerCombobox id="filter-player" players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
+              </div>
+
+              <div className="min-w-0 md:order-1">
+                <label htmlFor="filter-season" className="field-label mb-1 block">Season</label>
                 <select
-                  className="block rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-brand-text"
+                  id="filter-season"
+                  className="block min-h-11 w-full rounded-lg border border-white/15 bg-brand-raisedHover px-3 text-brand-text md:w-auto"
                   value={season}
                   onChange={(e) => {
                     setSeason(e.target.value);
@@ -1436,21 +1461,18 @@ export default function LeagueClient() {
                 </select>
               </div>
 
-              <div className="w-full md:w-64">
-                <label className="field-label">Player</label>
-                <PlayerCombobox players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
-              </div>
-
-              <div>
-                <label className="field-label">Dashboard Week</label>
-                <select className="block rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-brand-text" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
+              <div className="min-w-0 md:order-3">
+                <label htmlFor="filter-week" className="field-label mb-1 block">Week</label>
+                <select id="filter-week" className="block min-h-11 w-full rounded-lg border border-white/15 bg-brand-raisedHover px-3 text-brand-text md:w-auto" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
                   {dashboardWeeks.map((w) => (
                     <option key={w}>{w}</option>
                   ))}
                 </select>
               </div>
 
-              <LastUpdated value={data.lastUpdated} />
+              <div className="col-span-2 md:order-4 md:pb-3">
+                <LastUpdated value={data.lastUpdated} />
+              </div>
             </div>
           </div>
         </section>
@@ -1749,13 +1771,15 @@ export default function LeagueClient() {
         </div>
       </section>
 
-      <nav className="sticky bottom-0 z-40 border-t border-white/10 bg-brand-bg/95 p-2 md:hidden">
-        <div className="grid grid-cols-4 gap-1">
+      <nav aria-label="League sections" className="chrome chrome-edge-top sticky bottom-0 z-40 pb-[env(safe-area-inset-bottom)] md:hidden">
+        <div ref={tabScrollerRef} className="tab-scroller flex snap-x gap-1.5 overflow-x-auto px-3 py-2">
           {navItems.map((item) => (
             <button
               key={item.id}
+              data-tab={item.id}
+              aria-current={tab === item.id ? "page" : undefined}
               onClick={() => setTab(item.id)}
-              className={`rounded-full border px-1 py-3 font-sans text-[13px] font-semibold transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
+              className={`min-h-11 flex-none snap-start whitespace-nowrap rounded-full border px-4 font-sans text-sm font-semibold transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
             >
               {item.label}
             </button>
@@ -1787,61 +1811,156 @@ function PlayerCombobox({
   onChange,
   allLabel,
   placeholder = "Search players...",
+  id,
 }: {
   players: string[];
   value: string;
   onChange: (value: string) => void;
   allLabel?: string;
   placeholder?: string;
+  id?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [active, setActive] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-        setQuery("");
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const autoId = useId();
+  const inputId = id || `${autoId}-input`;
+  const listId = `${autoId}-list`;
 
   const options = allLabel ? [allLabel, ...players] : players;
   const filtered = query ? options.filter((p) => p.toLowerCase().includes(query.toLowerCase())) : options;
 
+  // pointerdown (not mousedown) so a tap outside closes it on touch screens too.
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(event: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) close();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  // Keep the highlighted option in view while arrowing through a long list.
+  useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [active, open]);
+
+  function openList() {
+    setOpen(true);
+    setQuery("");
+    const current = options.indexOf(value);
+    setActive(current >= 0 ? current : 0);
+  }
+
+  function close() {
+    setOpen(false);
+    setQuery("");
+  }
+
+  function choose(p: string) {
+    onChange(p);
+    close();
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      openList();
+      return;
+    }
+    if (!open) return;
+
+    const last = filtered.length - 1;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => (i >= last ? 0 : i + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => (i <= 0 ? last : i - 1));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setActive(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setActive(last);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (filtered[active]) choose(filtered[active]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    } else if (e.key === "Tab") {
+      close();
+    }
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <input
-        className="block w-full rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-brand-text"
+        ref={inputRef}
+        id={inputId}
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={open && filtered[active] ? `${listId}-${active}` : undefined}
+        autoComplete="off"
+        className="block min-h-11 w-full rounded-lg border border-white/15 bg-brand-raisedHover py-2 pl-3 pr-9 text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
         value={open ? query : value}
-        placeholder={value ? undefined : placeholder}
-        onFocus={() => {
-          setOpen(true);
-          setQuery("");
+        placeholder={open ? value || placeholder : value ? undefined : placeholder}
+        onFocus={openList}
+        onClick={() => !open && openList()}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setActive(0);
+          if (!open) setOpen(true);
         }}
-        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
       />
+      <svg
+        viewBox="0 0 20 20"
+        className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-textMuted transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        aria-hidden
+      >
+        <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
       {open && (
-        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-white/15 bg-brand-raised">
-          {filtered.length === 0 && <div className="p-3 text-sm text-brand-textFaint">No players found</div>}
-          {filtered.map((p) => (
-            <button
-              type="button"
+        <div
+          ref={listRef}
+          id={listId}
+          role="listbox"
+          className="popover-in absolute z-30 mt-1.5 max-h-72 w-full overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-brand-raised p-1 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.6)]"
+        >
+          {filtered.length === 0 && <div className="px-3 py-2.5 text-sm text-brand-textFaint">No players found</div>}
+          {filtered.map((p, i) => (
+            <div
               key={p}
-              className={`block w-full px-3 py-2 text-left text-sm hover:bg-brand-orange/20 ${
-                p === value ? "bg-brand-orange/10 text-brand-orange" : "text-brand-text"
-              }`}
-              onClick={() => {
-                onChange(p);
-                setOpen(false);
-                setQuery("");
-              }}
+              id={`${listId}-${i}`}
+              data-index={i}
+              role="option"
+              aria-selected={p === value}
+              // Keep focus in the input so the list doesn't close before the pick lands.
+              onPointerDown={(e) => e.preventDefault()}
+              onPointerMove={() => setActive(i)}
+              onClick={() => choose(p)}
+              className={`flex min-h-11 cursor-pointer items-center justify-between rounded-lg px-3 text-[15px] ${
+                i === active ? "bg-white/10" : ""
+              } ${p === value ? "font-semibold text-brand-orange" : "text-brand-text"}`}
             >
-              {p}
-            </button>
+              <span className="truncate">{p}</span>
+              {p === value && (
+                <svg viewBox="0 0 20 20" className="h-4 w-4 flex-none" fill="none" stroke="currentColor" strokeWidth={2.25} aria-hidden>
+                  <path d="m4.5 10.5 3.5 3.5 7.5-8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
           ))}
         </div>
       )}

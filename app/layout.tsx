@@ -21,6 +21,12 @@ const barlow = localFont({
   display: "swap",
 });
 
+// viewport-fit=cover exposes env(safe-area-inset-*) so the league tab bar can
+// clear the iPhone home indicator.
+export const viewport = {
+  viewportFit: "cover",
+};
+
 export const metadata = {
   title: "League Stats",
   description: "Empire Cornhole League Stats",

@@ -1,7 +1,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-:root { color-scheme: dark; --nav-h: 68px; }
+:root {
+  color-scheme: dark;
+  --nav-h: 68px;
+  /* League mobile tab bar: 44px buttons + 16px padding, plus the iPhone home indicator. */
+  --tabbar-h: calc(60px + env(safe-area-inset-bottom));
+}
 @media (min-width: 768px) { :root { --nav-h: 80px; } }
 body { background:#0d0c0b; color:#f5f5f0; }
 
@@ -73,6 +78,7 @@ body { background:#0d0c0b; color:#f5f5f0; }
   );
 }
 
+@layer components {
 /* Floating chrome (site nav, league filter bar): one translucent material
    that content visibly scrolls under. The league filter bar continues the
    nav's material directly, so the two read as a single layer. */
@@ -109,6 +115,30 @@ body { background:#0d0c0b; color:#f5f5f0; }
     border-bottom: 1px solid rgba(255, 255, 255, 0.35);
   }
 }
+}
+
+/* Same scroll-edge fade as .chrome-edge, for bars pinned to the bottom. */
+.chrome-edge-top::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 16px;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.35), transparent);
+}
+
+/* Mobile league tabs: one swipeable row; the soft edges hint there's more. */
+.tab-scroller {
+  scrollbar-width: none;
+  scroll-padding-inline: 12px;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+}
+.tab-scroller::-webkit-scrollbar {
+  display: none;
+}
 
 /* Horizontal scroll hint: edge shadows appear only on the side that has more
    content (covers are attached `local`, shadows `scroll`). Background color
@@ -142,4 +172,25 @@ body { background:#0d0c0b; color:#f5f5f0; }
   textarea {
     font-size: 16px !important;
   }
+}
+
+/* Dropdowns grow from the field they belong to (top edge), not from center. */
+@keyframes popoverIn {
+  from { opacity: 0; transform: scale(0.97) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.popover-in {
+  transform-origin: top center;
+  animation: popoverIn 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover-in { animation: fadeIn 120ms ease-out; }
+}
+
+/* With viewport-fit=cover, keep content clear of the notch in landscape. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
