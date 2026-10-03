@@ -797,22 +797,22 @@ function podiumStyle(rank: number) {
   if (rank === 1) {
     return {
       medal: "🥇",
-      rowClass: "border-yellow-400/50 bg-gradient-to-r from-yellow-400/15 via-transparent to-transparent",
-      textClass: "text-yellow-300",
+      rowClass: "bg-gradient-to-r from-brand-gold/15 via-transparent to-transparent",
+      textClass: "text-brand-gold",
     };
   }
   if (rank === 2) {
     return {
       medal: "🥈",
-      rowClass: "border-slate-300/40 bg-gradient-to-r from-slate-300/10 via-transparent to-transparent",
-      textClass: "text-slate-200",
+      rowClass: "bg-gradient-to-r from-brand-silver/10 via-transparent to-transparent",
+      textClass: "text-brand-silver",
     };
   }
   if (rank === 3) {
     return {
       medal: "🥉",
-      rowClass: "border-amber-600/40 bg-gradient-to-r from-amber-600/15 via-transparent to-transparent",
-      textClass: "text-amber-500",
+      rowClass: "bg-gradient-to-r from-brand-bronze/15 via-transparent to-transparent",
+      textClass: "text-brand-bronze",
     };
   }
   return { medal: null, rowClass: "", textClass: "text-brand-orange" };
@@ -920,6 +920,13 @@ function AnimatedNumber({ value }: { value: any }) {
     </>
   );
 }
+
+// Series colors: brand orange for the headline stat, warm off-white for the
+// comparison line (pure white glared against the dark panel).
+const CHART_COLORS = {
+  primary: "#f04a22",
+  secondary: "#d6d3cd",
+} as const;
 
 // Recharts defaults to a white tooltip and mid-grey axes; match the dark
 // brand surfaces instead (brand.raised / textMuted / textSecondary).
@@ -1448,7 +1455,7 @@ export default function LeagueClient() {
                 <label htmlFor="filter-season" className="field-label mb-1 block">Season</label>
                 <select
                   id="filter-season"
-                  className="block min-h-11 w-full rounded-lg border border-white/15 bg-brand-raisedHover px-3 text-brand-text md:w-auto"
+                  className="field-control block w-full md:w-auto"
                   value={season}
                   onChange={(e) => {
                     setSeason(e.target.value);
@@ -1463,7 +1470,7 @@ export default function LeagueClient() {
 
               <div className="min-w-0 md:order-3">
                 <label htmlFor="filter-week" className="field-label mb-1 block">Week</label>
-                <select id="filter-week" className="block min-h-11 w-full rounded-lg border border-white/15 bg-brand-raisedHover px-3 text-brand-text md:w-auto" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
+                <select id="filter-week" className="field-control block w-full md:w-auto" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
                   {dashboardWeeks.map((w) => (
                     <option key={w}>{w}</option>
                   ))}
@@ -1509,12 +1516,12 @@ export default function LeagueClient() {
         {tab === "weeks" && (
           <Card title="Weekly Results">
             <div className="mb-4 flex flex-wrap gap-3">
-              <select className="rounded-lg bg-brand-raisedHover p-2" value={type} onChange={(e) => { setType(e.target.value as "Blind" | "Swap"); setWeek(""); }}>
+              <select className="field-control" value={type} onChange={(e) => { setType(e.target.value as "Blind" | "Swap"); setWeek(""); }}>
                 <option>Blind</option>
                 <option>Swap</option>
               </select>
 
-              <select className="rounded-lg bg-brand-raisedHover p-2" value={week} onChange={(e) => setWeek(e.target.value)}>
+              <select className="field-control" value={week} onChange={(e) => setWeek(e.target.value)}>
                 {weeks.map((w) => (
                   <option key={w}>{w}</option>
                 ))}
@@ -1533,7 +1540,7 @@ export default function LeagueClient() {
               <div>
                 <div className="mb-2 text-sm font-bold text-brand-textSecondary">Multi-select players for this tab</div>
                 <input
-                  className="mb-2 w-full rounded-lg border border-white/15 bg-brand-raisedHover p-2 text-sm text-brand-text"
+                  className="field-control mb-2 w-full"
                   placeholder="Filter players..."
                   value={statsPlayerFilter}
                   onChange={(e) => setStatsPlayerFilter(e.target.value)}
@@ -1636,7 +1643,7 @@ export default function LeagueClient() {
             <Card title="Weekly Badges">
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <label className="field-label">Week</label>
-                <select className="rounded-lg bg-brand-raisedHover p-2" value={badgeWeek} onChange={(e) => setBadgeWeek(e.target.value)}>
+                <select className="field-control" value={badgeWeek} onChange={(e) => setBadgeWeek(e.target.value)}>
                   {badgeWeeks.map((w) => (
                     <option key={w}>{w}</option>
                   ))}
@@ -1657,15 +1664,15 @@ export default function LeagueClient() {
             ) : (
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-3">
-                  <select className="rounded-lg bg-brand-raisedHover p-2" value={profileSeason} onChange={(e) => { setProfileSeason(e.target.value); setProfileWeek("All Weeks"); }}>
+                  <select className="field-control" value={profileSeason} onChange={(e) => { setProfileSeason(e.target.value); setProfileWeek("All Weeks"); }}>
                     <option>All Seasons</option>
                     {seasons.map((s) => <option key={s}>{s}</option>)}
                   </select>
-                  <select className="rounded-lg bg-brand-raisedHover p-2" value={profileWeek} onChange={(e) => setProfileWeek(e.target.value)}>
+                  <select className="field-control" value={profileWeek} onChange={(e) => setProfileWeek(e.target.value)}>
                     <option>All Weeks</option>
                     {profileWeeks.map((w) => <option key={w}>{w}</option>)}
                   </select>
-                  <select className="rounded-lg bg-brand-raisedHover p-2" value={profileType} onChange={(e) => setProfileType(e.target.value as EventFilter)}>
+                  <select className="field-control" value={profileType} onChange={(e) => setProfileType(e.target.value as EventFilter)}>
                     <option>All</option>
                     <option>Blind</option>
                     <option>Swap</option>
@@ -1695,8 +1702,8 @@ export default function LeagueClient() {
                         <YAxis {...CHART_AXIS} />
                         <Tooltip {...CHART_TOOLTIP} />
                         <Legend wrapperStyle={{ color: "#c9c5bf", fontSize: 13 }} />
-                        <Line type="monotone" dataKey="DPR" stroke="#ffffff" strokeWidth={3} />
-                        <Line type="monotone" dataKey="PPR" stroke="#f04a22" strokeWidth={3} />
+                        <Line type="monotone" dataKey="DPR" stroke={CHART_COLORS.secondary} strokeWidth={2.5} dot={false} />
+                        <Line type="monotone" dataKey="PPR" stroke={CHART_COLORS.primary} strokeWidth={2.5} dot={false} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -1726,7 +1733,7 @@ export default function LeagueClient() {
             </div>
 
             <div className="mb-4 flex flex-wrap gap-3">
-              <select className="rounded-lg bg-brand-raisedHover p-2" value={scenarioWeek} onChange={(e) => setScenarioWeek(e.target.value)}>
+              <select className="field-control" value={scenarioWeek} onChange={(e) => setScenarioWeek(e.target.value)}>
                 {scenarioWeeks.map((w) => <option key={w}>{w}</option>)}
               </select>
               <button className="rounded-lg bg-brand-raisedHover px-3 py-2 text-sm font-bold" onClick={() => setScenarioInputs({})}>
@@ -1792,8 +1799,8 @@ export default function LeagueClient() {
 
 function Card({ title, actions, children }: { title: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-brand-panel p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+    <section className="rounded-2xl border border-white/10 bg-brand-panel p-4 md:p-6">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-2xl uppercase text-brand-text">{title}</h2>
         {actions}
       </div>
@@ -1936,7 +1943,7 @@ function PlayerCombobox({
           ref={listRef}
           id={listId}
           role="listbox"
-          className="popover-in absolute z-30 mt-1.5 max-h-72 w-full overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-brand-raised p-1 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.6)]"
+          className="popover-in absolute z-30 mt-1.5 max-h-72 w-full overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-brand-raised p-1 shadow-float"
         >
           {filtered.length === 0 && <div className="px-3 py-2.5 text-sm text-brand-textFaint">No players found</div>}
           {filtered.map((p, i) => (
@@ -1978,8 +1985,8 @@ export function LoadingSkeleton() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="space-y-2">
-              <div className="h-6 w-40 rounded animate-pulse bg-white/10" />
-              <div className="h-4 w-64 rounded animate-pulse bg-white/10" />
+              <div className="h-6 w-40 rounded-md animate-pulse bg-white/10" />
+              <div className="h-4 w-64 rounded-md animate-pulse bg-white/10" />
             </div>
           </div>
           <div className="hidden flex-wrap gap-2 md:flex">
@@ -1995,11 +2002,11 @@ export function LoadingSkeleton() {
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="space-y-2">
-                <div className="h-3 w-16 rounded animate-pulse bg-white/10" />
+                <div className="h-3 w-16 rounded-md animate-pulse bg-white/10" />
                 <div className="h-10 w-40 rounded-lg animate-pulse bg-white/10" />
               </div>
             ))}
-            <div className="h-4 w-32 rounded animate-pulse bg-white/10" />
+            <div className="h-4 w-32 rounded-md animate-pulse bg-white/10" />
           </div>
         </div>
       </section>
@@ -2008,15 +2015,15 @@ export function LoadingSkeleton() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-24 rounded-xl border border-white/10 bg-brand-bg p-4">
-              <div className="h-3 w-20 rounded animate-pulse bg-white/10" />
-              <div className="mt-3 h-8 w-16 rounded animate-pulse bg-white/10" />
+              <div className="h-3 w-20 rounded-md animate-pulse bg-white/10" />
+              <div className="mt-3 h-8 w-16 rounded-md animate-pulse bg-white/10" />
             </div>
           ))}
         </div>
 
         <div className="space-y-2 rounded-xl border border-white/10 bg-brand-bg p-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-8 rounded animate-pulse bg-white/10" />
+            <div key={i} className="h-8 rounded-md animate-pulse bg-white/10" />
           ))}
         </div>
       </section>
@@ -2130,17 +2137,17 @@ function RankedList({ rows }: { rows: { name: string; points: number }[] }) {
 function StandingsTable({ rows }: { rows: { name: string; points: number }[] }) {
   return (
     <div className="scroll-shadow-x overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead><tr className="text-left text-brand-textMuted"><th className="p-2">#</th><th className="p-2">Player</th><th className="p-2">Points</th></tr></thead>
+      <table className="data-table">
+        <thead><tr><th>#</th><th>Player</th><th>Points</th></tr></thead>
         <tbody>
           {rows.map((row, index) => {
             const rank = index + 1;
             const podium = podiumStyle(rank);
             return (
-              <tr key={`${row.name}-${index}`} className={`border-t border-white/10 ${podium.rowClass}`}>
-                <td className={`p-2 font-bold ${podium.textClass}`}>{podium.medal || rank}</td>
-                <td className={`p-2 font-bold ${podium.medal ? podium.textClass : "text-brand-orange"}`}>{row.name}</td>
-                <td className="p-2"><AnimatedNumber value={formatValue(row.points, 0)} /></td>
+              <tr key={`${row.name}-${index}`} className={podium.rowClass}>
+                <td className={`font-bold ${podium.textClass}`}>{podium.medal || rank}</td>
+                <td className={`font-bold ${podium.medal ? podium.textClass : "text-brand-orange"}`}>{row.name}</td>
+                <td><AnimatedNumber value={formatValue(row.points, 0)} /></td>
               </tr>
             );
           })}
@@ -2158,31 +2165,31 @@ function RankChangeBadge({ change }: { change: number | null }) {
     return <span className="text-brand-textFaint">•</span>;
   }
   if (change > 0) {
-    return <span className="font-bold text-emerald-400">▲{change}</span>;
+    return <span className="font-bold text-brand-up">▲{change}</span>;
   }
-  return <span className="font-bold text-red-500">▼{Math.abs(change)}</span>;
+  return <span className="font-bold text-brand-down">▼{Math.abs(change)}</span>;
 }
 
 function WeeklyTable({ rows }: { rows: any[] }) {
   return (
     <div className="scroll-shadow-x overflow-x-auto">
-      <table className="w-full text-[13px]">
+      <table className="data-table text-[13px]">
         <thead>
-          <tr className="text-left text-brand-textMuted">
-            <th className="p-2">Rank</th><th className="p-2">Player</th><th className="p-2">Team</th><th className="p-2">Finish Pts</th><th className="p-2">+/-</th>
-            {weeklyStatColumns.map((col) => <th key={col.label} className="p-2">{col.label}</th>)}
+          <tr>
+            <th>Rank</th><th>Player</th><th>Team</th><th>Finish Pts</th><th>+/-</th>
+            {weeklyStatColumns.map((col) => <th key={col.label} >{col.label}</th>)}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={`${getPlayer(row)}-${getSeason(row)}-${getWeek(row)}-${getType(row)}-${index}`} className="border-t border-white/10">
-              <td className="p-2">{formatValue(row.Rank, 0)}</td>
-              <td className="p-2 font-bold text-brand-orange">{getPlayer(row)}</td>
-              <td className="p-2">{clean(row.Team) || "-"}</td>
-              <td className="p-2">{formatValue(row.Points, 0)}</td>
-              <td className="p-2"><RankChangeBadge change={row.RankChange ?? null} /></td>
+            <tr key={`${getPlayer(row)}-${getSeason(row)}-${getWeek(row)}-${getType(row)}-${index}`}>
+              <td>{formatValue(row.Rank, 0)}</td>
+              <td className="font-bold text-brand-orange">{getPlayer(row)}</td>
+              <td>{clean(row.Team) || "-"}</td>
+              <td>{formatValue(row.Points, 0)}</td>
+              <td><RankChangeBadge change={row.RankChange ?? null} /></td>
               {weeklyStatColumns.map((col) => (
-                <td key={col.label} className="p-2">{formatValue(getStatValue(row, col.label === "Points" ? ["StatPoints"] : col.keys), col.decimals)}</td>
+                <td key={col.label} >{formatValue(getStatValue(row, col.label === "Points" ? ["StatPoints"] : col.keys), col.decimals)}</td>
               ))}
             </tr>
           ))}
@@ -2217,12 +2224,12 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
         ))}
       </div>
       <div className="scroll-shadow-x hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[1150px] text-[13px]">
+        <table className="data-table min-w-[1150px] text-[13px]">
           <thead>
-            <tr className="text-left text-brand-textMuted">
-              <th className="sticky left-0 z-10 bg-brand-panel p-2">Player</th>
+            <tr>
+              <th className="sticky left-0 z-10 bg-brand-panel ">Player</th>
               {statColumns.map((col) => (
-                <th key={col.label} className="cursor-pointer whitespace-nowrap p-2 hover:text-brand-orange" onClick={() => onSort(col.label)}>
+                <th key={col.label} className="cursor-pointer whitespace-nowrap hover:text-brand-orange" onClick={() => onSort(col.label)}>
                   {col.label}{sortKey === col.label ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
                 </th>
               ))}
@@ -2230,9 +2237,9 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={`${getPlayer(row)}-${index}`} className="border-t border-white/10">
-                <td className="sticky left-0 z-10 bg-brand-panel p-2 font-bold text-brand-orange">{getPlayer(row)}</td>
-                {statColumns.map((col) => <td key={col.label} className="whitespace-nowrap p-2">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}
+              <tr key={`${getPlayer(row)}-${index}`}>
+                <td className="sticky left-0 z-10 bg-brand-panel font-bold text-brand-orange">{getPlayer(row)}</td>
+                {statColumns.map((col) => <td key={col.label} className="whitespace-nowrap ">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}
               </tr>
             ))}
           </tbody>
@@ -2280,12 +2287,12 @@ function CareerStatsTable({
         ))}
       </div>
       <div className="scroll-shadow-x hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[1150px] text-[13px]">
+        <table className="data-table min-w-[1150px] text-[13px]">
           <thead>
-            <tr className="text-left text-brand-textMuted">
-              <th className="sticky left-0 z-10 bg-brand-panel p-2">Player</th>
+            <tr>
+              <th className="sticky left-0 z-10 bg-brand-panel ">Player</th>
               {columns.map((col) => (
-                <th key={col.key} className="cursor-pointer whitespace-nowrap p-2 hover:text-brand-orange" onClick={() => onSort(col.key)}>
+                <th key={col.key} className="cursor-pointer whitespace-nowrap hover:text-brand-orange" onClick={() => onSort(col.key)}>
                   {col.label}
                   {sortKey === col.key ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
                 </th>
@@ -2294,10 +2301,10 @@ function CareerStatsTable({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.name} className={`border-t border-white/10 ${row.name === highlightPlayer ? "bg-brand-orange/10" : ""}`}>
-                <td className="sticky left-0 z-10 bg-brand-panel p-2 font-bold text-brand-orange">{row.name}</td>
+              <tr key={row.name} className={`${row.name === highlightPlayer ? "bg-brand-orange/10" : ""}`}>
+                <td className="sticky left-0 z-10 bg-brand-panel font-bold text-brand-orange">{row.name}</td>
                 {columns.map((col) => (
-                  <td key={col.key} className="whitespace-nowrap p-2">
+                  <td key={col.key} className="whitespace-nowrap ">
                     {formatValue(row[col.key], col.decimals)}
                   </td>
                 ))}
@@ -2340,11 +2347,11 @@ function CareerStatsSummary({ row, columns }: { row: any; columns: { key: string
 function SeasonFinishesTable({ rows }: { rows: any[] }) {
   return (
     <div className="scroll-shadow-x overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead><tr className="text-left text-brand-textMuted"><th className="p-2">Season</th><th className="p-2">Finish</th><th className="p-2">PPR</th><th className="p-2">DPR</th><th className="p-2">OPPR</th><th className="p-2">Points</th><th className="p-2">Rounds</th><th className="p-2">4 Baggers</th></tr></thead>
+      <table className="data-table">
+        <thead><tr><th>Season</th><th>Finish</th><th>PPR</th><th>DPR</th><th>OPPR</th><th>Points</th><th>Rounds</th><th>4 Baggers</th></tr></thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={getSeason(row)} className="border-t border-white/10"><td className="p-2 font-bold">{getSeason(row)}</td><td className="p-2 text-brand-orange">{formatValue(getStatValue(row, ["Finish"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average PPR", "PPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Average DPR", "DPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Opponents Avg PPR", "OPPR"]), 2)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Pts", "Total Points"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total Rounds"]), 0)}</td><td className="p-2">{formatValue(getStatValue(row, ["Total 4-Baggers", "4 Baggers"]), 0)}</td></tr>
+            <tr key={getSeason(row)}><td className="font-bold">{getSeason(row)}</td><td className="text-brand-orange">{formatValue(getStatValue(row, ["Finish"]), 0)}</td><td>{formatValue(getStatValue(row, ["Average PPR", "PPR"]), 2)}</td><td>{formatValue(getStatValue(row, ["Average DPR", "DPR"]), 2)}</td><td>{formatValue(getStatValue(row, ["Opponents Avg PPR", "OPPR"]), 2)}</td><td>{formatValue(getStatValue(row, ["Total Pts", "Total Points"]), 0)}</td><td>{formatValue(getStatValue(row, ["Total Rounds"]), 0)}</td><td>{formatValue(getStatValue(row, ["Total 4-Baggers", "4 Baggers"]), 0)}</td></tr>
           ))}
         </tbody>
       </table>
@@ -2366,32 +2373,32 @@ function ScenarioTable({
 }) {
   return (
     <div className="scroll-shadow-x overflow-x-auto">
-      <table className="w-full min-w-[950px] text-sm">
+      <table className="data-table min-w-[950px]">
         <thead>
-          <tr className="text-left text-brand-textMuted">
-            <th className="p-2">Projected Rank</th>
-            <th className="p-2">Player</th>
-            <th className="p-2">Current Rank</th>
-            <th className="p-2">Current Points</th>
-            <th className="p-2">Lowest Counted</th>
-            <th className="p-2">Projected Score</th>
-            <th className="p-2">Net Gain</th>
-            <th className="p-2">Projected Points</th>
-            <th className="p-2">Highest Week</th>
-            <th className="p-2">PPR</th>
+          <tr>
+            <th>Projected Rank</th>
+            <th>Player</th>
+            <th>Current Rank</th>
+            <th>Current Points</th>
+            <th>Lowest Counted</th>
+            <th>Projected Score</th>
+            <th>Net Gain</th>
+            <th>Projected Points</th>
+            <th>Highest Week</th>
+            <th>PPR</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.name} className={`border-t border-white/10 ${row.name === selectedPlayer ? "bg-brand-orange/10" : ""}`}>
-              <td className="p-2 font-bold">{row.projectedRank}</td>
-              <td className="p-2 font-bold text-brand-orange">{row.name}</td>
-              <td className="p-2">{row.currentRank || "-"}</td>
-              <td className="p-2">{formatValue(row.currentTotal, 0)}</td>
-              <td className="p-2">{formatValue(row.lowestCounted, 0)}</td>
-              <td className="p-2">
+            <tr key={row.name} className={`${row.name === selectedPlayer ? "bg-brand-orange/10" : ""}`}>
+              <td className="font-bold">{row.projectedRank}</td>
+              <td className="font-bold text-brand-orange">{row.name}</td>
+              <td>{row.currentRank || "-"}</td>
+              <td>{formatValue(row.currentTotal, 0)}</td>
+              <td>{formatValue(row.lowestCounted, 0)}</td>
+              <td>
                 <input
-                  className="w-24 rounded bg-brand-raisedHover p-2 text-brand-text"
+                  className="field-control w-24"
                   type="number"
                   min="0"
                   value={inputs[row.name] ?? ""}
@@ -2402,10 +2409,10 @@ function ScenarioTable({
                   }}
                 />
               </td>
-              <td className="p-2">{formatValue(row.netGain, 0)}</td>
-              <td className="p-2 font-bold text-brand-orange">{formatValue(row.projectedTotal, 0)}</td>
-              <td className="p-2">{formatValue(row.highestWeek, 0)}</td>
-              <td className="p-2">{formatValue(row.ppr, 2)}</td>
+              <td>{formatValue(row.netGain, 0)}</td>
+              <td className="font-bold text-brand-orange">{formatValue(row.projectedTotal, 0)}</td>
+              <td>{formatValue(row.highestWeek, 0)}</td>
+              <td>{formatValue(row.ppr, 2)}</td>
             </tr>
           ))}
         </tbody>
@@ -2417,10 +2424,10 @@ function ScenarioTable({
 function CompareTable({ statA, statB }: { statA: any; statB: any }) {
   return (
     <div className="scroll-shadow-x overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="data-table">
         <tbody>
           {statColumns.map((col) => (
-            <tr key={col.label} className="border-t border-white/10"><td className="p-2 text-brand-textMuted">{col.label}</td><td className="p-2">{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td className="p-2">{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
+            <tr key={col.label}><td className="text-brand-textMuted">{col.label}</td><td>{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td>{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
           ))}
         </tbody>
       </table>

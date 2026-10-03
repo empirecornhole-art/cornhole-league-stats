@@ -117,7 +117,7 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
           </div>
         ))}
 
-        {noSuchCombo && <div className="text-xs text-red-400">That combination isn't available.</div>}
+        {noSuchCombo && <div className="text-xs text-brand-down">That combination isn't available.</div>}
 
         <div className="mt-auto flex items-center gap-2 pt-2">
           <div className="flex items-center rounded-lg border border-white/15">
@@ -143,12 +143,12 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
           <button
             type="button"
             disabled={soldOut || !selectedVariant}
-            className={`flex-1 rounded-lg py-2 text-sm font-bold transition ${
+            className={`min-h-11 flex-1 rounded-full text-sm font-bold transition-[transform,background-color] duration-200 active:scale-[0.97] ${
               soldOut || !selectedVariant
                 ? "cursor-not-allowed bg-white/10 text-brand-textFaint"
                 : justAdded
-                ? "bg-emerald-600 text-brand-text"
-                : "bg-brand-orange text-brand-text hover:bg-brand-orange/80"
+                ? "bg-brand-up text-brand-bg"
+                : "bg-brand-orange text-brand-bg hover:bg-brand-orangeHover"
             }`}
             onClick={() => {
               if (!selectedVariant) return;
@@ -198,15 +198,15 @@ function CartBar({
     // the league's mobile tab bar (--tabbar-h) while you browse, and stops at
     // the end of the store instead of floating over the tab bar or footer.
     <div className="sticky bottom-[calc(var(--tabbar-h)+0.5rem)] z-30 mt-4 md:bottom-4 md:ml-auto md:w-96">
-      <div className="rounded-xl border border-brand-orange bg-brand-panel shadow-2xl">
+      <div className="rounded-2xl border border-brand-orange/60 bg-brand-raised shadow-float">
         {expanded && (
           <div className="max-h-64 space-y-2 overflow-y-auto border-b border-white/10 p-3">
             {lines.map((line) => (
               <div key={line.variantId} className="flex items-center gap-2 text-sm">
                 {line.image ? (
-                  <img src={line.image} alt="" className="h-10 w-10 rounded object-cover" />
+                  <img src={line.image} alt="" className="h-10 w-10 rounded-lg object-cover" />
                 ) : (
-                  <div className="h-10 w-10 rounded bg-brand-raised" />
+                  <div className="h-10 w-10 rounded-lg bg-white/10" />
                 )}
                 <div className="flex-1">
                   <div className="font-bold">{line.productTitle}</div>
@@ -219,7 +219,7 @@ function CartBar({
                 </div>
                 <button
                   type="button"
-                  className="px-2 text-brand-textFaint hover:text-red-400"
+                  className="px-2 text-brand-textFaint hover:text-brand-down"
                   onClick={() => onRemove(line.variantId)}
                   aria-label={`Remove ${line.productTitle} from cart`}
                 >
@@ -242,7 +242,7 @@ function CartBar({
         </button>
 
         <div className="px-4 pb-4">
-          {checkoutError && <div className="mb-2 text-xs text-red-400">{checkoutError}</div>}
+          {checkoutError && <div className="mb-2 text-xs text-brand-down">{checkoutError}</div>}
           <button
             type="button"
             disabled={checkingOut}
@@ -330,14 +330,14 @@ export default function StoreTab() {
   const sortedProducts = useMemo(() => products || [], [products]);
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-brand-panel p-4">
+    <section className="rounded-2xl border border-white/10 bg-brand-panel p-4 md:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-2xl uppercase text-brand-text">Store</h2>
         <p className="text-sm text-brand-textMuted">Checkout is handled securely by Shopify.</p>
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-900 bg-red-950/40 p-4 text-sm text-red-300">
+        <div className="rounded-xl border border-brand-down/30 bg-brand-down/10 p-4 text-sm text-brand-down">
           Couldn't load the store: {error}
         </div>
       )}
@@ -348,8 +348,8 @@ export default function StoreTab() {
             <div key={i} className="overflow-hidden rounded-xl border border-white/10 bg-brand-bg">
               <div className="aspect-square bg-white/10" />
               <div className="space-y-2 p-4">
-                <div className="h-4 w-2/3 rounded bg-white/10" />
-                <div className="h-4 w-1/3 rounded bg-white/10" />
+                <div className="h-4 w-2/3 rounded-md animate-pulse bg-white/10" />
+                <div className="h-4 w-1/3 rounded-md animate-pulse bg-white/10" />
               </div>
             </div>
           ))}

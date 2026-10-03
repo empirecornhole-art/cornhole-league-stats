@@ -323,7 +323,7 @@ export default function EventsTab({ password }: { password: string }) {
                 type="checkbox"
                 checked={form.featured}
                 onChange={(e) => setForm({ ...form, featured: e.target.checked })}
-                className="h-4 w-4 rounded border-white/20 bg-brand-panel accent-brand-orange"
+                className="h-4 w-4 rounded border-white/15 bg-brand-panel accent-brand-orange"
               />
               <span className="font-sans text-sm text-brand-textSecondary">Featured event</span>
             </label>
@@ -388,7 +388,7 @@ export default function EventsTab({ password }: { password: string }) {
               <button
                 type="button"
                 onClick={() => handleDelete(event)}
-                className="rounded-full border border-red-500/40 px-4 py-2 font-sans text-xs font-semibold text-red-400 transition duration-200 hover:bg-red-500/10"
+                className="rounded-full border border-brand-down/40 px-4 py-2 font-sans text-xs font-semibold text-brand-down transition duration-200 hover:bg-brand-down/10"
               >
                 Delete
               </button>
