@@ -1047,6 +1047,7 @@ export default function LeagueClient() {
   const [season, setSeason] = useState("");
   const [eventView, setEventView] = useState<EventView>("Overall");
   const [media, setMedia] = useState<MediaFeedItem[] | null>(null);
+  const [recaps, setRecaps] = useState<RecapFeedItem[] | null>(null);
   const [player, setPlayer] = useState("All Players");
   const [dashboardWeek, setDashboardWeek] = useState("All Weeks");
   const [type, setType] = useState<"Blind" | "Swap">("Blind");
@@ -1505,7 +1506,19 @@ export default function LeagueClient() {
   }, [tab, hasData]);
 
   useEffect(() => {
-    if (tab !== "photos" || media !== null) return;
+    if (tab !== "weeks" || recaps !== null) return;
+    let cancelled = false;
+    fetch("/api/recaps")
+      .then((res) => (res.ok ? res.json() : { items: [] }))
+      .then((json) => !cancelled && setRecaps(json.items || []))
+      .catch(() => !cancelled && setRecaps([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, recaps]);
+
+  useEffect(() => {
+    if ((tab !== "photos" && tab !== "weeks") || media !== null) return;
     let cancelled = false;
     fetch("/api/media")
       .then((res) => (res.ok ? res.json() : { items: [] }))
@@ -1649,6 +1662,10 @@ export default function LeagueClient() {
             <WeeklyTable rows={visibleWeekRows} />
             <EventSummary rows={visibleWeekRows} />
           </Card>
+        )}
+
+        {tab === "weeks" && week && (
+          <WeekRecapCard recaps={recaps} media={media} season={season} week={week} />
         )}
 
         {tab === "photos" && (
@@ -1940,7 +1957,7 @@ export default function LeagueClient() {
 
 type MediaFeedItem = { id: string; season: string; week: number; kind: "photo" | "video"; url: string; caption: string };
 
-function PhotosPanel({ items, season, week }: { items: MediaFeedItem[] | null; season: string; week: string }) {
+function PhotosPanel({ items, season, week, compact = false }: { items: MediaFeedItem[] | null; season: string; week: string; compact?: boolean }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const weekNumber = week === "All Weeks" ? 0 : Number((week.match(/\d+/) || [])[0]) || 0;
@@ -1963,8 +1980,9 @@ function PhotosPanel({ items, season, week }: { items: MediaFeedItem[] | null; s
     return () => window.removeEventListener("keydown", onKey);
   }, [current, index, visible]);
 
-  if (items === null) return <p className="text-brand-textMuted">Loading photos...</p>;
+  if (items === null) return compact ? null : <p className="text-brand-textMuted">Loading photos...</p>;
   if (!visible.length) {
+    if (compact) return null;
     return (
       <p className="text-brand-textMuted">
         No photos or videos {weekNumber ? `for ${week}` : `for ${season}`} yet. Check back after the next league night.
@@ -1977,7 +1995,7 @@ function PhotosPanel({ items, season, week }: { items: MediaFeedItem[] | null; s
       <div className="space-y-8">
         {weeks.map((w) => (
           <section key={w}>
-            <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Week {w}</h3>
+            {!compact && <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Week {w}</h3>}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
               {visible
                 .filter((i) => i.week === w)
@@ -2056,6 +2074,37 @@ function PhotosPanel({ items, season, week }: { items: MediaFeedItem[] | null; s
         </div>
       )}
     </>
+  );
+}
+
+type RecapFeedItem = { season: string; week: number; body: string; updated: string };
+
+// The published recap for the selected week (Weeks tab), with that week's photos and videos under it.
+function WeekRecapCard({
+  recaps,
+  media,
+  season,
+  week,
+}: {
+  recaps: RecapFeedItem[] | null;
+  media: MediaFeedItem[] | null;
+  season: string;
+  week: string;
+}) {
+  const weekNumber = Number((week.match(/\d+/) || [])[0]) || 0;
+  const recap = (recaps || []).find((r) => r.season === season && r.week === weekNumber);
+  const hasMedia = (media || []).some((m) => m.season === season && m.week === weekNumber);
+  if (!recap && !hasMedia) return null;
+
+  return (
+    <Card title={`${week} Recap`}>
+      {recap && <div className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-brand-textSecondary">{recap.body}</div>}
+      {hasMedia && (
+        <div className={recap ? "mt-6" : ""}>
+          <PhotosPanel items={media} season={season} week={week} compact />
+        </div>
+      )}
+    </Card>
   );
 }
 
