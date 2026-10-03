@@ -1,4 +1,5 @@
 import FadeIn from "../../components/site/FadeIn";
+import ContactForm from "../../components/site/ContactForm";
 import { getSiteSettings } from "../../lib/settings";
 import { MailIcon, PinIcon, UsersIcon } from "../../components/site/Icons";
 
@@ -86,65 +87,7 @@ export default async function ContactPage() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-brand-bg p-6 md:p-8">
-              {/* TODO: wire form submission (API route or email service) */}
-              <form className="flex flex-col gap-5">
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="contact-name" className="field-label">
-                      Name
-                    </label>
-                    <input
-                      id="contact-name"
-                      name="name"
-                      type="text"
-                      className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-3 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
-                      placeholder="Jane Doe"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="contact-email" className="field-label">
-                      Email
-                    </label>
-                    <input
-                      id="contact-email"
-                      name="email"
-                      type="email"
-                      className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-3 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
-                      placeholder="you@email.com"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="contact-interest" className="field-label">
-                    I&apos;m Interested In
-                  </label>
-                  <input
-                    id="contact-interest"
-                    name="interest"
-                    type="text"
-                    className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-3 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
-                    placeholder="Joining a team, sponsoring an event, ..."
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="contact-message" className="field-label">
-                    Message
-                  </label>
-                  <textarea
-                    id="contact-message"
-                    name="message"
-                    rows={5}
-                    className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-3 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
-                    placeholder="Tell us a bit about what you're looking for..."
-                  />
-                </div>
-
-                <button type="button" className="btn-primary mt-2 self-start">
-                  Send Message
-                </button>
-              </form>
+              <ContactForm />
             </div>
           </div>
         </FadeIn>
