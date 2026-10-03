@@ -24,8 +24,8 @@ type Data = {
   weekScores?: any[];
 };
 
-type Tab = "dashboard" | "standings" | "weeks" | "stats" | "alltime" | "badges" | "players" | "scenarios" | "compare" | "store";
-const TAB_IDS: Tab[] = ["dashboard", "standings", "weeks", "stats", "alltime", "badges", "players", "scenarios", "compare", "store"];
+type Tab = "dashboard" | "standings" | "weeks" | "photos" | "stats" | "alltime" | "badges" | "players" | "scenarios" | "compare" | "store";
+const TAB_IDS: Tab[] = ["dashboard", "standings", "weeks", "photos", "stats", "alltime", "badges", "players", "scenarios", "compare", "store"];
 type EventFilter = "All" | "Blind" | "Swap";
 type SortDirection = "asc" | "desc";
 
@@ -1046,6 +1046,7 @@ export default function LeagueClient() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [season, setSeason] = useState("");
   const [eventView, setEventView] = useState<EventView>("Overall");
+  const [media, setMedia] = useState<MediaFeedItem[] | null>(null);
   const [player, setPlayer] = useState("All Players");
   const [dashboardWeek, setDashboardWeek] = useState("All Weeks");
   const [type, setType] = useState<"Blind" | "Swap">("Blind");
@@ -1503,6 +1504,18 @@ export default function LeagueClient() {
     // The tab bar only exists once data has loaded, so re-run then too.
   }, [tab, hasData]);
 
+  useEffect(() => {
+    if (tab !== "photos" || media !== null) return;
+    let cancelled = false;
+    fetch("/api/media")
+      .then((res) => (res.ok ? res.json() : { items: [] }))
+      .then((json) => !cancelled && setMedia(json.items || []))
+      .catch(() => !cancelled && setMedia([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, media]);
+
   if (!data) {
     return <LoadingSkeleton />;
   }
@@ -1511,6 +1524,7 @@ export default function LeagueClient() {
     { id: "dashboard", label: "Dashboard" },
     { id: "standings", label: "Standings" },
     { id: "weeks", label: "Weeks" },
+    { id: "photos", label: "Photos" },
     { id: "stats", label: "Stats" },
     { id: "alltime", label: "All-Time" },
     { id: "badges", label: "Badges" },
@@ -1634,6 +1648,12 @@ export default function LeagueClient() {
             <h3 className="mb-2 font-display text-lg uppercase text-brand-orange">Standings</h3>
             <WeeklyTable rows={visibleWeekRows} />
             <EventSummary rows={visibleWeekRows} />
+          </Card>
+        )}
+
+        {tab === "photos" && (
+          <Card title={`${season} Photos & Video`}>
+            <PhotosPanel items={media} season={season} week={dashboardWeek} />
           </Card>
         )}
 
@@ -1915,6 +1935,127 @@ export default function LeagueClient() {
         </div>
       </nav>
     </main>
+  );
+}
+
+type MediaFeedItem = { id: string; season: string; week: number; kind: "photo" | "video"; url: string; caption: string };
+
+function PhotosPanel({ items, season, week }: { items: MediaFeedItem[] | null; season: string; week: string }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const weekNumber = week === "All Weeks" ? 0 : Number((week.match(/\d+/) || [])[0]) || 0;
+  const visible = useMemo(
+    () => (items || []).filter((i) => i.season === season && (!weekNumber || i.week === weekNumber)),
+    [items, season, weekNumber]
+  );
+  const weeks = useMemo(() => Array.from(new Set(visible.map((i) => i.week))).sort((a, b) => b - a), [visible]);
+  const index = visible.findIndex((i) => i.id === openId);
+  const current = index >= 0 ? visible[index] : null;
+
+  useEffect(() => {
+    if (!current) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenId(null);
+      if (e.key === "ArrowRight") setOpenId(visible[(index + 1) % visible.length].id);
+      if (e.key === "ArrowLeft") setOpenId(visible[(index - 1 + visible.length) % visible.length].id);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [current, index, visible]);
+
+  if (items === null) return <p className="text-brand-textMuted">Loading photos...</p>;
+  if (!visible.length) {
+    return (
+      <p className="text-brand-textMuted">
+        No photos or videos {weekNumber ? `for ${week}` : `for ${season}`} yet. Check back after the next league night.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-8">
+        {weeks.map((w) => (
+          <section key={w}>
+            <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Week {w}</h3>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+              {visible
+                .filter((i) => i.week === w)
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setOpenId(item.id)}
+                    aria-label={`${item.kind === "video" ? "Play video" : "View photo"}${item.caption ? `: ${item.caption}` : ""}`}
+                    className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-brand-bg"
+                  >
+                    {item.kind === "video" ? (
+                      <>
+                        <video src={`${item.url}#t=0.1`} preload="metadata" muted playsInline className="h-full w-full object-cover" />
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-4xl text-white" aria-hidden="true">
+                          &#9654;
+                        </span>
+                      </>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.url} alt={item.caption || `Week ${w} photo`} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    )}
+                  </button>
+                ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      {current && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo viewer"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4"
+          onClick={() => setOpenId(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setOpenId(null)}
+            aria-label="Close viewer"
+            className="absolute right-4 top-4 rounded-full bg-white/10 px-4 py-2 text-sm font-bold uppercase text-white hover:bg-white/20"
+          >
+            Close
+          </button>
+          <div className="flex max-h-[80vh] w-full max-w-5xl items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            {current.kind === "video" ? (
+              <video key={current.id} src={current.url} controls autoPlay playsInline className="max-h-[80vh] max-w-full rounded-lg" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={current.url} alt={current.caption || `Week ${current.week} photo`} className="max-h-[80vh] max-w-full rounded-lg object-contain" />
+            )}
+          </div>
+          <div className="mt-3 text-center text-sm text-white/80" onClick={(e) => e.stopPropagation()}>
+            Week {current.week} &middot; {index + 1} of {visible.length}
+            {current.caption && <div className="mt-1 text-white">{current.caption}</div>}
+          </div>
+          {visible.length > 1 && (
+            <div className="mt-3 flex gap-3" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setOpenId(visible[(index - 1 + visible.length) % visible.length].id)}
+                className="rounded-full bg-white/10 px-5 py-2 text-sm font-bold uppercase text-white hover:bg-white/20"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpenId(visible[(index + 1) % visible.length].id)}
+                className="rounded-full bg-white/10 px-5 py-2 text-sm font-bold uppercase text-white hover:bg-white/20"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 

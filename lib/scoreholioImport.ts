@@ -4,9 +4,9 @@ import { getSupabaseAdmin } from "./supabaseAdmin";
 /**
  * Weekly Scoreholio results import (Fall '26 onward).
  *
- * Each week the admin uploads four Scoreholio exports:
- *   Switch:      "ScoreMagic" stats  +  "RoundRobin-Standings"
- *   Blind Draw:  "ScoreMagic" stats  +  "Bracket-Standings"
+ * Each week the admin uploads Scoreholio exports:
+ *   Switch:      "ScoreMagic" stats  +  "RoundRobin-Standings"  (+ optional match log)
+ *   Blind Draw:  "ScoreMagic" stats  +  "Bracket-Standings"     (+ optional match log)
  * File names carry no week/event info, so everything is read from the files:
  * the ScoreMagic "Game Name" column gives the week and event type ("... Week 1"
  * is the Switch, "... Week 1 Blind" the Blind Draw), and each standings file is
@@ -60,17 +60,28 @@ type PlayerRec = {
   bonus?: number;
 };
 
+export type GameRec = {
+  order: number;
+  team1: string; // real names, sorted, joined " / "
+  team2: string;
+  score1: number;
+  score2: number;
+  playedAt: string | null;
+  playSeconds: number | null;
+};
+
 export type ParsedEvent = {
   week: number;
   type: EventType;
   gameName: string;
   players: PlayerRec[];
+  games: GameRec[];
   warnings: string[];
 };
 
 export type ScoreholioImportResult = {
   season: string;
-  events: { week: number; type: EventType; players: number }[];
+  events: { week: number; type: EventType; players: number; games: number }[];
   weeksInSeason: number[];
   players: number;
   warnings: string[];
@@ -110,7 +121,7 @@ export function normalizeSeasonName(input: string): string {
 }
 
 type Table = { fileName: string; headers: string[]; rows: Record<string, any>[] };
-type Kind = "scoremagic" | "roundrobin" | "bracket";
+type Kind = "scoremagic" | "roundrobin" | "bracket" | "matchlog";
 
 function readTable(buffer: ArrayBuffer, fileName: string): Table {
   const wb = XLSX.read(buffer, { type: "array" });
@@ -124,15 +135,16 @@ function classify(t: Table): Kind {
   if (h.has("display name") && h.has("total points")) return "scoremagic";
   if (h.has("position") && h.has("points for")) return "roundrobin";
   if (h.has("place") && h.has("playername1")) return "bracket";
+  if (h.has("team 1") && h.has("team 2") && h.has("score 2")) return "matchlog";
   throw new Error(
-    `${t.fileName}: not a recognized Scoreholio export. Expected ScoreMagic, RoundRobin-Standings, or Bracket-Standings.`
+    `${t.fileName}: not a recognized Scoreholio export. Expected ScoreMagic, RoundRobin-Standings, Bracket-Standings, or a Match Log.`
   );
 }
 
 /** Reads and pairs one upload's worth of files into per-week events. */
 export function parseScoreholioUpload(files: { name: string; buffer: ArrayBuffer }[]): ParsedEvent[] {
   const tables = files.map((f) => readTable(f.buffer, f.name));
-  const byKind: Record<Kind, Table[]> = { scoremagic: [], roundrobin: [], bracket: [] };
+  const byKind: Record<Kind, Table[]> = { scoremagic: [], roundrobin: [], bracket: [], matchlog: [] };
   for (const t of tables) byKind[classify(t)].push(t);
 
   if (!byKind.scoremagic.length) throw new Error("Upload at least one ScoreMagic file (it carries the week and the player stats).");
@@ -174,8 +186,9 @@ export function parseScoreholioUpload(files: { name: string; buffer: ArrayBuffer
       .sort((a, b) => (b.p.ppr ?? -Infinity) - (a.p.ppr ?? -Infinity) || a.i - b.i)
       .forEach(({ p }, idx) => (p.statsRank = idx + 1));
 
-    const ev: ParsedEvent = { week, type, gameName, players, warnings: [] };
+    const ev: ParsedEvent = { week, type, gameName, players, games: [], warnings: [] };
     const label = `Week ${week} ${type === "Blind" ? "Blind Draw" : "Switch"}`;
+    const bracketTeams = new Set<string>();
 
     if (type === "Swap") {
       // Pair with the round-robin file whose team names are these players' display names.
@@ -209,6 +222,7 @@ export function parseScoreholioUpload(files: { name: string; buffer: ArrayBuffer
         ev.warnings.push(`${label}: no Bracket-Standings file found, so no bonus points were awarded.`);
       } else {
         used.add(br);
+        for (const r of br.rows) bracketTeams.add(norm(r["Team Name"]));
         const byEmail = new Map(players.filter((p) => p.email).map((p) => [p.email, p]));
         const byDisplay = new Map(players.map((p) => [norm(p.display), p]));
         for (const r of br.rows) {
@@ -229,15 +243,92 @@ export function parseScoreholioUpload(files: { name: string; buffer: ArrayBuffer
         }
       }
     }
+    ev.games = pairMatchLog(sm, type, players, bracketTeams, byKind.matchlog, used, ev.warnings, label);
     events.push(ev);
   }
 
-  const leftovers = [...byKind.roundrobin, ...byKind.bracket].filter((t) => !used.has(t));
+  const leftovers = [...byKind.roundrobin, ...byKind.bracket, ...byKind.matchlog].filter((t) => !used.has(t));
   for (const t of leftovers) {
     events[0].warnings.push(`${t.fileName} didn't match any ScoreMagic file and was ignored.`);
   }
 
   return events.sort((a, b) => a.week - b.week || a.type.localeCompare(b.type) * -1);
+}
+
+function fileId(name: string) {
+  const m = name.match(/([A-Za-z0-9]{20})(?:\s*\(\d+\))?\.\w+$/);
+  return m ? m[1] : "";
+}
+
+function splitTeam(team: string) {
+  return clean(team)
+    .split(/\s+\/\s+|\s+&\s+/)
+    .map((n) => n.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Finds this event's match log. Both events have the same players, so the
+ * match log is told apart by its shape: Blind Draw teams are the fixed
+ * "A / B" teams from the bracket file, while Switch pairings use "A & B".
+ * The id in the file name (shared with the ScoreMagic file) wins if present.
+ */
+function pairMatchLog(
+  sm: Table,
+  type: EventType,
+  players: PlayerRec[],
+  bracketTeams: Set<string>,
+  logs: Table[],
+  used: Set<Table>,
+  warnings: string[],
+  label: string
+): GameRec[] {
+  const smId = fileId(sm.fileName);
+  const score = (t: Table) => {
+    if (smId && fileId(t.fileName) === smId) return 1_000_000;
+    let amp = 0;
+    let slash = 0;
+    let bracketHits = 0;
+    for (const r of t.rows) {
+      for (const k of ["Team 1", "Team 2"]) {
+        const team = clean(r[k]);
+        if (/\s&\s/.test(team)) amp++;
+        if (/\s\/\s/.test(team)) slash++;
+        if (bracketTeams.has(norm(team))) bracketHits++;
+      }
+    }
+    return type === "Blind" ? bracketHits * 10 + slash : amp;
+  };
+  const log = pickBest(logs, used, score);
+  if (!log) return [];
+  used.add(log);
+
+  const realByDisplay = new Map(players.map((p) => [norm(p.display), p.name]));
+  const unknown = new Set<string>();
+  const realTeam = (team: string) =>
+    splitTeam(team)
+      .map((d) => {
+        const real = realByDisplay.get(norm(d));
+        if (!real) unknown.add(d);
+        return real || d;
+      })
+      .sort()
+      .join(" / ");
+
+  const games = log.rows
+    .map((r) => ({
+      order: n0(r["#"]),
+      team1: realTeam(r["Team 1"]),
+      team2: realTeam(r["Team 2"]),
+      score1: n0(r["Score"]),
+      score2: n0(r["Score 2"]),
+      playedAt: clean(r["Date/Time"]) || null,
+      playSeconds: num(r["Play Duration"]),
+    }))
+    .sort((a, b) => a.order - b.order);
+
+  if (unknown.size) warnings.push(`${label}: match log names not found in the stats file: ${Array.from(unknown).join(", ")}.`);
+  return games;
 }
 
 function pickBest(candidates: Table[], used: Set<Table>, score: (t: Table) => number): Table | null {
@@ -350,6 +441,30 @@ export async function importScoreholioWeeks(seasonInput: string, events: ParsedE
       raw: { source: SOURCE, bagsIn: p.bagsIn, bagsOn: p.bagsOn, bagsOff: p.bagsOff, statsRank: p.statsRank },
     }));
 
+    // Match log (optional). Skipped quietly if the table hasn't been created yet.
+    await supabase.from("event_games").delete().eq("event_id", eventId).then(() => undefined);
+    if (e.games.length) {
+      const { error: gErr } = await supabase.from("event_games").insert(
+        e.games.map((g) => ({
+          event_id: eventId,
+          game_order: g.order,
+          team1: g.team1,
+          team2: g.team2,
+          score1: g.score1,
+          score2: g.score2,
+          played_at: g.playedAt,
+          play_seconds: g.playSeconds,
+        }))
+      );
+      if (gErr) {
+        const missing = /event_games|schema cache|does not exist/i.test(gErr.message || "");
+        if (!missing) throw gErr;
+        warnings.push(
+          `Week ${e.week} ${e.type === "Blind" ? "Blind Draw" : "Switch"}: the match log wasn't saved because the recap database tables haven't been created yet.`
+        );
+      }
+    }
+
     const { error: rErr } = await supabase.from("event_results").upsert(resultRows, { onConflict: "event_id,player_id" });
     if (rErr) throw rErr;
     const { error: sErr } = await supabase.from("event_stats").upsert(statRows, { onConflict: "event_id,player_id" });
@@ -361,7 +476,7 @@ export async function importScoreholioWeeks(seasonInput: string, events: ParsedE
 
   return {
     season: seasonName,
-    events: events.map((e) => ({ week: e.week, type: e.type, players: e.players.length })),
+    events: events.map((e) => ({ week: e.week, type: e.type, players: e.players.length, games: e.games.length })),
     weeksInSeason: recomputed.weeks,
     players: recomputed.players,
     warnings,

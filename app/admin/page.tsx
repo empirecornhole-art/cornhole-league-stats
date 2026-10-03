@@ -5,11 +5,15 @@ import UploadTab from "../../components/admin/UploadTab";
 import EventsTab from "../../components/admin/EventsTab";
 import SettingsTab from "../../components/admin/SettingsTab";
 import MessagesTab from "../../components/admin/MessagesTab";
+import RecapTab from "../../components/admin/RecapTab";
+import MediaTab from "../../components/admin/MediaTab";
 
-type Tab = "upload" | "events" | "messages" | "settings";
+type Tab = "upload" | "recap" | "media" | "events" | "messages" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "upload", label: "Upload Season Data" },
+  { id: "recap", label: "Week Recap" },
+  { id: "media", label: "Photos & Video" },
   { id: "events", label: "Events" },
   { id: "messages", label: "Messages" },
   { id: "settings", label: "Site Settings" },
@@ -59,6 +63,8 @@ export default function AdminPage() {
 
         <div className="mt-6">
           {tab === "upload" && <UploadTab password={password} />}
+          {tab === "recap" && <RecapTab password={password} />}
+          {tab === "media" && <MediaTab password={password} />}
           {tab === "events" && <EventsTab password={password} />}
           {tab === "messages" && <MessagesTab password={password} />}
           {tab === "settings" && <SettingsTab password={password} />}

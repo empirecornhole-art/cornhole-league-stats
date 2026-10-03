@@ -90,7 +90,7 @@ export default function UploadTab({ password }: { password: string }) {
 
       const lines = [
         `${data.season}: imported ${data.events.length} event${data.events.length === 1 ? "" : "s"}. Weeks in season: ${data.weeksInSeason.join(", ")}. Players: ${data.players}.`,
-        ...data.events.map((e: any) => `  Week ${e.week} ${e.type === "Blind" ? "Blind Draw" : "Switch"}: ${e.players} players`),
+        ...data.events.map((e: any) => `  Week ${e.week} ${e.type === "Blind" ? "Blind Draw" : "Switch"}: ${e.players} players${e.games ? `, ${e.games} games in match log` : ""}`),
         ...(data.warnings.length ? ["", "Check:", ...data.warnings.map((w: string) => `  - ${w}`)] : []),
       ];
       setShMessage(lines.join("\n"));
@@ -106,8 +106,8 @@ export default function UploadTab({ password }: { password: string }) {
     <div>
       <h3 className="font-display text-lg uppercase text-brand-orange">Weekly Scoreholio results</h3>
       <p className="mt-2 font-sans text-sm text-brand-textSecondary">
-        Upload all four Scoreholio exports for the week at once: the Switch ScoreMagic and RoundRobin-Standings files, and the Blind Draw
-        ScoreMagic and Bracket-Standings files. The week, event types, Blind Draw bonuses (3/2/1, both teammates) and each player&apos;s best 9
+        Upload the week&apos;s Scoreholio exports at once: the Switch ScoreMagic and RoundRobin-Standings files, and the Blind Draw
+        ScoreMagic and Bracket-Standings files. Add each event&apos;s Match Log too if you want game-by-game detail in the weekly recap. The week, event types, Blind Draw bonuses (3/2/1, both teammates) and each player&apos;s best 9
         weeks are worked out automatically.
       </p>
 
