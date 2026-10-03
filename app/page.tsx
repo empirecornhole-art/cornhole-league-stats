@@ -122,7 +122,7 @@ export default async function Home() {
             Where every <span className="text-brand-orange">bag</span> counts.
           </h1>
           <p className="mt-6 max-w-2xl font-sans text-base text-brand-textSecondary sm:text-lg">
-            Weekly blind draws, swap nights, and the standings that decide who&apos;s really got game. This is home.
+            Weekly blind draws, switch nights, and the standings that decide who&apos;s really got game. This is home.
           </p>
           <div className="mt-8 flex w-full flex-col gap-3 sm:mt-10 sm:w-auto sm:flex-row sm:gap-4">
             <Link href="/leagues" className="btn-primary">

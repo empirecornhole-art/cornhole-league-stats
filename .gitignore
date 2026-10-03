@@ -26,3 +26,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# local sample Scoreholio exports
+scoreholio-samples/

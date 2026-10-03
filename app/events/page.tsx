@@ -46,7 +46,7 @@ export default async function EventsPage() {
           </span>
           <h1 className="heading-page mt-4">Events</h1>
           <p className="mt-5 font-sans text-brand-textSecondary">
-            Blind draws, swap nights, and the events that decide who takes home the season.
+            Blind draws, switch nights, and the events that decide who takes home the season.
           </p>
         </FadeIn>
       </section>

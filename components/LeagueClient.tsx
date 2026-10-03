@@ -171,7 +171,9 @@ function seasonSort(a: string, b: string) {
   return av.order - bv.order;
 }
 
-const statColumns = [
+type StatColumn = { label: string; keys: string[]; decimals: number; hideWhenEmpty?: boolean };
+
+const statColumns: StatColumn[] = [
   { label: "Finish", keys: ["Finish", "Rank"], decimals: 0 },
   { label: "Total Rounds", keys: ["Total Rounds"], decimals: 0 },
   { label: "Total Pts", keys: ["Total Pts", "Total Points"], decimals: 0 },
@@ -179,7 +181,7 @@ const statColumns = [
   { label: "Opp Avg PPR", keys: ["Opponents Avg PPR", "OPPR", "Opp Avg PPR"], decimals: 2 },
   { label: "Average DPR", keys: ["Average DPR", "DPR"], decimals: 2 },
   { label: "Opp Pts", keys: ["Opponents Pts", "Opp Pts"], decimals: 0 },
-  { label: "Avg Bags In", keys: ["Avg Bags In"], decimals: 2 },
+  { label: "Avg Bags In", keys: ["Avg Bags In"], decimals: 2, hideWhenEmpty: true },
   { label: "Total Bags In", keys: ["Total Bags In"], decimals: 0 },
   { label: "Avg Bags In/Rd", keys: ["Avg Bags In per Rd", "Avg Bags In/Rd"], decimals: 2 },
   { label: "Bags On %", keys: ["Bags On %"], decimals: 2 },
@@ -188,8 +190,17 @@ const statColumns = [
   { label: "Avg 4-Bagger %", keys: ["Avg 4-Bagger %"], decimals: 2 },
   { label: "Total 4-Baggers", keys: ["Total 4-Baggers", "4 Baggers"], decimals: 0 },
   { label: "1st in Stats", keys: ["1st in Stats"], decimals: 0 },
-  { label: "Avg Rounds/Swap", keys: ["Avg Rounds/Swap Game", "Avg Rounds/Swap"], decimals: 2 },
+  { label: "Avg Rounds/Switch", keys: ["Avg Rounds/Swap Game", "Avg Rounds/Swap"], decimals: 2 },
 ];
+
+// Columns flagged hideWhenEmpty (Avg Bags In: retired with the Scoreholio
+// import) only show when at least one row being displayed has a value, so
+// older seasons keep the column and newer ones don't.
+function visibleStatColumns(rows: any[]) {
+  return statColumns.filter(
+    (col) => !col.hideWhenEmpty || rows.some((row) => row && getStatValue(row, col.keys) !== "" && getStatValue(row, col.keys) !== null)
+  );
+}
 
 const weeklyStatColumns = [
   { label: "PPR", keys: ["PPR"], decimals: 2 },
@@ -1517,8 +1528,8 @@ export default function LeagueClient() {
           <Card title="Weekly Results">
             <div className="mb-4 flex flex-wrap gap-3">
               <select className="field-control" value={type} onChange={(e) => { setType(e.target.value as "Blind" | "Swap"); setWeek(""); }}>
-                <option>Blind</option>
-                <option>Swap</option>
+                <option value="Blind">Blind</option>
+                <option value="Swap">Switch</option>
               </select>
 
               <select className="field-control" value={week} onChange={(e) => setWeek(e.target.value)}>
@@ -1674,8 +1685,8 @@ export default function LeagueClient() {
                   </select>
                   <select className="field-control" value={profileType} onChange={(e) => setProfileType(e.target.value as EventFilter)}>
                     <option>All</option>
-                    <option>Blind</option>
-                    <option>Swap</option>
+                    <option value="Blind">Blind</option>
+                    <option value="Swap">Switch</option>
                   </select>
                 </div>
 
@@ -2211,6 +2222,7 @@ function EventSummary({ rows }: { rows: any[] }) {
 }
 
 function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sortKey: string; sortDirection: SortDirection; onSort: (key: string) => void }) {
+  const columns = visibleStatColumns(rows);
   return (
     <>
       <div className="grid gap-3 md:hidden">
@@ -2218,7 +2230,7 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
           <div key={`${getPlayer(row)}-${index}`} className="rounded-xl border border-white/10 bg-brand-raised p-4">
             <div className="mb-3 text-lg font-bold text-brand-orange">{getPlayer(row)}</div>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              {statColumns.map((col) => <div key={col.label}><div className="text-xs uppercase text-brand-textFaint">{col.label}</div><div className="font-bold">{formatValue(getStatValue(row, col.keys), col.decimals)}</div></div>)}
+              {columns.map((col) => <div key={col.label}><div className="text-xs uppercase text-brand-textFaint">{col.label}</div><div className="font-bold">{formatValue(getStatValue(row, col.keys), col.decimals)}</div></div>)}
             </div>
           </div>
         ))}
@@ -2228,7 +2240,7 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
           <thead>
             <tr>
               <th className="sticky left-0 z-10 bg-brand-panel ">Player</th>
-              {statColumns.map((col) => (
+              {columns.map((col) => (
                 <th key={col.label} className="cursor-pointer whitespace-nowrap hover:text-brand-orange" onClick={() => onSort(col.label)}>
                   {col.label}{sortKey === col.label ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
                 </th>
@@ -2239,7 +2251,7 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
             {rows.map((row, index) => (
               <tr key={`${getPlayer(row)}-${index}`}>
                 <td className="sticky left-0 z-10 bg-brand-panel font-bold text-brand-orange">{getPlayer(row)}</td>
-                {statColumns.map((col) => <td key={col.label} className="whitespace-nowrap ">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}
+                {columns.map((col) => <td key={col.label} className="whitespace-nowrap ">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}
               </tr>
             ))}
           </tbody>
@@ -2319,9 +2331,10 @@ function CareerStatsTable({
 
 function PlayerStatsSummary({ row }: { row: any }) {
   if (!row) return <p className="text-brand-textMuted">No season stats found for this player.</p>;
+  const columns = visibleStatColumns([row]);
   return (
     <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
-      {statColumns.slice(1).map((col) => (
+      {columns.slice(1).map((col) => (
         <MiniStat key={col.label} label={col.label} value={formatValue(getStatValue(row, col.keys), col.decimals)} />
       ))}
     </div>
@@ -2422,11 +2435,12 @@ function ScenarioTable({
 }
 
 function CompareTable({ statA, statB }: { statA: any; statB: any }) {
+  const columns = visibleStatColumns([statA, statB]);
   return (
     <div className="scroll-shadow-x overflow-x-auto">
       <table className="data-table">
         <tbody>
-          {statColumns.map((col) => (
+          {columns.map((col) => (
             <tr key={col.label}><td className="text-brand-textMuted">{col.label}</td><td>{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td>{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
           ))}
         </tbody>
