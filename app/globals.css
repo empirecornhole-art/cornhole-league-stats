@@ -3,11 +3,13 @@
 @tailwind utilities;
 :root {
   color-scheme: dark;
-  --nav-h: 68px;
+  /* rem, not px: if someone raises their browser text size, the nav (whose
+     logo and text are rem-sized) grows and these offsets grow with it. */
+  --nav-h: 4.25rem;
   /* League mobile tab bar: 44px buttons + 16px padding, plus the iPhone home indicator. */
-  --tabbar-h: calc(60px + env(safe-area-inset-bottom));
+  --tabbar-h: calc(3.75rem + env(safe-area-inset-bottom));
 }
-@media (min-width: 768px) { :root { --nav-h: 80px; } }
+@media (min-width: 768px) { :root { --nav-h: 5rem; } }
 body { background:#0d0c0b; color:#f5f5f0; }
 
 @keyframes fadeIn {
@@ -42,10 +44,10 @@ body { background:#0d0c0b; color:#f5f5f0; }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-full bg-brand-orange px-8 py-4 font-sans text-[15px] font-bold text-brand-bg transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] active:duration-100 hover:-translate-y-0.5 hover:bg-brand-orangeHover;
+    @apply inline-flex items-center justify-center rounded-full bg-brand-orange px-8 py-4 font-sans text-[0.9375rem] font-bold text-brand-bg transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] active:duration-100 hover:-translate-y-0.5 hover:bg-brand-orangeHover;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-full border-2 border-white/35 bg-transparent px-8 py-4 font-sans text-[15px] font-bold text-brand-text transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] active:duration-100 hover:-translate-y-0.5 hover:border-white;
+    @apply inline-flex items-center justify-center rounded-full border-2 border-white/35 bg-transparent px-8 py-4 font-sans text-[0.9375rem] font-bold text-brand-text transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] active:duration-100 hover:-translate-y-0.5 hover:border-white;
   }
   /* Type scale: one size per role, shared by every page. */
   .eyebrow {
@@ -180,8 +182,15 @@ body { background:#0d0c0b; color:#f5f5f0; }
   animation: menuIn 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* Exit retraces the entrance (back up, fading), a little faster. */
+.menu-out {
+  animation: menuIn 140ms cubic-bezier(0.23, 1, 0.32, 1) reverse forwards;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .menu-in { animation: menuIn 1ms; }
+  .menu-out { animation: menuIn 1ms reverse forwards; }
 }
 
 /* iOS Safari zooms the page when focusing a field under 16px. Keep form
@@ -190,7 +199,7 @@ body { background:#0d0c0b; color:#f5f5f0; }
   input,
   select,
   textarea {
-    font-size: 16px !important;
+    font-size: max(16px, 1rem) !important;
   }
 }
 

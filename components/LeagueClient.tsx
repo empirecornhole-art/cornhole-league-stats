@@ -1433,7 +1433,7 @@ export default function LeagueClient() {
               <button
                 key={item.id}
                 onClick={() => setTab(item.id)}
-                className={`rounded-full border px-4 py-2 font-sans text-[15px] font-semibold transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary hover:border-white/35 hover:text-brand-text"}`}
+                className={`rounded-full border px-4 py-2 font-sans text-[0.9375rem] font-semibold transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary hover:border-white/35 hover:text-brand-text"}`}
               >
                 {item.label}
               </button>
@@ -1957,7 +1957,7 @@ function PlayerCombobox({
               onPointerDown={(e) => e.preventDefault()}
               onPointerMove={() => setActive(i)}
               onClick={() => choose(p)}
-              className={`flex min-h-11 cursor-pointer items-center justify-between rounded-lg px-3 text-[15px] ${
+              className={`flex min-h-11 cursor-pointer items-center justify-between rounded-lg px-3 text-[0.9375rem] ${
                 i === active ? "bg-white/10" : ""
               } ${p === value ? "font-semibold text-brand-orange" : "text-brand-text"}`}
             >
@@ -2173,7 +2173,7 @@ function RankChangeBadge({ change }: { change: number | null }) {
 function WeeklyTable({ rows }: { rows: any[] }) {
   return (
     <div className="scroll-shadow-x overflow-x-auto">
-      <table className="data-table text-[13px]">
+      <table className="data-table text-[0.8125rem]">
         <thead>
           <tr>
             <th>Rank</th><th>Player</th><th>Team</th><th>Finish Pts</th><th>+/-</th>
@@ -2224,7 +2224,7 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
         ))}
       </div>
       <div className="scroll-shadow-x hidden overflow-x-auto md:block">
-        <table className="data-table min-w-[1150px] text-[13px]">
+        <table className="data-table min-w-[1150px] text-[0.8125rem]">
           <thead>
             <tr>
               <th className="sticky left-0 z-10 bg-brand-panel ">Player</th>
@@ -2287,7 +2287,7 @@ function CareerStatsTable({
         ))}
       </div>
       <div className="scroll-shadow-x hidden overflow-x-auto md:block">
-        <table className="data-table min-w-[1150px] text-[13px]">
+        <table className="data-table min-w-[1150px] text-[0.8125rem]">
           <thead>
             <tr>
               <th className="sticky left-0 z-10 bg-brand-panel ">Player</th>

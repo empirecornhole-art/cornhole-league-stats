@@ -15,10 +15,32 @@ const NAV_LINKS = [
 export default function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // "closing" keeps the menu mounted while it animates back up the way it came
+  // in; it unmounts on animationend.
+  const [closing, setClosing] = useState(false);
+  const expanded = open && !closing;
+
+  function closeMenu() {
+    if (open) setClosing(true);
+  }
+
+  function finishClosing() {
+    setOpen(false);
+    setClosing(false);
+  }
+
+  // Backstop for animationend: it never fires if the animation is skipped
+  // (e.g. a backgrounded tab), which would leave the menu stuck open.
+  useEffect(() => {
+    if (!closing) return;
+    const t = window.setTimeout(finishClosing, 300);
+    return () => window.clearTimeout(t);
+  }, [closing]);
 
   // Close on navigation (covers back/forward, not just link clicks).
   useEffect(() => {
     setOpen(false);
+    setClosing(false);
   }, [pathname]);
 
   // While open: lock page scroll behind the menu, close on Escape, and close
@@ -30,11 +52,14 @@ export default function Nav() {
     document.body.style.overflow = "hidden";
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") setClosing(true);
     };
     const desktop = window.matchMedia("(min-width: 768px)");
     const onResize = () => {
-      if (desktop.matches) setOpen(false);
+      if (desktop.matches) {
+        setOpen(false);
+        setClosing(false);
+      }
     };
 
     window.addEventListener("keydown", onKey);
@@ -75,7 +100,7 @@ export default function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`font-sans text-[15px] font-semibold transition-colors duration-200 ${
+                className={`font-sans text-[0.9375rem] font-semibold transition-colors duration-200 ${
                   active
                     ? "text-brand-orange underline decoration-2 underline-offset-8"
                     : "text-brand-textSecondary hover:text-brand-text"
@@ -95,23 +120,26 @@ export default function Nav() {
 
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => (expanded ? closeMenu() : (setClosing(false), setOpen(true)))}
           aria-label="Toggle navigation menu"
-          aria-expanded={open}
+          aria-expanded={expanded}
           className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-lg border border-white/15 md:hidden"
         >
           <span
-            className={`block h-0.5 w-5 bg-brand-text transition duration-200 ${open ? "translate-y-2 rotate-45" : ""}`}
+            className={`block h-0.5 w-5 bg-brand-text transition duration-200 ${expanded ? "translate-y-2 rotate-45" : ""}`}
           />
-          <span className={`block h-0.5 w-5 bg-brand-text transition duration-200 ${open ? "opacity-0" : ""}`} />
+          <span className={`block h-0.5 w-5 bg-brand-text transition duration-200 ${expanded ? "opacity-0" : ""}`} />
           <span
-            className={`block h-0.5 w-5 bg-brand-text transition duration-200 ${open ? "-translate-y-2 -rotate-45" : ""}`}
+            className={`block h-0.5 w-5 bg-brand-text transition duration-200 ${expanded ? "-translate-y-2 -rotate-45" : ""}`}
           />
         </button>
       </div>
 
       {open && (
-        <div className="menu-in max-h-[calc(100dvh-var(--nav-h))] overflow-y-auto border-t border-white/10 bg-brand-bg px-4 pb-6 pt-2 md:hidden">
+        <div
+          onAnimationEnd={() => closing && finishClosing()}
+          className={`${closing ? "menu-out" : "menu-in"} max-h-[calc(100dvh-var(--nav-h))] overflow-y-auto border-t border-white/10 bg-brand-bg px-4 pb-6 pt-2 md:hidden`}
+        >
           <nav className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => {
               const active = pathname === link.href;
