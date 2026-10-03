@@ -7,6 +7,7 @@ import {
   postToFacebook,
   postToInstagram,
   recordPost,
+  type VideoMode,
 } from "../../../../lib/social";
 
 export const runtime = "nodejs";
@@ -48,9 +49,11 @@ export async function POST(req: Request) {
       return fail(`The Instagram caption is ${text.length} characters; the limit is ${INSTAGRAM_CAPTION_LIMIT}.`, 400);
     }
 
+    const videoMode: VideoMode = body.videoMode === "main" || body.videoMode === "separate" ? body.videoMode : "skip";
+
     const result =
       platform === "facebook"
-        ? await postToFacebook(text, media, `${season} Week ${week}`)
+        ? await postToFacebook(text, media, `${season} Week ${week}`, videoMode)
         : await postToInstagram(text, media);
 
     const recorded = await recordPost(season, week, platform, result.postId, result.permalink);

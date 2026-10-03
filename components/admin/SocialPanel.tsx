@@ -7,6 +7,7 @@ const IG_MAX_ITEMS = 10;
 
 type MediaItem = { id: string; kind: "photo" | "video"; url: string; caption: string };
 type Platform = "facebook" | "instagram";
+type VideoMode = "skip" | "main" | "separate";
 type Status = {
   facebook: { configured: boolean; ok: boolean; name?: string; error?: string };
   instagram: { configured: boolean; ok: boolean; name?: string; error?: string };
@@ -55,6 +56,7 @@ export default function SocialPanel({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [igCaption, setIgCaption] = useState("");
   const igEdited = useRef(false);
+  const [videoMode, setVideoMode] = useState<VideoMode>("skip");
   const [busy, setBusy] = useState<Platform | null>(null);
   const [message, setMessage] = useState("");
 
@@ -120,7 +122,14 @@ export default function SocialPanel({
     setMessage("");
 
     if (!force) {
-      const summary = `${chosen.length ? `${photos} photo${photos === 1 ? "" : "s"}${videos ? ` and ${videos} video${videos === 1 ? "" : "s"}` : ""}` : "no photos or videos"}`;
+      const fbVideosSkipped = platform === "facebook" && videoMode === "skip" ? videos : 0;
+      const usedPhotos = platform === "facebook" && videoMode === "main" && videos ? 0 : photos;
+      const usedVideos = platform === "facebook" ? videos - fbVideosSkipped : videos;
+      const parts = [
+        usedPhotos ? `${usedPhotos} photo${usedPhotos === 1 ? "" : "s"}` : "",
+        usedVideos ? `${usedVideos} video${usedVideos === 1 ? "" : "s"}` : "",
+      ].filter(Boolean);
+      const summary = `${parts.length ? parts.join(" and ") : "no photos or videos"}${fbVideosSkipped ? ` (${fbVideosSkipped} video${fbVideosSkipped === 1 ? "" : "s"} left out of Facebook)` : ""}`;
       if (!window.confirm(`Post Week ${week} to ${label} now with ${summary}? It goes live immediately.`)) return;
     }
 
@@ -131,6 +140,7 @@ export default function SocialPanel({
         platform,
         text: platform === "instagram" ? igCaption : text,
         mediaIds: chosen.map((m) => m.id),
+        videoMode,
         force,
       });
 
@@ -264,9 +274,26 @@ export default function SocialPanel({
         <div>
           <div className="font-sans text-sm font-bold text-brand-textSecondary">Facebook</div>
           <p className="mt-1 font-sans text-xs text-brand-textMuted">
-            Posts the full recap above{photos ? ` with ${photos} photo${photos === 1 ? "" : "s"}` : ""}. Videos go up as their own posts
-            {photos ? "" : " (the first one carries the recap text)"}.
+            Facebook can&apos;t put photos and a video in the same post, so choose how to handle videos:
           </p>
+          <label className="mt-2 block">
+            <span className="sr-only">Videos on Facebook</span>
+            <select
+              value={videoMode}
+              onChange={(e) => setVideoMode(e.target.value as VideoMode)}
+              className="block w-full rounded-lg border border-white/10 bg-brand-panel px-3 py-2 font-sans text-xs text-brand-text"
+            >
+              <option value="skip">Skip videos (add by hand afterwards)</option>
+              <option value="main">Video is the main post (recap text on the video, no photos)</option>
+              <option value="separate">Photos in the post, videos as separate posts</option>
+            </select>
+          </label>
+          {videos > 0 && videoMode === "skip" && (
+            <p className="mt-1 font-sans text-xs text-brand-textFaint">
+              {videos} selected video{videos === 1 ? " stays" : "s stay"} off Facebook. Edit the post afterwards to add {videos === 1 ? "it" : "them"}. Instagram still gets
+              {videos === 1 ? " it" : " them"} with the photos.
+            </p>
+          )}
           <button
             type="button"
             onClick={() => send("facebook")}

@@ -18,6 +18,12 @@ export const INSTAGRAM_MAX_ITEMS = 10;
 
 export type PostMedia = { url: string; kind: "photo" | "video" };
 
+// Facebook can't put photos and a video in one Page post, so videos are handled separately:
+//   skip     leave videos out of the Facebook post (add them by hand afterwards)
+//   main     the video carries the recap text; photos aren't included
+//   separate recap + photos in one post, then each video as its own post
+export type VideoMode = "skip" | "main" | "separate";
+
 export type SocialStatus = {
   facebook: { configured: boolean; ok: boolean; name?: string; error?: string };
   instagram: { configured: boolean; ok: boolean; name?: string; error?: string };
@@ -87,15 +93,20 @@ export async function getSocialStatus(): Promise<SocialStatus> {
   return status;
 }
 
-export async function postToFacebook(text: string, media: PostMedia[], videoCaption: string) {
+export async function postToFacebook(text: string, media: PostMedia[], videoCaption: string, videoMode: VideoMode = "skip") {
   const { pageId, token } = config();
   if (!pageId || !token) throw new Error("Facebook isn't set up yet (META_PAGE_ID / META_PAGE_ACCESS_TOKEN).");
 
-  const photos = media.filter((m) => m.kind === "photo");
+  const allPhotos = media.filter((m) => m.kind === "photo");
   const videos = media.filter((m) => m.kind === "video");
   const ids: string[] = [];
 
-  if (photos.length || !videos.length) {
+  // "main" with a video: the video is the post, so photos are dropped. Every other case keeps them.
+  const videoIsMain = videoMode === "main" && videos.length > 0;
+  const photos = videoIsMain ? [] : allPhotos;
+  const videosToPost = videoMode === "skip" ? [] : videos;
+
+  if (!videoIsMain) {
     // Text post, optionally with photos attached. Photos go up unpublished first, then ride on the post.
     const params: Record<string, string> = { message: text };
     for (let i = 0; i < photos.length; i++) {
@@ -104,14 +115,14 @@ export async function postToFacebook(text: string, media: PostMedia[], videoCapt
     }
     const post = await graph(`${pageId}/feed`, params);
     ids.push(post.id);
-    for (const video of videos) {
+    for (const video of videosToPost) {
       const v = await graph(`${pageId}/videos`, { file_url: video.url, description: videoCaption });
       ids.push(v.id);
     }
   } else {
-    // Videos only: the first carries the recap text, any others get a short caption.
-    for (let i = 0; i < videos.length; i++) {
-      const v = await graph(`${pageId}/videos`, { file_url: videos[i].url, description: i === 0 ? text : videoCaption });
+    // The first video carries the recap text, any others get a short caption.
+    for (let i = 0; i < videosToPost.length; i++) {
+      const v = await graph(`${pageId}/videos`, { file_url: videosToPost[i].url, description: i === 0 ? text : videoCaption });
       ids.push(v.id);
     }
   }
