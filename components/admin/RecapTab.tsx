@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import SocialPanel from "./SocialPanel";
 
 type Options = { season: string; weeks: number[] }[];
 
@@ -300,12 +301,7 @@ export default function RecapTab({ password }: { password: string }) {
         </div>
       )}
 
-      {hasText && (
-        <p className="mt-6 font-sans text-xs text-brand-textFaint">
-          Posting straight to Facebook and Instagram isn&apos;t connected yet. For now, copy the recap and attach the week&apos;s photos from
-          the Photos &amp; Video tab.
-        </p>
-      )}
+      {hasText && season && week && <SocialPanel password={password} season={season} week={week} text={postText} />}
     </div>
   );
 }
