@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import FadeIn from "../components/site/FadeIn";
 import EventCard from "../components/site/EventCard";
 import { StandingsIcon, CalendarIcon, TrophyIcon, BadgeIcon } from "../components/site/Icons";
 import { getStorePreview, StorePreviewItem } from "../lib/storePreview";
@@ -88,7 +87,7 @@ export default async function Home() {
       <section className="relative overflow-hidden">
         <div className="hairline-bg absolute inset-0" />
         <div
-          className="absolute -top-32 right-[-20%] h-[360px] w-[360px] rounded-full bg-brand-orange/25 blur-[100px] md:-top-40 md:right-[-10%] md:h-[640px] md:w-[640px] md:blur-[140px]"
+          className="hero-glow absolute -top-32 right-[-20%] h-[360px] w-[360px] rounded-full bg-brand-orange/25 blur-[100px] md:-top-40 md:right-[-10%] md:h-[640px] md:w-[640px] md:blur-[140px]"
           aria-hidden
         />
 
@@ -114,17 +113,17 @@ export default async function Home() {
           <Image src="/ec-logo-full.png" alt="" fill className="object-contain" />
         </div>
 
-        <FadeIn className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-16 text-center sm:py-24 md:px-6 md:py-36">
-          <span className="eyebrow">
+        <div className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-16 text-center sm:py-24 md:px-6 md:py-36">
+          <span className="eyebrow hero-step" style={{ "--i": 0 } as React.CSSProperties}>
             Empire Cornhole League
           </span>
-          <h1 className="mt-5 font-display text-5xl uppercase leading-[0.92] tracking-[-0.015em] text-brand-text sm:text-6xl md:text-8xl">
+          <h1 style={{ "--i": 1 } as React.CSSProperties} className="hero-step mt-5 font-display text-5xl uppercase leading-[0.92] tracking-[-0.015em] text-brand-text sm:text-6xl md:text-8xl">
             Where every <span className="text-brand-orange">bag</span> counts.
           </h1>
-          <p className="mt-6 max-w-2xl font-sans text-base text-brand-textSecondary sm:text-lg">
+          <p style={{ "--i": 2 } as React.CSSProperties} className="hero-step mt-6 max-w-2xl font-sans text-base text-brand-textSecondary sm:text-lg">
             Weekly blind draws, switch nights, and the standings that decide who&apos;s really got game. This is home.
           </p>
-          <div className="mt-8 flex w-full flex-col gap-3 sm:mt-10 sm:w-auto sm:flex-row sm:gap-4">
+          <div style={{ "--i": 3 } as React.CSSProperties} className="hero-step mt-8 flex w-full flex-col gap-3 sm:mt-10 sm:w-auto sm:flex-row sm:gap-4">
             <Link href="/leagues" className="btn-primary">
               View Live Standings
             </Link>
@@ -134,17 +133,17 @@ export default async function Home() {
           </div>
 
           {(weekLine || nextEventLine) && (
-            <div className="mt-12 rounded-2xl border border-white/10 bg-brand-panel/60 px-5 py-3 font-sans text-sm font-semibold leading-relaxed text-brand-textSecondary sm:mt-16 sm:rounded-full sm:px-6">
+            <div style={{ "--i": 4 } as React.CSSProperties} className="hero-step mt-12 rounded-2xl border border-white/10 bg-brand-panel/60 px-5 py-3 font-sans text-sm font-semibold leading-relaxed text-brand-textSecondary sm:mt-16 sm:rounded-full sm:px-6">
               {[weekLine, nextEventLine].filter(Boolean).join(" · ")}
             </div>
           )}
-        </FadeIn>
+        </div>
       </section>
 
       {/* Feature grid */}
       <section className="bg-brand-panel">
-        <FadeIn className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-          <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
+          <div className="reveal mx-auto max-w-2xl text-center">
             <span className="eyebrow">
               What&apos;s Inside
             </span>
@@ -157,11 +156,12 @@ export default async function Home() {
           </div>
 
           <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-            {FEATURES.map((feature) => (
+            {FEATURES.map((feature, i) => (
               <Link
                 key={feature.title}
                 href={feature.href}
-                className="group flex flex-col rounded-2xl border border-white/10 bg-brand-bg p-6 transition-[transform,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1 hover:border-white/20 active:scale-[0.98]"
+                style={{ "--i": i } as React.CSSProperties}
+                className="reveal group flex flex-col rounded-2xl border border-white/10 bg-brand-bg p-6 transition-[transform,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1 hover:border-white/20 active:scale-[0.98]"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover text-brand-bg">
                   {feature.icon}
@@ -174,13 +174,13 @@ export default async function Home() {
               </Link>
             ))}
           </div>
-        </FadeIn>
+        </div>
       </section>
 
       {/* Upcoming events preview */}
       <section className="bg-brand-bg">
-        <FadeIn className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+        <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
+          <div className="reveal flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
               <span className="eyebrow">
                 Don&apos;t Miss Out
@@ -198,18 +198,18 @@ export default async function Home() {
             </p>
           ) : (
             <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
-              {upcomingEvents.map((event) => (
-                <EventCard key={event.id} event={event} surface="bg" />
+              {upcomingEvents.map((event, i) => (
+                <EventCard key={event.id} event={event} surface="bg" index={i} />
               ))}
             </div>
           )}
-        </FadeIn>
+        </div>
       </section>
 
       {/* Store teaser */}
       <section className="bg-brand-panel">
-        <FadeIn className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-          <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
+        <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
+          <div className="reveal grid grid-cols-1 items-center gap-10 md:grid-cols-2">
             <div>
               <span className="eyebrow">
                 Repping The League
@@ -265,7 +265,7 @@ export default async function Home() {
               </div>
             )}
           </div>
-        </FadeIn>
+        </div>
       </section>
     </main>
   );

@@ -33,12 +33,59 @@ body { background:#0d0c0b; color:#f5f5f0; }
   animation: pageFadeIn 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
+/* Hero entrance: the same rise, one piece at a time. --i is the step (0, 1, 2…). */
+.hero-step {
+  animation: pageFadeIn 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* Slow drift on the hero's orange glow. Transform only; paused off-screen by
+   the browser since it's clipped by the hero's overflow-hidden. */
+@keyframes glowDrift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-8%, 10%, 0); }
+}
+.hero-glow {
+  animation: glowDrift 20s ease-in-out infinite alternate;
+}
+
+/* Below-the-fold content reveals as it scrolls into view, not on page load
+   (where it would finish before anyone saw it). Browsers without scroll-driven
+   animations fall back to the load-time fade. */
+.reveal {
+  animation: pageFadeIn 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: pageFadeIn linear both;
+    animation-delay: 0s;
+    animation-timeline: view();
+    animation-range: entry 0% entry 60%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tab-transition {
     animation: none;
   }
-  .page-fade-in {
+  .page-fade-in,
+  .hero-step,
+  .reveal {
     animation: fadeIn 200ms ease-out both;
+    animation-delay: 0s;
+  }
+  .hero-glow {
+    animation: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: fadeIn linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
   }
 }
 

@@ -19,11 +19,14 @@ export default function EventCard({
   surface,
   layout = "stack",
   showRegister = true,
+  index,
 }: {
   event: EventCardData;
   surface: "bg" | "panel";
   layout?: "stack" | "row";
   showRegister?: boolean;
+  /** Position in a group; when set, the card reveals on scroll with a stagger. */
+  index?: number;
 }) {
   const cardBg = surface === "panel" ? "bg-brand-bg" : "bg-brand-panel";
   const dateBg = surface === "panel" ? "bg-brand-panel" : "bg-brand-bg";
@@ -32,7 +35,8 @@ export default function EventCard({
 
   return (
     <div
-      className={`flex h-full flex-col gap-5 rounded-2xl border p-5 sm:p-6 ${tone} ${
+      style={index === undefined ? undefined : ({ "--i": Math.min(index, 5) } as React.CSSProperties)}
+      className={`flex h-full flex-col gap-5 rounded-2xl border p-5 sm:p-6 ${index === undefined ? "" : "reveal "}${tone} ${
         layout === "row" ? "sm:flex-row sm:items-center sm:justify-between" : ""
       }`}
     >
