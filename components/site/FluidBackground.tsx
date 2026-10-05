@@ -31,7 +31,7 @@ float fbm(vec2 p){
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
   vec2 p = uv * vec2(uRes.x / uRes.y, 1.0) * 1.6;
-  float t = uTime * 0.05;
+  float t = uTime * 0.09;
 
   vec2 q = vec2(fbm(p + t), fbm(p + vec2(5.2, 1.3) - t));
   vec2 r = vec2(fbm(p + 3.0 * q + vec2(1.7, 9.2) + t * 1.4),
