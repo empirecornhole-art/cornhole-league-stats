@@ -1166,22 +1166,22 @@ export default function LeagueClient() {
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [players, selectedSeasonStats, data, season, allWeeklyMerged]);
 
-  // The Players and All-Time tabs are explicitly about a player across (or
-  // regardless of) season, so the picker there stays the full roster rather
-  // than whoever happened to play in whatever season the top bar has active.
-  const playerPickerOptions = tab === "players" || tab === "alltime" ? players : seasonPlayers;
+  // Every picker follows the selected season: only players who actually played
+  // it are listed. The one exception is All-Time, which is career-wide and
+  // keeps the full roster.
+  const playerPickerOptions = tab === "alltime" ? players : seasonPlayers;
 
   // If the currently selected player didn't play in whatever season you just
   // switched to, drop back to "All Players" instead of silently showing a
   // player who has nothing to do with this season. Only fires on an actual
   // season *change* (tracked via prevSeasonRef) -- never on the initial load
-  // (so a shared profile link still lands correctly), and never while on the
-  // Players/All-Time tabs, where a player's selection is season-independent.
+  // (so a shared profile link still lands correctly), and never on the
+  // All-Time tab, where a player's selection is season-independent.
   const prevSeasonRef = useRef("");
   useEffect(() => {
     if (!urlReady) return;
     if (prevSeasonRef.current && prevSeasonRef.current !== season) {
-      if (tab !== "players" && tab !== "alltime" && player !== "All Players" && !seasonPlayers.includes(player)) {
+      if (tab !== "alltime" && player !== "All Players" && !seasonPlayers.includes(player)) {
         setPlayer("All Players");
       }
     }
@@ -1623,7 +1623,16 @@ export default function LeagueClient() {
         {tab === "dashboard" && (
           <>
             <Card title="Top Standings">
-              <RankedList rows={dashboardStandings.slice(0, 20)} />
+              <RankedList
+                rows={dashboardStandings.slice(0, 20)}
+                onSelect={(name) => {
+                  setPlayer(name);
+                  setProfileSeason(season || "All Seasons");
+                  setProfileWeek("All Weeks");
+                  setTab("players");
+                  window.scrollTo({ top: 0 });
+                }}
+              />
             </Card>
 
             <Card title={`${season} League Overview`}>
@@ -2421,16 +2430,19 @@ function MiniStat({ label, value }: { label: string; value: any }) {
   );
 }
 
-function RankedList({ rows }: { rows: { name: string; points: number }[] }) {
+function RankedList({ rows, onSelect }: { rows: { name: string; points: number }[]; onSelect?: (name: string) => void }) {
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((row, index) => {
         const rank = index + 1;
         const podium = podiumStyle(rank);
         return (
-          <div
+          <button
+            type="button"
             key={`${row.name}-${index}`}
-            className={`flex items-center justify-between rounded-xl border border-transparent bg-brand-raised px-4 py-3 ${podium.rowClass}`}
+            onClick={() => onSelect?.(row.name)}
+            aria-label={`${row.name}, ${formatValue(row.points, 0)} points. View profile`}
+            className={`flex w-full items-center justify-between rounded-xl border border-transparent bg-brand-raised px-4 py-3 text-left transition-[transform,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-white/20 active:scale-[0.98] ${podium.rowClass}`}
           >
             <span className={`font-bold ${podium.textClass}`}>
               {podium.medal ? `${podium.medal} ` : `${rank}. `}{row.name}
@@ -2438,7 +2450,7 @@ function RankedList({ rows }: { rows: { name: string; points: number }[] }) {
             <span className={`text-xl font-bold ${podium.medal ? podium.textClass : "text-brand-orange"}`}>
               <AnimatedNumber value={formatValue(row.points, 0)} />
             </span>
-          </div>
+          </button>
         );
       })}
     </div>
