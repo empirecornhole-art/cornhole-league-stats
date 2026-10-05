@@ -43,7 +43,7 @@ void main(){
 
   vec3 bg = vec3(0.051, 0.047, 0.043);
   vec3 ember = vec3(0.941, 0.290, 0.133);
-  vec3 col = mix(bg, ember * 0.55, ridge * 0.55);
+  vec3 col = mix(bg, ember * 0.7, ridge * 0.8);
 
   // Keep the bottom and edges calm so text and the next section stay clean.
   float mask = smoothstep(0.0, 0.55, uv.y) * smoothstep(0.0, 0.18, uv.x) * (1.0 - smoothstep(0.82, 1.0, uv.x));

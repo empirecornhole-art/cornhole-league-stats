@@ -86,7 +86,7 @@ export default async function Home() {
     <main className="bg-brand-bg">
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <FluidBackground className="absolute inset-0 h-full w-full opacity-70" />
+        <FluidBackground className="absolute inset-0 h-full w-full opacity-90" />
         <div className="hairline-bg absolute inset-0" />
         <div
           className="hero-glow absolute -top-32 right-[-20%] h-[360px] w-[360px] rounded-full bg-brand-orange/25 blur-[100px] md:-top-40 md:right-[-10%] md:h-[640px] md:w-[640px] md:blur-[140px]"
