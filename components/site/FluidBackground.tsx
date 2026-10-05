@@ -11,7 +11,11 @@ import { useEffect, useRef } from "react";
 const VERT = `attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
 
 const FRAG = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 uniform vec2 uRes;
 uniform float uTime;
 

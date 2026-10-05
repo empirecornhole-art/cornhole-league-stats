@@ -1188,6 +1188,15 @@ export default function LeagueClient() {
     prevSeasonRef.current = season;
   }, [season, seasonPlayers, urlReady, player, tab]);
 
+  // Standings rows jump to that player's profile, scoped to the season being viewed.
+  const openPlayerProfile = (name: string) => {
+    setPlayer(name);
+    setProfileSeason(season || "All Seasons");
+    setProfileWeek("All Weeks");
+    setTab("players");
+    window.scrollTo({ top: 0 });
+  };
+
   const dashboardStandings = useMemo(() => {
     if (dashboardWeek === "All Weeks") {
       return (data?.standings || [])
@@ -1625,13 +1634,7 @@ export default function LeagueClient() {
             <Card title="Top Standings">
               <RankedList
                 rows={dashboardStandings.slice(0, 20)}
-                onSelect={(name) => {
-                  setPlayer(name);
-                  setProfileSeason(season || "All Seasons");
-                  setProfileWeek("All Weeks");
-                  setTab("players");
-                  window.scrollTo({ top: 0 });
-                }}
+                onSelect={openPlayerProfile}
               />
             </Card>
 
@@ -1648,7 +1651,7 @@ export default function LeagueClient() {
 
         {tab === "standings" && (
           <Card title="Season Standings">
-            <StandingsTable rows={dashboardStandings} />
+            <StandingsTable rows={dashboardStandings} onSelect={openPlayerProfile} />
           </Card>
         )}
 
@@ -2457,7 +2460,7 @@ function RankedList({ rows, onSelect }: { rows: { name: string; points: number }
   );
 }
 
-function StandingsTable({ rows }: { rows: { name: string; points: number }[] }) {
+function StandingsTable({ rows, onSelect }: { rows: { name: string; points: number }[]; onSelect?: (name: string) => void }) {
   return (
     <div className="scroll-shadow-x overflow-x-auto">
       <table className="data-table">
@@ -2469,7 +2472,16 @@ function StandingsTable({ rows }: { rows: { name: string; points: number }[] }) 
             return (
               <tr key={`${row.name}-${index}`} className={podium.rowClass}>
                 <td className={`font-bold ${podium.textClass}`}>{podium.medal || rank}</td>
-                <td className={`font-bold ${podium.medal ? podium.textClass : "text-brand-orange"}`}>{row.name}</td>
+                <td className={`font-bold ${podium.medal ? podium.textClass : "text-brand-orange"}`}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect?.(row.name)}
+                    aria-label={`${row.name}, view profile`}
+                    className="-mx-2 -my-1.5 rounded-lg px-2 py-1.5 text-left font-bold transition-[transform,background-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-white/5 active:scale-[0.97]"
+                  >
+                    {row.name}
+                  </button>
+                </td>
                 <td><AnimatedNumber value={formatValue(row.points, 0)} /></td>
               </tr>
             );
