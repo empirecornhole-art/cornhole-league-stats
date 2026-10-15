@@ -12,6 +12,9 @@ import {
   Legend,
 } from "recharts";
 import StoreTab from "./StoreTab";
+import RecapBody from "./site/RecapBody";
+import PhotoThumb from "./site/PhotoThumb";
+import { thumbUrl } from "../lib/imageUrl";
 
 type Data = {
   lastUpdated?: string;
@@ -932,17 +935,22 @@ function formatRelativeTime(dateString?: string) {
 
 // Keeps its own tick so "X minutes ago" advances on its own without needing
 // the whole page to re-render.
-function LastUpdated({ value }: { value?: string }) {
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => setTick((n) => n + 1), 30000);
-    return () => clearInterval(interval);
-  }, []);
+// Shows when results were last imported (never the page-load time) and the newest week in the
+// selected season. Renders nothing if neither is known.
+function LastUpdated({ value, throughWeek }: { value?: string; throughWeek?: string }) {
+  const date = value ? new Date(value) : null;
+  const valid = !!date && !Number.isNaN(date.getTime());
+  const text = [
+    valid ? `Updated ${date!.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : "",
+    throughWeek ? `Results through ${throughWeek}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  if (!text) return null;
 
   return (
-    <div className="text-xs text-brand-textMuted md:text-sm" title={value ? new Date(value).toLocaleString() : undefined}>
-      Last updated: {formatRelativeTime(value)}
+    <div className="text-xs text-brand-textMuted md:text-sm" title={valid ? date!.toLocaleString() : undefined}>
+      {text}
     </div>
   );
 }
@@ -1050,7 +1058,7 @@ export default function LeagueClient() {
   const [recaps, setRecaps] = useState<RecapFeedItem[] | null>(null);
   const [player, setPlayer] = useState("All Players");
   const [dashboardWeek, setDashboardWeek] = useState("All Weeks");
-  const [type, setType] = useState<"Blind" | "Swap">("Blind");
+  const [type, setType] = useState<"Blind" | "Swap">("Swap");
   const [week, setWeek] = useState("");
   const [profileSeason, setProfileSeason] = useState("All Seasons");
   const [profileWeek, setProfileWeek] = useState("All Weeks");
@@ -1242,9 +1250,16 @@ export default function LeagueClient() {
     [weeksRowsForType]
   );
 
+  // Open on the newest week (weeks are sorted oldest to newest).
   useEffect(() => {
-    if (!week || !weeks.includes(week)) setWeek(weeks[0] || "");
+    if (!week || !weeks.includes(week)) setWeek(weeks[weeks.length - 1] || "");
   }, [weeks, week]);
+
+  // The top Week filter and this tab's week stay in step, so there's one source of truth.
+  useEffect(() => {
+    if (dashboardWeek !== "All Weeks" && weeks.includes(dashboardWeek) && dashboardWeek !== week) setWeek(dashboardWeek);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboardWeek, weeks]);
 
   const visibleWeekRows = useMemo(() => {
     const weekIndex = weeks.indexOf(week);
@@ -1617,7 +1632,7 @@ export default function LeagueClient() {
               </div>
 
               <div className="col-span-2 md:order-4 md:pb-3">
-                <LastUpdated value={data.lastUpdated} />
+                <LastUpdated value={data.lastUpdated} throughWeek={dashboardWeeks.length > 1 ? dashboardWeeks[dashboardWeeks.length - 1] : undefined} />
               </div>
             </div>
           </div>
@@ -1659,11 +1674,18 @@ export default function LeagueClient() {
           <Card title="Weekly Results">
             <div className="mb-4 flex flex-wrap gap-3">
               <select className="field-control" value={type} onChange={(e) => { setType(e.target.value as "Blind" | "Swap"); setWeek(""); }}>
-                <option value="Blind">Blind</option>
                 <option value="Swap">Switch</option>
+                <option value="Blind">Blind Draw</option>
               </select>
 
-              <select className="field-control" value={week} onChange={(e) => setWeek(e.target.value)}>
+              <select
+                className="field-control"
+                value={week}
+                onChange={(e) => {
+                  setWeek(e.target.value);
+                  setDashboardWeek(e.target.value);
+                }}
+              >
                 {weeks.map((w) => (
                   <option key={w}>{w}</option>
                 ))}
@@ -2027,8 +2049,7 @@ function PhotosPanel({ items, season, week, compact = false }: { items: MediaFee
                         </span>
                       </>
                     ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.url} alt={item.caption || `Week ${w} photo`} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      <PhotoThumb src={item.url} alt={item.caption || `Week ${w} photo`} width={384} />
                     )}
                   </button>
                 ))}
@@ -2058,7 +2079,19 @@ function PhotosPanel({ items, season, week, compact = false }: { items: MediaFee
               <video key={current.id} src={current.url} controls autoPlay playsInline className="max-h-[80vh] max-w-full rounded-lg" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={current.url} alt={current.caption || `Week ${current.week} photo`} className="max-h-[80vh] max-w-full rounded-lg object-contain" />
+              <img
+                key={current.id}
+                src={thumbUrl(current.url, 1920)}
+                alt={current.caption || `Week ${current.week} photo`}
+                onError={(e) => {
+                  // If the optimized copy can't be made, show the original file.
+                  if (e.currentTarget.dataset.fallback !== "1") {
+                    e.currentTarget.dataset.fallback = "1";
+                    e.currentTarget.src = current.url;
+                  }
+                }}
+                className="max-h-[80vh] max-w-full rounded-lg object-contain"
+              />
             )}
           </div>
           <div className="mt-3 text-center text-sm text-white/80" onClick={(e) => e.stopPropagation()}>
@@ -2110,7 +2143,7 @@ function WeekRecapCard({
 
   return (
     <Card title={`${week} Recap`}>
-      {recap && <div className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-brand-textSecondary">{recap.body}</div>}
+      {recap && <RecapBody text={recap.body} />}
       {hasMedia && (
         <div className={recap ? "mt-6" : ""}>
           <PhotosPanel items={media} season={season} week={week} compact />

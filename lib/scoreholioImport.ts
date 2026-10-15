@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { getSupabaseAdmin } from "./supabaseAdmin";
+import { touchDataUpdated } from "./dataStamp";
 
 /**
  * Weekly Scoreholio results import (Fall '26 onward).
@@ -473,6 +474,7 @@ export async function importScoreholioWeeks(seasonInput: string, events: ParsedE
 
   const recomputed = await recomputeSeason(seasonId);
   warnings.push(...recomputed.warnings);
+  await touchDataUpdated();
 
   return {
     season: seasonName,

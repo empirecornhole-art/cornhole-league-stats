@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "./supabaseAdmin";
+import { getDataUpdated, touchDataUpdated } from "./dataStamp";
 import { LeagueData } from "./types";
 
 function clean(value: any) {
@@ -477,6 +478,8 @@ export async function importLeagueDataToSupabase(parsed: LeagueData) {
     if (error) throw error;
   }
 
+  await touchDataUpdated();
+
   return {
     season: seasonName,
     players: playerRows.length,
@@ -638,6 +641,7 @@ export async function readLeagueDataFromSupabase(): Promise<LeagueData> {
     eventStats,
     stats,
     weekScores,
-    lastUpdated: new Date().toISOString(),
+    // When results were last imported (not when this page was loaded). "" if unknown.
+    lastUpdated: await getDataUpdated(),
   };
 }

@@ -32,7 +32,7 @@ export type Game = {
 
 const dash = "–";
 
-function seasonOrderKey(name: string) {
+export function seasonOrderKey(name: string) {
   const order: Record<string, number> = { spring: 1, summer: 2, fall: 3, winter: 4 };
   const lower = name.toLowerCase();
   const word = Object.keys(order).find((w) => lower.includes(w));

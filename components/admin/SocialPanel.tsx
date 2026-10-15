@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import PhotoThumb from "../site/PhotoThumb";
 
 const IG_LIMIT = 2200;
 const IG_MAX_ITEMS = 10;
@@ -251,8 +252,7 @@ export default function SocialPanel({
                   {m.kind === "video" ? (
                     <video src={`${m.url}#t=0.1`} preload="metadata" muted playsInline className="h-full w-full object-cover" />
                   ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    <PhotoThumb src={m.url} alt="" width={256} />
                   )}
                   {m.kind === "video" && (
                     <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[0.625rem] font-bold uppercase text-white">Video</span>

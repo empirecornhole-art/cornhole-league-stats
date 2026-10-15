@@ -6,6 +6,7 @@ import { StandingsIcon, CalendarIcon, TrophyIcon, BadgeIcon } from "../component
 import { getStorePreview, StorePreviewItem } from "../lib/storePreview";
 import { getUpcomingEvents } from "../lib/events";
 import { getSiteSettings } from "../lib/settings";
+import { getLatestImportedWeek } from "../lib/dataStamp";
 import { formatEventDateParts, formatEventDateShort } from "../lib/format";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +73,12 @@ export default async function Home() {
     });
     seasonLabel = settings.season_label;
     currentWeek = settings.current_week;
+    // The hero's status line follows the data: the newest imported week, not a setting to remember.
+    const latest = await getLatestImportedWeek();
+    if (latest) {
+      seasonLabel = latest.season;
+      currentWeek = String(latest.week);
+    }
   } catch (error) {
     console.error("Failed to load homepage data:", error);
   }

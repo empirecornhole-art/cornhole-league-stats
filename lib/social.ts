@@ -75,8 +75,16 @@ export async function getSocialStatus(): Promise<SocialStatus> {
   if (status.facebook.configured) {
     try {
       const page = await graph(pageId, { fields: "name" }, "GET");
-      status.facebook.ok = true;
       status.facebook.name = page.name;
+      // A Page token identifies itself as the Page; a personal (user) token identifies as a person.
+      // Only a Page token can post photos as the Page, so a user token must not look "connected".
+      const me = await graph("me", { fields: "id" }, "GET");
+      if (String(me.id) !== pageId) {
+        status.facebook.error =
+          "META_PAGE_ACCESS_TOKEN is a personal (user) token, not the Page's own token. In the Graph API Explorer, run me/accounts?fields=name,id,access_token and copy the access_token from the Empire Cornhole entry instead.";
+      } else {
+        status.facebook.ok = true;
+      }
     } catch (e: any) {
       status.facebook.error = e.message;
     }

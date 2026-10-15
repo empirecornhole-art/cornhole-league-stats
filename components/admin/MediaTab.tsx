@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { upload } from "@vercel/blob/client";
+import PhotoThumb from "../site/PhotoThumb";
 
 type Options = { season: string; weeks: number[] }[];
 
@@ -19,6 +20,31 @@ const UNASSIGNED = "__unassigned";
 
 const inputClass =
   "mt-2 block w-full rounded-lg border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text";
+
+// Phone photos are often 4000+ pixels wide and several MB. Shrink them before uploading (about
+// 2400px on the long edge) so the site, Facebook and Instagram all load them quickly. Also drops
+// location/camera metadata. Falls back to the original file if anything goes wrong.
+async function prepareImage(file: File): Promise<File> {
+  if (!/^image\/(jpeg|webp)$/.test(file.type) || file.size < 1.5 * 1024 * 1024) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.86));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
 
 function slug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -56,8 +82,9 @@ function Thumb({ item }: { item: Item }) {
   return item.kind === "video" ? (
     <video src={`${item.url}#t=0.1`} preload="metadata" muted playsInline className="aspect-square w-full rounded-lg bg-black object-cover" />
   ) : (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={item.url} alt={item.caption || "Uploaded photo"} loading="lazy" className="aspect-square w-full rounded-lg object-cover" />
+    <div className="aspect-square w-full overflow-hidden rounded-lg">
+      <PhotoThumb src={item.url} alt={item.caption || "Uploaded photo"} width={256} />
+    </div>
   );
 }
 
@@ -155,7 +182,8 @@ export default function MediaTab({ password, role = "admin" }: { password: strin
     const uploaded: { url: string; pathname: string; kind: "photo" | "video"; name: string }[] = [];
     const failed: string[] = [];
 
-    for (const file of Array.from(files)) {
+    for (const raw of Array.from(files)) {
+      const file = await prepareImage(raw);
       if (!/^(image|video)\//.test(file.type)) {
         failed.push(`${file.name} (not a photo or video)`);
         continue;
@@ -498,8 +526,9 @@ export default function MediaTab({ password, role = "admin" }: { password: strin
               {item.kind === "video" ? (
                 <video src={item.url} controls preload="metadata" className="aspect-square w-full rounded-lg bg-black object-cover" />
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.url} alt={item.caption || "Week photo"} loading="lazy" className="aspect-square w-full rounded-lg object-cover" />
+                <div className="aspect-square w-full overflow-hidden rounded-lg">
+                  <PhotoThumb src={item.url} alt={item.caption || "Week photo"} width={384} />
+                </div>
               )}
               <CaptionInput item={item} password={password} />
               <button type="button" onClick={() => remove(item)} className="mt-2 font-sans text-xs font-bold uppercase text-red-400 hover:text-red-300">
