@@ -270,3 +270,10 @@ body {
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
+
+/* SplitHeading starts hidden so the un-split headline never flashes before
+   GSAP takes over. If the script is blocked or slow, this reveals it anyway. */
+[data-split-pending] {
+  opacity: 0;
+  animation: fadeIn 300ms ease-out 1.2s forwards;
+}

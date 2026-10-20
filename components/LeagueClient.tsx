@@ -14,6 +14,7 @@ import {
 import StoreTab from "./StoreTab";
 import RecapBody from "./site/RecapBody";
 import PhotoThumb from "./site/PhotoThumb";
+import StaggerIn from "./site/StaggerIn";
 import { thumbUrl } from "../lib/imageUrl";
 
 type Data = {
@@ -2030,7 +2031,7 @@ function PhotosPanel({ items, season, week, compact = false }: { items: MediaFee
         {weeks.map((w) => (
           <section key={w}>
             {!compact && <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Week {w}</h3>}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+            <StaggerIn className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" each={0.04}>
               {visible
                 .filter((i) => i.week === w)
                 .map((item) => (
@@ -2053,7 +2054,7 @@ function PhotosPanel({ items, season, week, compact = false }: { items: MediaFee
                     )}
                   </button>
                 ))}
-            </div>
+            </StaggerIn>
           </section>
         ))}
       </div>
@@ -2418,11 +2419,11 @@ function BadgeGrid({ badges, highlightPlayer }: { badges: BadgeInfo[]; highlight
     return <p className="text-sm text-brand-textFaint">Not enough data yet to award badges here.</p>;
   }
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <StaggerIn className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {badges.map((badge) => (
         <BadgeCard key={badge.id} badge={badge} highlightPlayer={highlightPlayer} />
       ))}
-    </div>
+    </StaggerIn>
   );
 }
 
@@ -2468,7 +2469,7 @@ function MiniStat({ label, value }: { label: string; value: any }) {
 
 function RankedList({ rows, onSelect }: { rows: { name: string; points: number }[]; onSelect?: (name: string) => void }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    <StaggerIn className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((row, index) => {
         const rank = index + 1;
         const podium = podiumStyle(rank);
@@ -2489,7 +2490,7 @@ function RankedList({ rows, onSelect }: { rows: { name: string; points: number }
           </button>
         );
       })}
-    </div>
+    </StaggerIn>
   );
 }
 

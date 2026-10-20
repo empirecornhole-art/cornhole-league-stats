@@ -1,6 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import FluidBackground from "../components/site/FluidBackground";
+import SplitHeading from "../components/site/SplitHeading";
+import Marquee from "../components/site/Marquee";
+import SpotlightCard from "../components/reactbits/SpotlightCard/SpotlightCard";
 import EventCard from "../components/site/EventCard";
 import { StandingsIcon, CalendarIcon, TrophyIcon, BadgeIcon } from "../components/site/Icons";
 import { getStorePreview, StorePreviewItem } from "../lib/storePreview";
@@ -126,9 +129,9 @@ export default async function Home() {
           <span className="eyebrow hero-step" style={{ "--i": 0 } as React.CSSProperties}>
             Empire Cornhole League
           </span>
-          <h1 style={{ "--i": 1 } as React.CSSProperties} className="hero-step mt-5 font-display text-5xl uppercase leading-[0.92] tracking-[-0.015em] text-brand-text sm:text-6xl md:text-8xl">
+          <SplitHeading className="mt-5 font-display text-5xl uppercase leading-[0.92] tracking-[-0.015em] text-brand-text sm:text-6xl md:text-8xl">
             Where every <span className="text-brand-orange">bag</span> counts.
-          </h1>
+          </SplitHeading>
           <p style={{ "--i": 2 } as React.CSSProperties} className="hero-step mt-6 max-w-2xl font-sans text-base text-brand-textSecondary sm:text-lg">
             Weekly blind draws, switch nights, and the standings that decide who&apos;s really got game. This is home.
           </p>
@@ -149,6 +152,8 @@ export default async function Home() {
         </div>
       </section>
 
+      <Marquee />
+
       {/* Feature grid */}
       <section className="bg-brand-panel">
         <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
@@ -166,21 +171,25 @@ export default async function Home() {
 
           <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {FEATURES.map((feature, i) => (
-              <Link
+              <SpotlightCard
                 key={feature.title}
-                href={feature.href}
-                style={{ "--i": i } as React.CSSProperties}
-                className="reveal group flex flex-col rounded-2xl border border-white/10 bg-brand-bg p-6 transition-[transform,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1 hover:border-white/20 active:scale-[0.98]"
+                style={{ "--i": i, "--spotlight-card-surface": "#0d0c0b", "--spotlight-card-border": "rgba(255,255,255,0.1)" } as React.CSSProperties}
+                spotlightColor="#f04a22"
+                intensity={0.28}
+                spotlightSize={260}
+                className="reveal !rounded-2xl !p-0 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover text-brand-bg">
-                  {feature.icon}
-                </div>
-                <h3 className="heading-card mt-5">{feature.title}</h3>
-                <p className="mt-2 font-sans text-sm text-brand-textSecondary">{feature.desc}</p>
-                <span className="mt-4 font-sans text-sm font-bold text-brand-orange transition-transform duration-200 group-hover:translate-x-1">
-                  View &rarr;
-                </span>
-              </Link>
+                <Link href={feature.href} className="group flex h-full flex-col p-6 active:scale-[0.98]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover text-brand-bg">
+                    {feature.icon}
+                  </div>
+                  <h3 className="heading-card mt-5">{feature.title}</h3>
+                  <p className="mt-2 font-sans text-sm text-brand-textSecondary">{feature.desc}</p>
+                  <span className="mt-4 font-sans text-sm font-bold text-brand-orange transition-transform duration-200 group-hover:translate-x-1">
+                    View &rarr;
+                  </span>
+                </Link>
+              </SpotlightCard>
             ))}
           </div>
         </div>

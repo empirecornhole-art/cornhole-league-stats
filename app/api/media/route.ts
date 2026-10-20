@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { listMedia } from "../../../lib/media";
+import { useDevMock, mockMedia } from "../../../lib/devMock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 // each file's week, type, URL and caption. Fails soft so the tab can say
 // "no photos yet" instead of breaking the page if the table doesn't exist yet.
 export async function GET() {
+  if (useDevMock()) return NextResponse.json({ items: mockMedia() });
   try {
     const items = await listMedia();
     return NextResponse.json(

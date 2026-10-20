@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import StaggerIn from "./site/StaggerIn";
+import SpotlightCard from "./reactbits/SpotlightCard/SpotlightCard";
 
 type Money = { amount: string; currencyCode: string };
 
@@ -86,10 +88,16 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-white/10 bg-brand-bg">
-      <div className="aspect-square w-full bg-brand-raised">
+    <SpotlightCard
+      style={{ "--spotlight-card-surface": "#0d0c0b", "--spotlight-card-border": "rgba(255,255,255,0.1)" } as React.CSSProperties}
+      spotlightColor="#f04a22"
+      intensity={0.2}
+      spotlightSize={240}
+      className="group flex !rounded-xl !p-0 flex-col"
+    >
+      <div className="aspect-square w-full overflow-hidden bg-brand-raised">
         {displayImage ? (
-          <img src={displayImage.url} alt={displayImage.alt || product.title} className="h-full w-full object-cover" />
+          <img src={displayImage.url} alt={displayImage.alt || product.title} className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.05]" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-sm text-brand-textFaint">No image</div>
         )}
@@ -168,7 +176,7 @@ function ProductCard({ product, onAdd }: { product: ShopifyProduct; onAdd: (line
           </button>
         </div>
       </div>
-    </div>
+    </SpotlightCard>
   );
 }
 
@@ -363,11 +371,11 @@ export default function StoreTab() {
       )}
 
       {sortedProducts.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StaggerIn className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sortedProducts.map((product) => (
             <ProductCard key={product.id} product={product} onAdd={addToCart} />
           ))}
-        </div>
+        </StaggerIn>
       )}
 
       <CartBar lines={cart} onRemove={removeFromCart} onCheckout={checkout} checkingOut={checkingOut} checkoutError={checkoutError} />

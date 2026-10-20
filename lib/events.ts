@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "./supabaseAdmin";
 import { todayDateString } from "./format";
+import { useDevMock, mockEvents } from "./devMock";
 
 export type EventRow = {
   id: string;
@@ -29,6 +30,7 @@ export type EventInput = {
  * is needed here the way the big stats tables in supabaseLeague.ts need it.
  */
 export async function getUpcomingEvents(limit?: number): Promise<EventRow[]> {
+  if (useDevMock()) return mockEvents(true).slice(0, limit);
   const supabase = getSupabaseAdmin();
   let query = supabase
     .from("site_events")
@@ -47,6 +49,7 @@ export async function getUpcomingEvents(limit?: number): Promise<EventRow[]> {
 
 /** Events dated before today, most recent first. */
 export async function getPastEvents(): Promise<EventRow[]> {
+  if (useDevMock()) return mockEvents(false);
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("site_events")

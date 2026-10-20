@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { shopifyFetch } from "../../../../lib/shopify";
+import { useDevMock, mockProducts } from "../../../../lib/devMock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +59,7 @@ const PAGE_SIZE = 50;
 const MAX_PRODUCTS = 500;
 
 export async function GET() {
+  if (useDevMock() && !process.env.SHOPIFY_STOREFRONT_TOKEN) return NextResponse.json({ products: mockProducts() });
   try {
     const products: any[] = [];
     let after: string | null = null;

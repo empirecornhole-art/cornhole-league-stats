@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import localFont from "next/font/local";
 import Nav from "../components/site/Nav";
 import Footer from "../components/site/Footer";
+import SmoothScroll from "../components/site/SmoothScroll";
 
 const anton = localFont({
   src: "./fonts/anton-400.woff2",
@@ -44,6 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${anton.variable} ${barlow.variable}`}>
       <body className="font-sans">
+        <SmoothScroll />
         <Nav />
         {children}
         <Footer />

@@ -1,4 +1,5 @@
 import { shopifyFetch } from "./shopify";
+import { useDevMock, mockStorePreview } from "./devMock";
 
 export type StorePreviewItem = {
   id: string;
@@ -38,6 +39,7 @@ function formatPrice(amount: string, currencyCode: string) {
  * back to its logo panel instead of breaking the homepage.
  */
 export async function getStorePreview(count: number): Promise<StorePreviewItem[]> {
+  if (useDevMock() && !process.env.SHOPIFY_STOREFRONT_TOKEN) return mockStorePreview(count);
   try {
     const data = await shopifyFetch<any>(STORE_PREVIEW_QUERY, { first: count * 3 });
     const nodes: any[] = data?.products?.edges?.map((e: any) => e.node) ?? [];
