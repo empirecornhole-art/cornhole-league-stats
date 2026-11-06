@@ -5,6 +5,7 @@
 import type { LeagueData } from "./types";
 import type { EventRow } from "./events";
 import type { StorePreviewItem } from "./storePreview";
+import type { HomeRecap } from "./homeRecap";
 
 export function useDevMock(): boolean {
   return process.env.NODE_ENV === "development" && !process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -58,15 +59,76 @@ export function mockLeagueData(): LeagueData {
   return { seasons: [SEASON], players: NAMES, standings, weekly, eventStats, stats, lastUpdated: new Date().toISOString() };
 }
 
+// A portrait stand-in "photo" (two people and a board) in a different color per index,
+// so layouts that show several photos look like they will with real ones.
+function mockPhotoUrl(i: number) {
+  const h = [18, 200, 140, 280, 40, 340][i % 6];
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='900' height='1200' viewBox='0 0 900 1200'>` +
+    `<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='hsl(${h} 55% 28%)'/>` +
+    `<stop offset='1' stop-color='hsl(${h + 30} 60% 12%)'/></linearGradient></defs>` +
+    `<rect width='900' height='1200' fill='url(#g)'/>` +
+    `<g fill='hsl(${h} 30% 80%)'><circle cx='300' cy='360' r='90'/><rect x='210' y='470' width='180' height='300' rx='60'/>` +
+    `<circle cx='600' cy='400' r='80'/><rect x='520' y='500' width='160' height='280' rx='55'/></g>` +
+    `<rect x='250' y='760' width='400' height='300' rx='14' fill='hsl(30 70% 55%)'/>` +
+    `<circle cx='450' cy='830' r='38' fill='hsl(${h + 30} 60% 12%)'/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 export function mockMedia() {
   return Array.from({ length: 10 }, (_, i) => ({
     id: `mock-${i}`,
     season: SEASON,
     week: i < 6 ? WEEKS : WEEKS - 1,
     kind: "photo" as const,
-    url: "/ec-logo-full.png",
+    url: mockPhotoUrl(i),
     caption: `Sample photo ${i + 1}`,
   }));
+}
+
+// A published recap in the same format the real ones use (invented names), plus that week's photos.
+export function mockHomeRecap(): HomeRecap {
+  const body = [
+    `🏆 ${SEASON} – Week ${WEEKS} Switch Recap 🏆`,
+    `Week ${WEEKS} of ${SEASON} brought 22 players, 4 rounds of round robin and a new partner every game. One player finished perfect.`,
+    `🔥 Switch Champion
+Alex Rivera went a perfect 4–0 with 94 points for and only 25 against, including a 25–3 win with Jordan Blake and a 26–5 win with Sam Okafor. They were the only undefeated player of the night.`,
+    `🏁 Top 5
+🥇 Alex Rivera – 4–0 (94 PF)
+🥈 Casey Lindqvist – 3–1 (84 PF)
+🥉 Morgan Tate – 3–1 (81 PF)
+4️⃣ Riley Brandt – 3–1 (81 PF)
+5️⃣ Taylor Voss – 3–1 (79 PF)`,
+    `📈 Week ${WEEKS} League Points (Switch + Blind Draw bonus)
+1. Alex Rivera – 97
+2. Casey Lindqvist – 87
+3. Morgan Tate – 83`,
+    `🎯 Games of the Night
+• Closest: Drew Halvorsen / Quinn Mercer edged Avery Lund / Parker Nakamura 21–18
+• Longest: Reese Dalton / Skyler Bianchi beat Cameron Ortiz / Devon Pruitt 26–20 in 24 minutes
+• Shutouts: Harper Quill / Emerson Rowe 23–0 and Rowan Sutter / Finley Marsh 24–0`,
+    `📊 Switch – Event Stats
+• 22 players, 24 games
+• Total points scored: 745
+• Event PPR: 7.59
+• Bags in: 50.6% | on: 38.0% | off: 11.4%
+• 4-baggers: 56 (10.4% of rounds)
+• Average game: 11.7 min`,
+    `━━━━━━━━━━━━`,
+    `🏆 ${SEASON} – Week ${WEEKS} Blind Draw Recap 🏆`,
+    `The Week ${WEEKS} Blind Draw delivered an 11-team double-elimination bracket, and the finals came down to a bracket reset.`,
+    `🏁 Final Results
+🥇 Champions – Alex Rivera / Logan Pierce (7–1)
+🥈 Runner-Up – Blair Navarro / Kendall Frost (4–2)
+🥉 3rd Place – Sage Whitlock / Jamie Castellan (2–2)`,
+  ].join("\n\n");
+
+  return {
+    season: SEASON,
+    week: WEEKS,
+    body,
+    photos: Array.from({ length: 6 }, (_, i) => ({ id: `mock-${i}`, url: mockPhotoUrl(i), caption: `Sample photo ${i + 1}` })),
+  };
 }
 
 const money = (amount: string) => ({ amount, currencyCode: "USD" });

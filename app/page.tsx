@@ -5,11 +5,15 @@ import SplitHeading from "../components/site/SplitHeading";
 import Marquee from "../components/site/Marquee";
 import SpotlightCard from "../components/reactbits/SpotlightCard/SpotlightCard";
 import EventCard from "../components/site/EventCard";
+import ExpandableRecap from "../components/site/ExpandableRecap";
+import RecapBody from "../components/site/RecapBody";
+import PhotoThumb from "../components/site/PhotoThumb";
 import { StandingsIcon, CalendarIcon, TrophyIcon, BadgeIcon } from "../components/site/Icons";
 import { getStorePreview, StorePreviewItem } from "../lib/storePreview";
 import { getUpcomingEvents } from "../lib/events";
 import { getSiteSettings } from "../lib/settings";
 import { getLatestImportedWeek } from "../lib/dataStamp";
+import { getHomeRecap, type HomeRecap } from "../lib/homeRecap";
 import { formatEventDateParts, formatEventDateShort } from "../lib/format";
 
 export const dynamic = "force-dynamic";
@@ -54,14 +58,17 @@ export default async function Home() {
   let storeItems: StorePreviewItem[] = [];
   let seasonLabel = "";
   let currentWeek = "";
+  let homeRecap: HomeRecap | null = null;
 
   try {
-    const [events, settings, products] = await Promise.all([
+    const [events, settings, products, recap] = await Promise.all([
       getUpcomingEvents(3),
       getSiteSettings(),
       getStorePreview(4),
+      getHomeRecap(),
     ]);
     storeItems = products;
+    homeRecap = recap;
     upcomingEvents = events.map((event) => {
       const { day, month } = formatEventDateParts(event.event_date);
       return {
@@ -91,6 +98,24 @@ export default async function Home() {
   const nextEventLine = nextEvent
     ? `Next Event: ${nextEvent.title} — ${formatEventDateShort(nextEvent.event_date)}`
     : "";
+
+  // The status pill under the hero buttons is a link to the next event (its sign-up page if it has one).
+  const pillText = [weekLine, nextEventLine].filter(Boolean).join(" · ");
+  const pillBase =
+    "hero-step mt-12 block rounded-2xl border border-white/10 bg-brand-panel/60 px-5 py-3 font-sans text-sm font-semibold leading-relaxed text-brand-textSecondary sm:mt-16 sm:rounded-full sm:px-6";
+  const pillLink =
+    pillBase +
+    " transition-colors duration-200 hover:border-brand-orange/60 hover:bg-brand-panel hover:text-brand-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange";
+
+  // Latest recap section: links open that exact week on the League page.
+  const recapWeekLabel = homeRecap ? `Week ${homeRecap.week}` : "";
+  const recapQuery = homeRecap ? `season=${encodeURIComponent(homeRecap.season)}&week=${encodeURIComponent(recapWeekLabel)}` : "";
+  const recapHref = `/leagues?tab=weeks&${recapQuery}`;
+  const photosHref = `/leagues?tab=photos&${recapQuery}`;
+  const recapPhotos = homeRecap?.photos ?? [];
+  const mosaic = recapPhotos.length >= 5; // 3x3: one big photo, four small, and an "all photos" tile
+  const shownPhotos = recapPhotos.slice(0, mosaic ? 5 : 4);
+  const hiddenPhotoCount = recapPhotos.length - shownPhotos.length;
 
   return (
     <main className="bg-brand-bg">
@@ -144,15 +169,110 @@ export default async function Home() {
             </Link>
           </div>
 
-          {(weekLine || nextEventLine) && (
-            <div style={{ "--i": 4 } as React.CSSProperties} className="hero-step mt-12 rounded-2xl border border-white/10 bg-brand-panel/60 px-5 py-3 font-sans text-sm font-semibold leading-relaxed text-brand-textSecondary sm:mt-16 sm:rounded-full sm:px-6">
-              {[weekLine, nextEventLine].filter(Boolean).join(" · ")}
-            </div>
-          )}
+          {pillText &&
+            (nextEvent ? (
+              nextEvent.registerUrl ? (
+                <a
+                  href={nextEvent.registerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ "--i": 4 } as React.CSSProperties}
+                  className={pillLink}
+                >
+                  {pillText} <span className="whitespace-nowrap text-brand-orange">&middot; Register &rarr;</span>
+                  <span className="sr-only"> (opens the sign-up page in a new tab)</span>
+                </a>
+              ) : (
+                <Link href="/events" style={{ "--i": 4 } as React.CSSProperties} className={pillLink}>
+                  {pillText} <span className="whitespace-nowrap text-brand-orange">&middot; Event details &rarr;</span>
+                </Link>
+              )
+            ) : (
+              <div style={{ "--i": 4 } as React.CSSProperties} className={pillBase}>
+                {pillText}
+              </div>
+            ))}
         </div>
       </section>
 
       <Marquee />
+
+      {/* Latest recap: the newest published recap with that week's photos */}
+      {homeRecap && (homeRecap.body || shownPhotos.length > 0) && (
+        <section className="bg-brand-bg">
+          <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
+            <div className="reveal flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+              <div>
+                <span className="eyebrow">{homeRecap.season} &middot; Latest</span>
+                <h2 className="heading-section mt-4">Week {homeRecap.week} recap</h2>
+              </div>
+              <Link href={recapHref} className="btn-secondary">
+                Full results
+              </Link>
+            </div>
+
+            <div className={`mt-12 grid grid-cols-1 gap-6 lg:gap-8 ${homeRecap.body && shownPhotos.length > 0 ? "lg:grid-cols-12" : ""}`}>
+              {homeRecap.body && (
+                <div
+                  className={`reveal rounded-2xl border border-white/10 bg-brand-panel p-6 md:p-8 ${
+                    shownPhotos.length > 0 ? "lg:col-span-7" : "mx-auto w-full max-w-3xl"
+                  }`}
+                >
+                  <ExpandableRecap>
+                    <RecapBody text={homeRecap.body} />
+                  </ExpandableRecap>
+                </div>
+              )}
+
+              {shownPhotos.length > 0 && (
+                <div className={`reveal ${homeRecap.body ? "lg:sticky lg:top-24 lg:col-span-5 lg:self-start" : ""}`} style={{ "--i": 1 } as React.CSSProperties}>
+                  <div className={`grid gap-2 sm:gap-3 ${mosaic ? "grid-cols-3" : "grid-cols-2"}`}>
+                    {shownPhotos.map((photo, i) => {
+                      const big = mosaic ? i === 0 : shownPhotos.length % 2 === 1 && i === 0;
+                      const size = mosaic
+                        ? big
+                          ? "col-span-2 row-span-2 aspect-square"
+                          : "aspect-square"
+                        : big
+                        ? "col-span-2 aspect-[4/3]"
+                        : "aspect-square";
+                      return (
+                        <Link
+                          key={photo.id}
+                          href={photosHref}
+                          aria-label={`View Week ${homeRecap.week} photo ${i + 1}`}
+                          className={`relative block overflow-hidden rounded-2xl border border-white/10 bg-brand-panel ${size}`}
+                        >
+                          <PhotoThumb
+                            src={photo.url}
+                            alt={photo.caption || `Week ${homeRecap.week} photo ${i + 1}`}
+                            width={big ? 640 : 384}
+                            className="object-[50%_25%]"
+                          />
+                        </Link>
+                      );
+                    })}
+                    {mosaic && (
+                      <Link
+                        href={photosHref}
+                        className="flex aspect-square flex-col items-center justify-center rounded-2xl border border-white/10 bg-brand-panel text-center font-sans text-sm font-bold text-brand-orange transition-colors duration-200 hover:border-brand-orange/60"
+                      >
+                        <span className="font-display text-3xl leading-none">{hiddenPhotoCount > 0 ? `+${hiddenPhotoCount}` : "All"}</span>
+                        <span className="mt-1">{hiddenPhotoCount > 0 ? "more photos" : "photos"} &rarr;</span>
+                      </Link>
+                    )}
+                  </div>
+                  {!mosaic && (
+                    <Link href={photosHref} className="mt-4 inline-block font-sans text-sm font-bold text-brand-orange underline-offset-4 hover:underline">
+                      See all photos &rarr;
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Feature grid */}
       <section className="bg-brand-panel">

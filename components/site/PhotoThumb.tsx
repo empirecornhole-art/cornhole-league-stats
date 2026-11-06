@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { thumbUrl } from "../../lib/imageUrl";
 
 /**
@@ -21,11 +21,20 @@ export default function PhotoThumb({
 }) {
   const [loaded, setLoaded] = useState(false);
   const [useOriginal, setUseOriginal] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // On a server-rendered page the image can finish loading before this component hydrates, so its
+  // onLoad never fires. Check for an already-loaded image on mount so it doesn't stay hidden.
+  useEffect(() => {
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
+  }, []);
 
   return (
     <div className={`relative h-full w-full ${loaded ? "" : "animate-pulse bg-white/5"}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imgRef}
         src={useOriginal ? src : thumbUrl(src, width)}
         alt={alt}
         loading="lazy"

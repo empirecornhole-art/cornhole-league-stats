@@ -1095,6 +1095,10 @@ export default function LeagueClient() {
 
         setSeason(urlSeason && seasons.includes(urlSeason) ? urlSeason : latestSeason);
 
+        // ?week=Week 2 (used by the homepage recap links) opens that week.
+        const urlWeek = searchParams.get("week");
+        if (urlWeek && /^Week \d+$/.test(urlWeek)) setDashboardWeek(urlWeek);
+
         if (matchedPlayer) {
           setPlayer(matchedPlayer);
           setProfileSeason("All Seasons");
