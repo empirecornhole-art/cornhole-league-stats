@@ -30,6 +30,34 @@ type Data = {
 
 type Tab = "dashboard" | "standings" | "weeks" | "photos" | "stats" | "alltime" | "badges" | "players" | "scenarios" | "compare" | "store";
 const TAB_IDS: Tab[] = ["dashboard", "standings", "weeks", "photos", "stats", "alltime", "badges", "players", "scenarios", "compare", "store"];
+
+// The eleven views are grouped into six sections so the top-level choice stays
+// short; a section with more than one view gets a second row of sub-tabs.
+// Tab ids are unchanged, so old shared links (?tab=alltime, ?tab=players&player=...) still land.
+const TAB_GROUPS: { id: string; label: string; tabs: { id: Tab; label: string }[] }[] = [
+  { id: "overview", label: "Overview", tabs: [{ id: "dashboard", label: "Overview" }] },
+  { id: "results", label: "Results", tabs: [{ id: "weeks", label: "Weekly results" }, { id: "photos", label: "Photos" }] },
+  { id: "players", label: "Players", tabs: [{ id: "stats", label: "Season stats" }, { id: "players", label: "Profile" }, { id: "compare", label: "Compare" }] },
+  { id: "records", label: "Records", tabs: [{ id: "alltime", label: "All-time" }, { id: "badges", label: "Badges" }] },
+  { id: "scenarios", label: "Scenarios", tabs: [{ id: "scenarios", label: "Scenarios" }] },
+  { id: "store", label: "Store", tabs: [{ id: "store", label: "Store" }] },
+];
+
+// Which of the shared filters each view actually uses. Anything not listed
+// here is hidden on that view instead of sitting there doing nothing.
+const TAB_FILTERS: Record<Tab, { season?: boolean; player?: boolean; week?: boolean }> = {
+  dashboard: { season: true, week: true },
+  standings: { season: true, week: true },
+  weeks: { season: true, player: true },
+  photos: { season: true, week: true },
+  stats: { season: true },
+  alltime: {},
+  badges: { season: true },
+  players: { player: true },
+  scenarios: { season: true, player: true },
+  compare: { season: true },
+  store: {},
+};
 type EventFilter = "All" | "Blind" | "Swap";
 type SortDirection = "asc" | "desc";
 
@@ -907,7 +935,7 @@ function podiumStyle(rank: number) {
       textClass: "text-brand-bronze",
     };
   }
-  return { medal: null, rowClass: "", textClass: "text-brand-orange" };
+  return { medal: null, rowClass: "", textClass: "text-brand-text" };
 }
 
 // Turns a timestamp into "3 minutes ago" style text. Falls back to a plain
@@ -1104,7 +1132,8 @@ export default function LeagueClient() {
           setProfileSeason("All Seasons");
           setTab("players");
         } else {
-          if (urlTab && (TAB_IDS as string[]).includes(urlTab)) setTab(urlTab as Tab);
+          // "standings" used to be its own tab; it's the Overview leaderboard now.
+          if (urlTab && (TAB_IDS as string[]).includes(urlTab)) setTab(urlTab === "standings" ? "dashboard" : (urlTab as Tab));
           setProfileSeason(latestSeason);
         }
 
@@ -1215,7 +1244,6 @@ export default function LeagueClient() {
       return (data?.standings || [])
         .filter((row) => isValidPlayerName(getPlayer(row)))
         .filter((row) => !season || getSeason(row, season) === season)
-        .filter((row) => player === "All Players" || getPlayer(row) === player)
         .map((row) => ({ name: getPlayer(row), points: pointValue(row), raw: row }))
         .filter((row) => row.name && row.points > 0)
         .sort((a, b) => b.points - a.points);
@@ -1225,7 +1253,6 @@ export default function LeagueClient() {
     for (const row of allWeeklyMerged) {
       if (getSeason(row) !== season) continue;
       if (getWeek(row) !== dashboardWeek) continue;
-      if (player !== "All Players" && getPlayer(row) !== player) continue;
       totals.set(getPlayer(row), (totals.get(getPlayer(row)) || 0) + numberVal(row.Points));
     }
 
@@ -1233,7 +1260,7 @@ export default function LeagueClient() {
       .map(([name, points]) => ({ name, points, raw: {} }))
       .filter((row) => isValidPlayerName(row.name) && row.points > 0)
       .sort((a, b) => b.points - a.points);
-  }, [data, season, player, dashboardWeek, allWeeklyMerged]);
+  }, [data, season, dashboardWeek, allWeeklyMerged]);
 
   const dashboardWeeks = useMemo(() => {
     const values = Array.from(
@@ -1241,6 +1268,19 @@ export default function LeagueClient() {
     ).sort(weekSort);
     return ["All Weeks", ...values];
   }, [allWeeklyMerged, season]);
+
+  // Points each player scored in the newest week, shown beside the season
+  // total on the leaderboard so you can see who's hot right now.
+  const latestWeek = dashboardWeeks.length > 1 ? dashboardWeeks[dashboardWeeks.length - 1] : "";
+  const latestWeekPoints = useMemo(() => {
+    const totals = new Map<string, number>();
+    if (!latestWeek) return totals;
+    for (const row of allWeeklyMerged) {
+      if (getSeason(row) !== season || getWeek(row) !== latestWeek) continue;
+      totals.set(getPlayer(row), (totals.get(getPlayer(row)) || 0) + numberVal(row.Points));
+    }
+    return totals;
+  }, [allWeeklyMerged, season, latestWeek]);
 
   const weeksRowsForType = useMemo(
     () =>
@@ -1292,11 +1332,7 @@ export default function LeagueClient() {
   }, [weeksRowsForType, week, weeks, player]);
 
   const statsTabRows = useMemo(() => {
-    const selected = selectedStatsPlayers.length
-      ? selectedStatsPlayers
-      : player !== "All Players"
-      ? [player]
-      : [];
+    const selected = selectedStatsPlayers;
 
     const selectedColumn = statColumns.find((col) => col.label === sortKey);
 
@@ -1312,7 +1348,7 @@ export default function LeagueClient() {
         if (av === bv) return getPlayer(a).localeCompare(getPlayer(b));
         return sortDirection === "asc" ? av - bv : bv - av;
       });
-  }, [selectedSeasonStats, typeSeasonStatsAll, eventView, season, selectedStatsPlayers, player, sortKey, sortDirection]);
+  }, [selectedSeasonStats, typeSeasonStatsAll, eventView, season, selectedStatsPlayers, sortKey, sortDirection]);
 
   const selectedProfilePlayer = player !== "All Players" ? player : "";
 
@@ -1515,25 +1551,6 @@ export default function LeagueClient() {
       ? `${window.location.origin}${pathname}?tab=players&player=${slugify(selectedProfilePlayer)}`
       : "";
 
-  const tabScrollerRef = useRef<HTMLDivElement | null>(null);
-  const hasData = !!data;
-
-  // Keep the active tab visible in the scrolling mobile tab bar (e.g. when
-  // arriving via ?tab=store, or switching tabs from inside a page).
-  const tabBarPositioned = useRef(false);
-  useEffect(() => {
-    const scroller = tabScrollerRef.current;
-    if (!scroller) return;
-    scroller.querySelector<HTMLElement>(`[data-tab="${tab}"]`)?.scrollIntoView({
-      block: "nearest",
-      inline: "center",
-      // Jump into place on first load; glide when the user changes tabs.
-      behavior: tabBarPositioned.current ? "smooth" : "auto",
-    });
-    tabBarPositioned.current = true;
-    // The tab bar only exists once data has loaded, so re-run then too.
-  }, [tab, hasData]);
-
   useEffect(() => {
     if (tab !== "weeks" || recaps !== null) return;
     let cancelled = false;
@@ -1562,83 +1579,88 @@ export default function LeagueClient() {
     return <LoadingSkeleton />;
   }
 
-  const navItems: { id: Tab; label: string }[] = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "standings", label: "Standings" },
-    { id: "weeks", label: "Weeks" },
-    { id: "photos", label: "Photos" },
-    { id: "stats", label: "Stats" },
-    { id: "alltime", label: "All-Time" },
-    { id: "badges", label: "Badges" },
-    { id: "players", label: "Players" },
-    { id: "scenarios", label: "Scenarios" },
-    { id: "compare", label: "Compare" },
-    { id: "store", label: "Store" },
-  ];
+  const activeGroup = TAB_GROUPS.find((g) => g.tabs.some((t) => t.id === tab)) || TAB_GROUPS[0];
+  const filters = TAB_FILTERS[tab];
+  const hasSubTabs = activeGroup.tabs.length > 1;
+  const showFilterBar = tab !== "store";
 
   return (
     <main className="min-h-screen bg-brand-bg text-brand-text">
-      <header className="border-b border-white/10 bg-brand-panel">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="font-display text-4xl uppercase text-brand-text md:text-5xl">League Stats</h1>
-              <p className="text-sm text-brand-textSecondary">Empire Cornhole standings, weekly results, and player stats.</p>
-            </div>
+      <header className="bg-brand-panel">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 pb-5 pt-8 md:flex-row md:items-end md:justify-between md:px-6 md:pt-12">
+          <div>
+            <span className="eyebrow">{season || "Empire Cornhole"}</span>
+            <h1 className="mt-2 font-display text-5xl uppercase leading-none text-brand-text md:text-6xl">League</h1>
           </div>
 
-          <div className="hidden flex-wrap gap-2 md:flex">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setTab(item.id)}
-                className={`rounded-full border px-4 py-2 font-sans text-[0.9375rem] font-semibold transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary hover:border-white/35 hover:text-brand-text"}`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <nav aria-label="League sections" className="hidden rounded-full bg-brand-bg p-1 md:flex">
+            {TAB_GROUPS.map((group) => {
+              const active = group.id === activeGroup.id;
+              return (
+                <button
+                  key={group.id}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => !active && setTab(group.tabs[0].id)}
+                  className={`min-h-10 rounded-full px-5 font-sans text-[0.9375rem] font-semibold transition-[transform,background-color,color] duration-200 active:scale-[0.97] ${active ? "bg-brand-orange text-brand-bg" : "text-brand-textSecondary hover:text-brand-text"}`}
+                >
+                  {group.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
       </header>
 
-      {tab !== "store" && (
+      {showFilterBar && (
         <section className="border-b border-white/5 md:chrome md:chrome-edge md:sticky md:top-[var(--nav-h)] md:z-20 md:border-b-0">
-          <div className="mx-auto max-w-7xl px-4 py-3">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 md:flex md:flex-row md:items-end md:gap-3">
-              <div className="col-span-2 md:order-2 md:w-64">
-                <label htmlFor="filter-player" className="field-label mb-1 block">Player</label>
-                <PlayerCombobox id="filter-player" players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
-              </div>
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-end md:gap-4 md:px-6">
+            {hasSubTabs && (
+              <Segmented<Tab> label={`${activeGroup.label} views`} items={activeGroup.tabs} value={tab} onChange={setTab} />
+            )}
 
-              <div className="min-w-0 md:order-1">
-                <label htmlFor="filter-season" className="field-label mb-1 block">Season</label>
-                <select
-                  id="filter-season"
-                  className="field-control block w-full md:w-auto"
-                  value={season}
-                  onChange={(e) => {
-                    setSeason(e.target.value);
-                    setDashboardWeek("All Weeks");
-                  }}
-                >
-                  {seasons.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
+            {(filters.season || filters.player || filters.week) && (
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-2.5">
+                {filters.season && (
+                  <div className="min-w-[8rem] flex-1 md:flex-none">
+                    <label htmlFor="filter-season" className="field-label mb-1 block">Season</label>
+                    <select
+                      id="filter-season"
+                      className="field-control block w-full md:w-auto"
+                      value={season}
+                      onChange={(e) => {
+                        setSeason(e.target.value);
+                        setDashboardWeek("All Weeks");
+                      }}
+                    >
+                      {seasons.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-              <div className="min-w-0 md:order-3">
-                <label htmlFor="filter-week" className="field-label mb-1 block">Week</label>
-                <select id="filter-week" className="field-control block w-full md:w-auto" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
-                  {dashboardWeeks.map((w) => (
-                    <option key={w}>{w}</option>
-                  ))}
-                </select>
-              </div>
+                {filters.week && (
+                  <div className="min-w-[8rem] flex-1 md:flex-none">
+                    <label htmlFor="filter-week" className="field-label mb-1 block">Week</label>
+                    <select id="filter-week" className="field-control block w-full md:w-auto" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
+                      {dashboardWeeks.map((w) => (
+                        <option key={w}>{w}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-              <div className="col-span-2 md:order-4 md:pb-3">
-                <LastUpdated value={data.lastUpdated} throughWeek={dashboardWeeks.length > 1 ? dashboardWeeks[dashboardWeeks.length - 1] : undefined} />
+                {filters.player && (
+                  <div className="w-full md:w-64">
+                    <label htmlFor="filter-player" className="field-label mb-1 block">Player</label>
+                    <PlayerCombobox id="filter-player" players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
+                  </div>
+                )}
               </div>
+            )}
+
+            <div className="md:ml-auto md:pb-3">
+              <LastUpdated value={data.lastUpdated} throughWeek={latestWeek || undefined} />
             </div>
           </div>
         </section>
@@ -1651,28 +1673,24 @@ export default function LeagueClient() {
         <div key={tab} className="tab-transition space-y-6">
         {tab === "dashboard" && (
           <>
-            <Card title="Top Standings">
-              <RankedList
-                rows={dashboardStandings.slice(0, 20)}
+            <Card title={dashboardWeek === "All Weeks" ? "Season Standings" : `${dashboardWeek} Points`}>
+              <Leaderboard
+                rows={dashboardStandings}
+                weekPoints={dashboardWeek === "All Weeks" ? latestWeekPoints : undefined}
+                weekLabel={latestWeek}
+                highlight={selectedProfilePlayer}
                 onSelect={openPlayerProfile}
               />
             </Card>
 
-            <Card title={`${season} League Overview`}>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Card title={`${season} By The Numbers`}>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {summarizeSeasonStats(selectedSeasonStats).map((item) => (
                   <MiniStat key={item.label} label={item.label} value={item.value} />
                 ))}
               </div>
-              <p className="mt-4 text-sm text-brand-textMuted">Individual player stat tables are now under the Stats tab.</p>
             </Card>
           </>
-        )}
-
-        {tab === "standings" && (
-          <Card title="Season Standings">
-            <StandingsTable rows={dashboardStandings} onSelect={openPlayerProfile} />
-          </Card>
         )}
 
         {tab === "weeks" && (
@@ -1697,7 +1715,7 @@ export default function LeagueClient() {
               </select>
             </div>
 
-            <h3 className="mb-2 font-display text-lg uppercase text-brand-orange">Standings</h3>
+            <h3 className="mb-2 font-display text-lg uppercase text-brand-textSecondary">Standings</h3>
             <WeeklyTable rows={visibleWeekRows} />
             <EventSummary rows={visibleWeekRows} />
           </Card>
@@ -1715,7 +1733,7 @@ export default function LeagueClient() {
 
         {tab === "stats" && (
           <Card title="Season Stats">
-            <div className="mb-4 space-y-3">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start">
               <div className="min-w-0">
                 <label htmlFor="stats-event" className="field-label mb-1 block">Event</label>
                 <select id="stats-event" className="field-control block w-full sm:w-auto" value={eventView} onChange={(e) => setEventView(e.target.value as EventView)}>
@@ -1724,39 +1742,14 @@ export default function LeagueClient() {
                   ))}
                 </select>
               </div>
-              <div>
-                <div className="mb-2 text-sm font-bold text-brand-textSecondary">Multi-select players for this tab</div>
-                <input
-                  className="field-control mb-2 w-full"
-                  placeholder="Filter players..."
-                  value={statsPlayerFilter}
-                  onChange={(e) => setStatsPlayerFilter(e.target.value)}
-                />
-                <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-white/10 bg-brand-bg p-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {seasonPlayers.filter((p) => p.toLowerCase().includes(statsPlayerFilter.toLowerCase())).map((p) => (
-                    <label key={p} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selectedStatsPlayers.includes(p)}
-                        onChange={(e) => {
-                          setSelectedStatsPlayers((current) =>
-                            e.target.checked ? [...current, p] : current.filter((name) => name !== p)
-                          );
-                        }}
-                      />
-                      <span>{p}</span>
-                    </label>
-                  ))}
-                </div>
-                {selectedStatsPlayers.length > 0 && (
-                  <button className="mt-2 rounded-lg bg-brand-raisedHover px-3 py-2 text-sm font-bold" onClick={() => setSelectedStatsPlayers([])}>
-                    Clear multi-select
-                  </button>
-                )}
+              <div className="min-w-0 flex-1">
+                <label htmlFor="stats-players" className="field-label mb-1 block">Players</label>
+                <PlayerMultiPicker id="stats-players" players={seasonPlayers} selected={selectedStatsPlayers} onChange={setSelectedStatsPlayers} />
               </div>
             </div>
 
             <StatsTable
+              highlightPlayer={selectedProfilePlayer}
               rows={statsTabRows}
               sortKey={sortKey}
               sortDirection={sortDirection}
@@ -1886,12 +1879,12 @@ export default function LeagueClient() {
                 )}
 
                 <div>
-                  <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Season Finishes</h3>
+                  <h3 className="mb-3 font-display text-lg uppercase text-brand-textSecondary">Season Finishes</h3>
                   <SeasonFinishesTable rows={profileSeasonStats} />
                 </div>
 
                 <div>
-                  <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Progress Over Time</h3>
+                  <h3 className="mb-3 font-display text-lg uppercase text-brand-textSecondary">Progress Over Time</h3>
                   <div className="h-72 rounded-xl border border-white/10 p-3">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={progressData}>
@@ -1907,7 +1900,7 @@ export default function LeagueClient() {
                 </div>
 
                 <div>
-                  <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Weekly Breakdown</h3>
+                  <h3 className="mb-3 font-display text-lg uppercase text-brand-textSecondary">Weekly Breakdown</h3>
                   <div className="space-y-4">
                     {groupedProfileWeeks.map(([label, rows]) => (
                       <div key={label} className="rounded-xl border border-white/10 bg-brand-raised p-4">
@@ -1976,18 +1969,24 @@ export default function LeagueClient() {
       </section>
 
       <nav aria-label="League sections" className="chrome chrome-edge-top sticky bottom-0 z-40 pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div ref={tabScrollerRef} className="tab-scroller flex snap-x gap-1.5 overflow-x-auto px-3 py-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              data-tab={item.id}
-              aria-current={tab === item.id ? "page" : undefined}
-              onClick={() => setTab(item.id)}
-              className={`min-h-11 flex-none snap-start whitespace-nowrap rounded-full border px-4 font-sans text-sm font-semibold transition-[transform,background-color,border-color,color] duration-200 active:scale-[0.97] ${tab === item.id ? "border-brand-orange bg-brand-orange text-brand-bg" : "border-white/15 bg-transparent text-brand-textSecondary"}`}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="grid grid-cols-6 gap-0.5 px-1.5 py-2">
+          {TAB_GROUPS.map((group) => {
+            const active = group.id === activeGroup.id;
+            return (
+              <button
+                key={group.id}
+                aria-current={active ? "page" : undefined}
+                onClick={() => {
+                  if (active) return;
+                  setTab(group.tabs[0].id);
+                  window.scrollTo({ top: 0 });
+                }}
+                className={`min-h-11 rounded-full px-0.5 font-sans text-[0.8125rem] font-semibold transition-[transform,background-color,color] duration-200 active:scale-[0.97] ${active ? "bg-brand-orange text-brand-bg" : "text-brand-textSecondary"}`}
+              >
+                {group.label}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </main>
@@ -2034,7 +2033,7 @@ function PhotosPanel({ items, season, week, compact = false }: { items: MediaFee
       <div className="space-y-8">
         {weeks.map((w) => (
           <section key={w}>
-            {!compact && <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Week {w}</h3>}
+            {!compact && <h3 className="mb-3 font-display text-lg uppercase text-brand-textSecondary">Week {w}</h3>}
             <StaggerIn className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" each={0.04}>
               {visible
                 .filter((i) => i.week === w)
@@ -2160,9 +2159,9 @@ function WeekRecapCard({
 
 function Card({ title, actions, children }: { title: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-brand-panel p-4 md:p-6">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-2xl uppercase text-brand-text">{title}</h2>
+    <section className="rounded-2xl bg-brand-panel p-4 md:p-7">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2 md:mb-6">
+        <h2 className="font-display text-2xl uppercase text-brand-text md:text-3xl">{title}</h2>
         {actions}
       </div>
       {children}
@@ -2351,7 +2350,7 @@ export function LoadingSkeleton() {
             </div>
           </div>
           <div className="hidden flex-wrap gap-2 md:flex">
-            {Array.from({ length: 8 }).map((_, i) => (
+            {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-9 w-24 rounded-full animate-pulse bg-white/10" />
             ))}
           </div>
@@ -2437,7 +2436,7 @@ function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlay
     <div className="rounded-xl border border-white/10 bg-brand-bg p-4">
       <div className="mb-1 flex items-center gap-2">
         <span className="text-2xl">{badge.icon}</span>
-        <div className="font-display text-base uppercase tracking-[0.01em] text-brand-orange">{badge.title}</div>
+        <div className="font-display text-base uppercase tracking-[0.01em] text-brand-text">{badge.title}</div>
       </div>
       <p className="mb-3 text-xs text-brand-textFaint">{badge.description}</p>
       <div className="space-y-1">
@@ -2464,68 +2463,306 @@ function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlay
 
 function MiniStat({ label, value }: { label: string; value: any }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-brand-bg p-4">
+    <div className="rounded-xl bg-brand-bg p-4">
       <div className="eyebrow">{label}</div>
-      <div className="mt-1 text-3xl font-bold text-brand-orange"><AnimatedNumber value={value} /></div>
+      <div className="mt-1.5 text-3xl font-bold tabular-nums text-brand-text"><AnimatedNumber value={value} /></div>
     </div>
   );
 }
 
-function RankedList({ rows, onSelect }: { rows: { name: string; points: number }[]; onSelect?: (name: string) => void }) {
+// How many rows the leaderboard shows before "Show all".
+const LEADERBOARD_PREVIEW = 20;
+
+// The season standings as one ranked list: a podium for the top three, then a
+// row per player with a bar scaled to the leader, the points they added in the
+// newest week, and how far back they sit. Tapping anyone opens their profile.
+function Leaderboard({
+  rows,
+  weekPoints,
+  weekLabel,
+  highlight,
+  onSelect,
+}: {
+  rows: { name: string; points: number }[];
+  /** Points scored in the newest week, by player. Omit when the list already shows a single week. */
+  weekPoints?: Map<string, number>;
+  weekLabel?: string;
+  highlight?: string;
+  onSelect?: (name: string) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+
+  if (!rows.length) {
+    return <p className="text-brand-textMuted">No standings yet for this season. Check back after the first league night.</p>;
+  }
+
+  const leader = rows[0].points || 1;
+  const podium = rows.slice(0, 3);
+  const rest = rows.slice(3);
+  // Always keep the highlighted player on screen, even below the preview cut.
+  const highlightIndex = highlight ? rest.findIndex((r) => r.name === highlight) : -1;
+  const previewCount = LEADERBOARD_PREVIEW - 3;
+  const visibleRest = showAll || highlightIndex >= previewCount ? rest : rest.slice(0, previewCount);
+  const hiddenCount = rest.length - visibleRest.length;
+  const showWeek = !!weekPoints && !!weekLabel;
+  const rowGrid = showWeek
+    ? "md:grid-cols-[2.5rem_minmax(0,15rem)_minmax(0,1fr)_5.5rem_5rem_4.5rem]"
+    : "md:grid-cols-[2.5rem_minmax(0,15rem)_minmax(0,1fr)_5rem_4.5rem]";
+
   return (
-    <StaggerIn className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {rows.map((row, index) => {
-        const rank = index + 1;
-        const podium = podiumStyle(rank);
-        return (
-          <button
-            type="button"
-            key={`${row.name}-${index}`}
-            onClick={() => onSelect?.(row.name)}
-            aria-label={`${row.name}, ${formatValue(row.points, 0)} points. View profile`}
-            className={`flex w-full items-center justify-between rounded-xl border border-transparent bg-brand-raised px-4 py-3 text-left transition-[transform,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-white/20 active:scale-[0.98] ${podium.rowClass}`}
-          >
-            <span className={`font-bold ${podium.textClass}`}>
-              {podium.medal ? `${podium.medal} ` : `${rank}. `}{row.name}
-            </span>
-            <span className={`text-xl font-bold ${podium.medal ? podium.textClass : "text-brand-orange"}`}>
-              <AnimatedNumber value={formatValue(row.points, 0)} />
-            </span>
-          </button>
-        );
-      })}
-    </StaggerIn>
+    <div>
+      <div className="grid gap-3 md:grid-cols-3 md:items-end">
+        {podium.map((row, index) => {
+          const rank = index + 1;
+          const style = podiumStyle(rank);
+          const gap = leader - row.points;
+          const week = weekPoints?.get(row.name);
+          return (
+            <button
+              type="button"
+              key={`${row.name}-${index}`}
+              onClick={() => onSelect?.(row.name)}
+              aria-label={`${rank}. ${row.name}, ${formatValue(row.points, 0)} points. View profile`}
+              // On desktop the leader sits in the middle, a step taller than 2nd and 3rd.
+              className={`rounded-2xl bg-brand-raised p-4 text-left md:p-5 transition-[transform,background-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-brand-raisedHover active:scale-[0.98] ${style.rowClass} ${
+                rank === 1 ? "md:order-2 md:pb-9 md:pt-7" : rank === 2 ? "md:order-1" : "md:order-3"
+              } ${row.name === highlight ? "ring-2 ring-brand-orange" : ""}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className={`font-display text-3xl leading-none md:text-5xl ${style.textClass}`}>{rank}</span>
+                <span className="eyebrow pt-1">{rank === 1 ? "Leader" : `${formatValue(gap, 0)} back`}</span>
+              </div>
+              <div className="mt-2 truncate text-lg font-bold text-brand-text md:mt-5">{row.name}</div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className={`font-display leading-none tabular-nums text-brand-text ${rank === 1 ? "text-4xl md:text-6xl" : "text-4xl md:text-5xl"}`}>
+                  <AnimatedNumber value={formatValue(row.points, 0)} />
+                </span>
+                <span className="text-sm font-semibold text-brand-textMuted">pts</span>
+              </div>
+              {showWeek && (
+                <div className="mt-1.5 text-sm text-brand-textSecondary md:mt-3">
+                  {week ? `+${formatValue(week, 0)} in ${weekLabel}` : `Did not play ${weekLabel}`}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {rest.length > 0 && (
+        <div className="mt-6">
+          <div className={`hidden items-center gap-4 px-3 pb-2 text-[0.8125rem] font-semibold text-brand-textMuted md:grid ${rowGrid}`}>
+            <span>#</span>
+            <span>Player</span>
+            <span />
+            {showWeek && <span className="text-right">{weekLabel}</span>}
+            <span className="text-right">Behind</span>
+            <span className="text-right">Points</span>
+          </div>
+          <StaggerIn key={showAll ? "all" : "preview"} each={0.02}>
+            {visibleRest.map((row, index) => {
+              const rank = index + 4;
+              const gap = leader - row.points;
+              const week = weekPoints?.get(row.name);
+              const mine = row.name === highlight;
+              const width = `${Math.max(2, Math.round((row.points / leader) * 100))}%`;
+              return (
+                <button
+                  type="button"
+                  key={`${row.name}-${index}`}
+                  onClick={() => onSelect?.(row.name)}
+                  aria-label={`${rank}. ${row.name}, ${formatValue(row.points, 0)} points, ${formatValue(gap, 0)} behind the leader. View profile`}
+                  className={`grid w-full grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border-t border-white/[0.06] px-3 py-3 text-left transition-colors duration-150 first:border-t-0 hover:bg-white/[0.05] md:gap-4 md:py-2.5 ${rowGrid} ${
+                    mine ? "bg-brand-orange/10" : ""
+                  }`}
+                >
+                  <span className="tabular-nums text-brand-textMuted">{rank}</span>
+                  <span className="min-w-0">
+                    <span className={`block truncate font-semibold ${mine ? "text-brand-orange" : "text-brand-text"}`}>{row.name}</span>
+                    <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-white/[0.07] md:hidden">
+                      <span className={`block h-full rounded-full ${mine ? "bg-brand-orange" : "bg-white/40"}`} style={{ width }} />
+                    </span>
+                  </span>
+                  <span className="hidden h-1.5 overflow-hidden rounded-full bg-white/[0.07] md:block">
+                    <span className={`block h-full rounded-full ${mine ? "bg-brand-orange" : "bg-white/40"}`} style={{ width }} />
+                  </span>
+                  {showWeek && (
+                    <span className="hidden text-right text-sm tabular-nums text-brand-textSecondary md:block">{week ? `+${formatValue(week, 0)}` : "-"}</span>
+                  )}
+                  <span className="hidden text-right text-sm tabular-nums text-brand-textMuted md:block">{formatValue(gap, 0)}</span>
+                  <span className="text-right">
+                    <span className="block text-lg font-bold tabular-nums text-brand-text">{formatValue(row.points, 0)}</span>
+                    <span className="block text-xs tabular-nums text-brand-textMuted md:hidden">{formatValue(gap, 0)} back</span>
+                  </span>
+                </button>
+              );
+            })}
+          </StaggerIn>
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="mt-4 min-h-11 w-full rounded-full border border-white/15 px-5 text-[0.9375rem] font-semibold text-brand-textSecondary transition-colors duration-150 hover:border-white/35 hover:text-brand-text"
+            >
+              Show all {rows.length} players
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-function StandingsTable({ rows, onSelect }: { rows: { name: string; points: number }[]; onSelect?: (name: string) => void }) {
+// Pill-shaped switch between the views inside one League section.
+function Segmented<T extends string>({
+  items,
+  value,
+  onChange,
+  label,
+}: {
+  items: { id: T; label: string }[];
+  value: T;
+  onChange: (id: T) => void;
+  label: string;
+}) {
   return (
-    <div className="scroll-shadow-x overflow-x-auto">
-      <table className="data-table">
-        <thead><tr><th>#</th><th>Player</th><th>Points</th></tr></thead>
-        <tbody>
-          {rows.map((row, index) => {
-            const rank = index + 1;
-            const podium = podiumStyle(rank);
-            return (
-              <tr key={`${row.name}-${index}`} className={podium.rowClass}>
-                <td className={`font-bold ${podium.textClass}`}>{podium.medal || rank}</td>
-                <td className={`font-bold ${podium.medal ? podium.textClass : "text-brand-orange"}`}>
-                  <button
-                    type="button"
-                    onClick={() => onSelect?.(row.name)}
-                    aria-label={`${row.name}, view profile`}
-                    className="-mx-2 -my-1.5 rounded-lg px-2 py-1.5 text-left font-bold transition-[transform,background-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-white/5 active:scale-[0.97]"
-                  >
-                    {row.name}
-                  </button>
-                </td>
-                <td><AnimatedNumber value={formatValue(row.points, 0)} /></td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div role="tablist" aria-label={label} className="flex self-start rounded-full bg-white/[0.06] p-1">
+      {items.map((item) => {
+        const active = item.id === value;
+        return (
+          <button
+            key={item.id}
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(item.id)}
+            className={`min-h-10 whitespace-nowrap rounded-full px-4 font-sans text-sm font-semibold transition-[background-color,color] duration-200 md:min-h-9 ${
+              active ? "bg-brand-text text-brand-bg" : "text-brand-textSecondary hover:text-brand-text"
+            }`}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Pick several players by searching: each pick becomes a removable chip, so
+// the table below stays on screen instead of sitting under a wall of checkboxes.
+function PlayerMultiPicker({
+  players,
+  selected,
+  onChange,
+  id,
+}: {
+  players: string[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  id?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const listId = useId();
+
+  const options = players.filter((p) => !selected.includes(p) && p.toLowerCase().includes(query.toLowerCase()));
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(event: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  function add(name: string) {
+    onChange([...selected, name]);
+    setQuery("");
+    setActive(0);
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <input
+        id={id}
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        autoComplete="off"
+        className="field-control block w-full placeholder:text-brand-textFaint sm:max-w-md"
+        placeholder={selected.length ? "Add another player..." : "All players. Search to compare a few..."}
+        value={query}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setActive(0);
+          setOpen(true);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setOpen(true);
+            setActive((i) => (i >= options.length - 1 ? 0 : i + 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((i) => (i <= 0 ? options.length - 1 : i - 1));
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (open && options[active]) add(options[active]);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          } else if (e.key === "Backspace" && !query && selected.length) {
+            onChange(selected.slice(0, -1));
+          }
+        }}
+      />
+      {open && (
+        <div
+          id={listId}
+          role="listbox"
+          className="popover-in absolute z-30 mt-1.5 max-h-72 w-full overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-brand-raised p-1 shadow-float sm:max-w-md"
+        >
+          {options.length === 0 && <div className="px-3 py-2.5 text-sm text-brand-textFaint">No players found</div>}
+          {options.map((p, i) => (
+            <div
+              key={p}
+              role="option"
+              aria-selected={false}
+              // Keep focus in the input so the list stays open for the next pick.
+              onPointerDown={(e) => e.preventDefault()}
+              onPointerMove={() => setActive(i)}
+              onClick={() => add(p)}
+              className={`flex min-h-11 cursor-pointer items-center rounded-lg px-3 text-[0.9375rem] text-brand-text ${i === active ? "bg-white/10" : ""}`}
+            >
+              <span className="truncate">{p}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {selected.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          {selected.map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => onChange(selected.filter((n) => n !== name))}
+              aria-label={`Remove ${name}`}
+              className="flex min-h-9 items-center gap-1.5 rounded-full bg-white/10 pl-3.5 pr-2.5 text-sm font-semibold text-brand-text transition-colors duration-150 hover:bg-white/15"
+            >
+              {name}
+              <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 text-brand-textMuted" fill="none" stroke="currentColor" strokeWidth={2.25} aria-hidden>
+                <path d="m5.5 5.5 9 9m0-9-9 9" strokeLinecap="round" />
+              </svg>
+            </button>
+          ))}
+          <button type="button" onClick={() => onChange([])} className="min-h-9 px-2 text-sm font-semibold text-brand-textMuted hover:text-brand-text">
+            Clear all
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -2546,10 +2783,10 @@ function RankChangeBadge({ change }: { change: number | null }) {
 function WeeklyTable({ rows }: { rows: any[] }) {
   return (
     <div className="scroll-shadow-x overflow-x-auto">
-      <table className="data-table text-[0.8125rem]">
+      <table className="data-table">
         <thead>
           <tr>
-            <th>Rank</th><th>Player</th><th>Team</th><th>Finish Pts</th><th>+/-</th>
+            <th>Rank</th><th className="sticky left-0 z-10 bg-brand-panel">Player</th><th>Team</th><th>Finish Pts</th><th>+/-</th>
             {weeklyStatColumns.map((col) => <th key={col.label} >{col.label}</th>)}
           </tr>
         </thead>
@@ -2557,8 +2794,8 @@ function WeeklyTable({ rows }: { rows: any[] }) {
           {rows.map((row, index) => (
             <tr key={`${getPlayer(row)}-${getSeason(row)}-${getWeek(row)}-${getType(row)}-${index}`}>
               <td>{formatValue(row.Rank, 0)}</td>
-              <td className="font-bold text-brand-orange">{getPlayer(row)}</td>
-              <td>{clean(row.Team) || "-"}</td>
+              <td className="sticky left-0 z-10 whitespace-nowrap bg-brand-panel font-semibold text-brand-text">{getPlayer(row)}</td>
+              <td className="whitespace-nowrap">{clean(row.Team) || "-"}</td>
               <td>{formatValue(row.Points, 0)}</td>
               <td><RankChangeBadge change={row.RankChange ?? null} /></td>
               {weeklyStatColumns.map((col) => (
@@ -2575,7 +2812,7 @@ function WeeklyTable({ rows }: { rows: any[] }) {
 function EventSummary({ rows }: { rows: any[] }) {
   return (
     <div className="mt-6 rounded-xl border border-white/10 bg-brand-raised p-4">
-      <h3 className="mb-3 font-display text-lg uppercase text-brand-orange">Event Totals / Averages</h3>
+      <h3 className="mb-3 font-display text-lg uppercase text-brand-textSecondary">Event Totals / Averages</h3>
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
         {summarizeEvent(rows).map((item) => <MiniStat key={item.label} label={item.label} value={item.value} />)}
       </div>
@@ -2583,27 +2820,59 @@ function EventSummary({ rows }: { rows: any[] }) {
   );
 }
 
-function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sortKey: string; sortDirection: SortDirection; onSort: (key: string) => void }) {
+// Columns where a bigger number is plainly better. The top value in each gets
+// the accent color; columns that are neutral or lower-is-better are left alone.
+const HIGHER_IS_BETTER = new Set([
+  "Total Pts", "Average PPR", "Average DPR", "Avg Bags In", "Total Bags In", "Avg Bags In/Rd", "Bags On %", "Avg 4-Bagger %", "Total 4-Baggers", "1st in Stats",
+  "totalPts", "avgPPR", "avgDPR", "bagsOnPct", "avgBagsInPerRd", "avgBaggerPct", "total4Baggers", "totalFirsts",
+]);
+
+function columnBests<C>(rows: any[], columns: C[], id: (col: C) => string, value: (row: any, col: C) => any) {
+  const bests = new Map<string, number>();
+  if (rows.length < 2) return bests;
+  for (const col of columns) {
+    if (!HIGHER_IS_BETTER.has(id(col))) continue;
+    const max = Math.max(...rows.map((row) => numberVal(value(row, col)) || 0));
+    if (max > 0) bests.set(id(col), max);
+  }
+  return bests;
+}
+
+function StatsTable({
+  rows,
+  sortKey,
+  sortDirection,
+  highlightPlayer,
+  onSort,
+}: {
+  rows: any[];
+  sortKey: string;
+  sortDirection: SortDirection;
+  highlightPlayer?: string;
+  onSort: (key: string) => void;
+}) {
   const columns = visibleStatColumns(rows);
+  const bests = columnBests(rows, columns, (col) => col.label, (row, col) => getStatValue(row, col.keys));
+  const isBest = (row: any, col: StatColumn) => bests.has(col.label) && numberVal(getStatValue(row, col.keys)) === bests.get(col.label);
   return (
     <>
       <div className="grid gap-3 md:hidden">
         {rows.map((row, index) => (
-          <div key={`${getPlayer(row)}-${index}`} className="rounded-xl border border-white/10 bg-brand-raised p-4">
-            <div className="mb-3 text-lg font-bold text-brand-orange">{getPlayer(row)}</div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              {columns.map((col) => <div key={col.label}><div className="text-xs uppercase text-brand-textFaint">{col.label}</div><div className="font-bold">{formatValue(getStatValue(row, col.keys), col.decimals)}</div></div>)}
+          <div key={`${getPlayer(row)}-${index}`} className={`rounded-xl p-4 ${getPlayer(row) === highlightPlayer ? "bg-brand-orange/10" : "bg-brand-raised"}`}>
+            <div className="mb-3 text-lg font-bold text-brand-text">{getPlayer(row)}</div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[0.9375rem]">
+              {columns.map((col) => <div key={col.label}><div className="text-xs font-semibold text-brand-textMuted">{col.label}</div><div className={`font-bold tabular-nums ${isBest(row, col) ? "text-brand-orange" : ""}`}>{formatValue(getStatValue(row, col.keys), col.decimals)}</div></div>)}
             </div>
           </div>
         ))}
       </div>
       <div className="scroll-shadow-x hidden overflow-x-auto md:block">
-        <table className="data-table min-w-[1150px] text-[0.8125rem]">
+        <table className="data-table min-w-[1150px]">
           <thead>
             <tr>
               <th className="sticky left-0 z-10 bg-brand-panel ">Player</th>
               {columns.map((col) => (
-                <th key={col.label} className="cursor-pointer whitespace-nowrap hover:text-brand-orange" onClick={() => onSort(col.label)}>
+                <th key={col.label} className={`cursor-pointer whitespace-nowrap hover:text-brand-text ${sortKey === col.label ? "text-brand-text" : ""}`} onClick={() => onSort(col.label)}>
                   {col.label}{sortKey === col.label ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
                 </th>
               ))}
@@ -2612,8 +2881,8 @@ function StatsTable({ rows, sortKey, sortDirection, onSort }: { rows: any[]; sor
           <tbody>
             {rows.map((row, index) => (
               <tr key={`${getPlayer(row)}-${index}`}>
-                <td className="sticky left-0 z-10 bg-brand-panel font-bold text-brand-orange">{getPlayer(row)}</td>
-                {columns.map((col) => <td key={col.label} className="whitespace-nowrap ">{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}
+                <td className={`sticky left-0 z-10 whitespace-nowrap bg-brand-panel font-semibold ${getPlayer(row) === highlightPlayer ? "text-brand-orange" : "text-brand-text"}`}>{getPlayer(row)}</td>
+                {columns.map((col) => <td key={col.label} className={`whitespace-nowrap ${isBest(row, col) ? "font-bold text-brand-orange" : ""}`}>{formatValue(getStatValue(row, col.keys), col.decimals)}</td>)}
               </tr>
             ))}
           </tbody>
@@ -2638,22 +2907,22 @@ function CareerStatsTable({
   highlightPlayer?: string;
   onSort: (key: string) => void;
 }) {
+  const bests = columnBests(rows, columns, (col) => col.key, (row, col) => row[col.key]);
+  const isBest = (row: any, key: string) => bests.has(key) && numberVal(row[key]) === bests.get(key);
   return (
     <>
       <div className="grid gap-3 md:hidden">
         {rows.map((row) => (
           <div
             key={row.name}
-            className={`rounded-xl border p-4 ${
-              row.name === highlightPlayer ? "border-brand-orange bg-brand-orange/10" : "border-white/10 bg-brand-raised"
-            }`}
+            className={`rounded-xl p-4 ${row.name === highlightPlayer ? "bg-brand-orange/10" : "bg-brand-raised"}`}
           >
-            <div className="mb-3 text-lg font-bold text-brand-orange">{row.name}</div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="mb-3 text-lg font-bold text-brand-text">{row.name}</div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[0.9375rem]">
               {columns.map((col) => (
                 <div key={col.key}>
-                  <div className="text-xs uppercase text-brand-textFaint">{col.label}</div>
-                  <div className="font-bold">{formatValue(row[col.key], col.decimals)}</div>
+                  <div className="text-xs font-semibold text-brand-textMuted">{col.label}</div>
+                  <div className={`font-bold tabular-nums ${isBest(row, col.key) ? "text-brand-orange" : ""}`}>{formatValue(row[col.key], col.decimals)}</div>
                 </div>
               ))}
             </div>
@@ -2661,12 +2930,12 @@ function CareerStatsTable({
         ))}
       </div>
       <div className="scroll-shadow-x hidden overflow-x-auto md:block">
-        <table className="data-table min-w-[1150px] text-[0.8125rem]">
+        <table className="data-table min-w-[1150px]">
           <thead>
             <tr>
               <th className="sticky left-0 z-10 bg-brand-panel ">Player</th>
               {columns.map((col) => (
-                <th key={col.key} className="cursor-pointer whitespace-nowrap hover:text-brand-orange" onClick={() => onSort(col.key)}>
+                <th key={col.key} className={`cursor-pointer whitespace-nowrap hover:text-brand-text ${sortKey === col.key ? "text-brand-text" : ""}`} onClick={() => onSort(col.key)}>
                   {col.label}
                   {sortKey === col.key ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
                 </th>
@@ -2676,9 +2945,9 @@ function CareerStatsTable({
           <tbody>
             {rows.map((row) => (
               <tr key={row.name} className={`${row.name === highlightPlayer ? "bg-brand-orange/10" : ""}`}>
-                <td className="sticky left-0 z-10 bg-brand-panel font-bold text-brand-orange">{row.name}</td>
+                <td className={`sticky left-0 z-10 whitespace-nowrap bg-brand-panel font-semibold ${row.name === highlightPlayer ? "text-brand-orange" : "text-brand-text"}`}>{row.name}</td>
                 {columns.map((col) => (
-                  <td key={col.key} className="whitespace-nowrap ">
+                  <td key={col.key} className={`whitespace-nowrap ${isBest(row, col.key) ? "font-bold text-brand-orange" : ""}`}>
                     {formatValue(row[col.key], col.decimals)}
                   </td>
                 ))}
@@ -2726,7 +2995,7 @@ function SeasonFinishesTable({ rows }: { rows: any[] }) {
         <thead><tr><th>Season</th><th>Finish</th><th>PPR</th><th>DPR</th><th>OPPR</th><th>Points</th><th>Rounds</th><th>4 Baggers</th></tr></thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={getSeason(row)}><td className="font-bold">{getSeason(row)}</td><td className="text-brand-orange">{formatValue(getStatValue(row, ["Finish"]), 0)}</td><td>{formatValue(getStatValue(row, ["Average PPR", "PPR"]), 2)}</td><td>{formatValue(getStatValue(row, ["Average DPR", "DPR"]), 2)}</td><td>{formatValue(getStatValue(row, ["Opponents Avg PPR", "OPPR"]), 2)}</td><td>{formatValue(getStatValue(row, ["Total Pts", "Total Points"]), 0)}</td><td>{formatValue(getStatValue(row, ["Total Rounds"]), 0)}</td><td>{formatValue(getStatValue(row, ["Total 4-Baggers", "4 Baggers"]), 0)}</td></tr>
+            <tr key={getSeason(row)}><td className="whitespace-nowrap font-semibold">{getSeason(row)}</td><td className="font-bold">{formatValue(getStatValue(row, ["Finish"]), 0)}</td><td>{formatValue(getStatValue(row, ["Average PPR", "PPR"]), 2)}</td><td>{formatValue(getStatValue(row, ["Average DPR", "DPR"]), 2)}</td><td>{formatValue(getStatValue(row, ["Opponents Avg PPR", "OPPR"]), 2)}</td><td>{formatValue(getStatValue(row, ["Total Pts", "Total Points"]), 0)}</td><td>{formatValue(getStatValue(row, ["Total Rounds"]), 0)}</td><td>{formatValue(getStatValue(row, ["Total 4-Baggers", "4 Baggers"]), 0)}</td></tr>
           ))}
         </tbody>
       </table>
@@ -2767,7 +3036,7 @@ function ScenarioTable({
           {rows.map((row) => (
             <tr key={row.name} className={`${row.name === selectedPlayer ? "bg-brand-orange/10" : ""}`}>
               <td className="font-bold">{row.projectedRank}</td>
-              <td className="font-bold text-brand-orange">{row.name}</td>
+              <td className="whitespace-nowrap font-semibold text-brand-text">{row.name}</td>
               <td>{row.currentRank || "-"}</td>
               <td>{formatValue(row.currentTotal, 0)}</td>
               <td>{formatValue(row.lowestCounted, 0)}</td>
@@ -2785,7 +3054,7 @@ function ScenarioTable({
                 />
               </td>
               <td>{formatValue(row.netGain, 0)}</td>
-              <td className="font-bold text-brand-orange">{formatValue(row.projectedTotal, 0)}</td>
+              <td className="font-bold text-brand-text">{formatValue(row.projectedTotal, 0)}</td>
               <td>{formatValue(row.highestWeek, 0)}</td>
               <td>{formatValue(row.ppr, 2)}</td>
             </tr>
@@ -2803,7 +3072,7 @@ function CompareTable({ statA, statB }: { statA: any; statB: any }) {
       <table className="data-table">
         <tbody>
           {columns.map((col) => (
-            <tr key={col.label}><td className="text-brand-textMuted">{col.label}</td><td>{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td>{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
+            <tr key={col.label}><td className="whitespace-nowrap text-brand-textSecondary">{col.label}</td><td>{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td>{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
           ))}
         </tbody>
       </table>
