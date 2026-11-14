@@ -50,3 +50,30 @@ export function formatEventDateShort(eventDate: string): string {
 export function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+function eventDateUtc(eventDate: string) {
+  const match = String(eventDate || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  // Noon UTC so no timezone can shift the day.
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
+}
+
+/** e.g. "2026-12-07" -> "December 2026" (month headings on the Events page). */
+export function formatMonthYear(eventDate: string): string {
+  const date = eventDateUtc(eventDate);
+  return date ? date.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }) : "";
+}
+
+/** e.g. "2026-12-07" -> "Mon" */
+export function formatWeekday(eventDate: string): string {
+  const date = eventDateUtc(eventDate);
+  return date ? date.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }) : "";
+}
+
+/** Whole days from today to a YYYY-MM-DD date (negative once it has passed). */
+export function daysUntilDate(eventDate: string): number | null {
+  const to = Date.parse(`${String(eventDate).slice(0, 10)}T00:00:00Z`);
+  const from = Date.parse(`${todayDateString()}T00:00:00Z`);
+  if (Number.isNaN(to) || Number.isNaN(from)) return null;
+  return Math.round((to - from) / 86_400_000);
+}

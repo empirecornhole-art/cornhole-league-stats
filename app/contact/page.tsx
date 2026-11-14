@@ -30,23 +30,35 @@ export default async function ContactPage() {
     followLines.push("Find us on Instagram & Facebook.");
   }
 
-  const infoCards = [
+  const mapsUrl = settings.venue_address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([settings.venue_name, settings.venue_address].filter(Boolean).join(", "))}`
+    : "";
+  const email = settings.contact_email || "info@empirecornhole.com";
+
+  type Row = { label: string; icon: React.ReactNode; lines: { text: string; href?: string }[]; note?: string };
+  const rows: Row[] = [
     {
       label: "Email",
       icon: <MailIcon />,
-      lines: [settings.contact_email || "info@empirecornhole.com", "We reply within a couple of days."],
+      lines: [{ text: email, href: `mailto:${email}` }],
+      note: "We reply within a couple of days.",
     },
     {
-      label: "Where We Play",
+      label: "Where we play",
       icon: <PinIcon />,
-      lines: [settings.venue_name, settings.venue_address].filter(Boolean),
+      lines: [settings.venue_name, settings.venue_address].filter(Boolean).map((text) => ({ text, href: mapsUrl || undefined })),
+      note: mapsUrl ? "Tap for directions." : undefined,
     },
     {
-      label: "Follow The League",
+      label: "Follow the league",
       icon: <UsersIcon />,
-      lines: followLines,
+      lines: [
+        settings.instagram_url && { text: `${socialHandle(settings.instagram_url)} on Instagram`, href: settings.instagram_url },
+        settings.facebook_url && { text: `${socialHandle(settings.facebook_url)} on Facebook`, href: settings.facebook_url },
+      ].filter(Boolean) as { text: string; href?: string }[],
+      note: settings.instagram_url || settings.facebook_url ? undefined : "Find us on Instagram & Facebook.",
     },
-  ];
+  ].filter((row) => row.lines.length > 0 || row.note);
 
   return (
     <main className="bg-brand-bg">
@@ -56,39 +68,48 @@ export default async function ContactPage() {
           aria-hidden
         />
         <HeroThreads />
-        <FadeIn className="relative mx-auto max-w-4xl px-4 py-16 text-center md:px-6 md:py-28">
-          <span className="eyebrow">
-            Get In Touch
-          </span>
-          <h1 className="heading-page mt-4">Join the League</h1>
-          <p className="mt-5 font-sans text-brand-textSecondary">
+        <FadeIn className="relative mx-auto max-w-4xl px-4 py-14 text-center md:px-6 md:py-24">
+          <span className="eyebrow">Get in touch</span>
+          <h1 className="heading-page mt-4">Join the league</h1>
+          <p className="mx-auto mt-5 max-w-xl font-sans text-lg text-brand-textSecondary">
             Questions about a season, a team, or just want to say hi? Reach out below.
           </p>
         </FadeIn>
       </section>
 
-      <section className="bg-brand-panel">
-        <FadeIn className="mx-auto max-w-6xl px-4 py-16 md:px-6">
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
-            <div className="flex flex-col gap-4">
-              {infoCards.map((card) => (
-                <div key={card.label} data-cascade className="flex gap-4 rounded-2xl border border-white/10 bg-brand-bg p-6">
-                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover text-brand-bg">
-                    {card.icon}
-                  </div>
-                  <div>
-                    <h3 className="heading-card">{card.label}</h3>
-                    {card.lines.map((line) => (
-                      <p key={line} className="mt-1 font-sans text-sm text-brand-textSecondary">
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ))}
+      <section className="bg-brand-bg">
+        <FadeIn className="mx-auto max-w-6xl px-4 pb-20 pt-4 md:px-6 md:pb-28">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14">
+            <div className="lg:col-span-5">
+              <ul className="space-y-8">
+                {rows.map((row) => (
+                  <li key={row.label} data-cascade className="flex gap-4">
+                    <div className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-brand-panel text-brand-orange">{row.icon}</div>
+                    <div className="min-w-0">
+                      <h2 className="eyebrow">{row.label}</h2>
+                      {row.lines.map((line) => (
+                        <p key={line.text} className="mt-1.5 break-words font-sans text-lg font-semibold text-brand-text">
+                          {line.href ? (
+                            <a
+                              href={line.href}
+                              {...(line.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                              className="underline decoration-white/25 underline-offset-4 transition-colors duration-150 hover:text-brand-orange hover:decoration-brand-orange"
+                            >
+                              {line.text}
+                            </a>
+                          ) : (
+                            line.text
+                          )}
+                        </p>
+                      ))}
+                      {row.note && <p className="mt-1.5 font-sans text-sm text-brand-textMuted">{row.note}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <div data-cascade className="rounded-2xl border border-white/10 bg-brand-bg p-6 md:p-8">
+            <div data-cascade className="rounded-3xl bg-brand-panel p-6 md:p-10 lg:col-span-7">
               <ContactForm />
             </div>
           </div>
@@ -97,4 +118,3 @@ export default async function ContactPage() {
     </main>
   );
 }
-

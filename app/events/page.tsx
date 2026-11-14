@@ -1,24 +1,27 @@
 import HeroThreads from "../../components/site/HeroThreads";
 import FadeIn from "../../components/site/FadeIn";
-import EventsListToggle, { EventDisplay } from "../../components/site/EventsListToggle";
+import EventsView, { EventDisplay } from "../../components/site/EventsView";
 import { getPastEvents, getUpcomingEvents, EventRow } from "../../lib/events";
-import { formatEventDateParts } from "../../lib/format";
+import { daysUntilDate, formatEventDateParts, formatMonthYear, formatWeekday } from "../../lib/format";
 
 export const dynamic = "force-dynamic";
 
 function toDisplay(event: EventRow): EventDisplay {
   const { day, month } = formatEventDateParts(event.event_date);
-  const meta = [event.time, event.location].filter(Boolean).join(" · ");
 
   return {
     id: event.id,
+    date: event.event_date,
     day,
     month,
+    weekday: formatWeekday(event.event_date),
+    monthLabel: formatMonthYear(event.event_date),
     title: event.title,
     tag: event.tag,
-    meta,
+    meta: [event.time, event.location].filter(Boolean).join(" · "),
     featured: event.featured,
     registerUrl: event.register_url || "",
+    daysUntil: daysUntilDate(event.event_date),
   };
 }
 
@@ -42,20 +45,18 @@ export default async function EventsPage() {
           aria-hidden
         />
         <HeroThreads />
-        <FadeIn className="relative mx-auto max-w-4xl px-4 py-16 text-center md:px-6 md:py-28">
-          <span className="eyebrow">
-            Schedule
-          </span>
+        <FadeIn className="relative mx-auto max-w-4xl px-4 py-14 text-center md:px-6 md:py-24">
+          <span className="eyebrow">Schedule</span>
           <h1 className="heading-page mt-4">Events</h1>
-          <p className="mt-5 font-sans text-brand-textSecondary">
+          <p className="mx-auto mt-5 max-w-xl font-sans text-lg text-brand-textSecondary">
             Blind draws, switch nights, and the events that decide who takes home the season.
           </p>
         </FadeIn>
       </section>
 
-      <section className="bg-brand-panel">
-        <FadeIn className="mx-auto max-w-4xl px-4 py-16 md:px-6">
-          <EventsListToggle upcoming={upcoming} past={past} />
+      <section className="bg-brand-bg">
+        <FadeIn className="mx-auto max-w-4xl px-4 pb-20 pt-4 md:px-6 md:pb-28">
+          <EventsView upcoming={upcoming} past={past} />
         </FadeIn>
       </section>
     </main>

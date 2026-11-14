@@ -6,7 +6,10 @@ type Field = "name" | "email" | "interest" | "message";
 type Status = "idle" | "sending" | "sent" | "error";
 
 const INPUT =
-  "mt-2 w-full rounded-lg border bg-brand-panel px-4 py-3 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none";
+  "mt-2 w-full rounded-xl border bg-brand-bg px-4 py-3.5 font-sans text-base text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none";
+
+// One-tap starters for the "interested in" field; they just fill it in, and it stays editable.
+const INTERESTS = ["Joining a team", "Playing as a sub", "Sponsoring an event", "Hosting a night", "Something else"];
 
 const EMPTY = { name: "", email: "", interest: "", message: "" };
 
@@ -56,7 +59,7 @@ export default function ContactForm() {
   if (status === "sent") {
     return (
       <div className="flex flex-col items-start gap-4" role="status">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-up/15 text-brand-up">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-up/15 text-brand-up">
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden>
             <path d="m5 12.5 4.5 4.5L19 7.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -134,12 +137,30 @@ export default function ContactForm() {
         <label htmlFor="contact-interest" className="field-label">
           I&apos;m interested in <span className="font-normal text-brand-textFaint">(optional)</span>
         </label>
+        <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Common topics">
+          {INTERESTS.map((topic) => {
+            const active = values.interest === topic;
+            return (
+              <button
+                key={topic}
+                type="button"
+                aria-pressed={active}
+                onClick={() => update("interest", active ? "" : topic)}
+                className={`min-h-10 rounded-full px-4 font-sans text-sm font-semibold transition-[background-color,color] duration-150 ${
+                  active ? "bg-brand-text text-brand-bg" : "bg-white/[0.07] text-brand-textSecondary hover:bg-white/[0.12] hover:text-brand-text"
+                }`}
+              >
+                {topic}
+              </button>
+            );
+          })}
+        </div>
         <input
           id="contact-interest"
           name="interest"
           type="text"
           className={fieldClass("interest")}
-          placeholder="Joining a team, sponsoring an event, ..."
+          placeholder="Or type your own"
           value={values.interest}
           onChange={(e) => update("interest", e.target.value)}
           {...a11y("interest")}

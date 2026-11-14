@@ -172,11 +172,15 @@ export function mockEvents(upcoming: boolean): EventRow[] {
     ? [
         [3, "Switch Night", "7:00 PM", "Weekly league night", true],
         [10, "Blind Draw Classic", "7:00 PM", "Open to all", false],
-        [24, "Season Finale", "6:30 PM", "Playoff bracket", false],
+        [24, "Switch Night", "7:00 PM", "Weekly league night", false],
+        [38, "Season Finale", "6:30 PM", "Playoff bracket", false],
+        [52, "Holiday Blind Draw", "7:00 PM", "Open to all", false],
       ]
     : [
         [-7, "Switch Night", "7:00 PM", "Weekly league night", false],
         [-14, "Blind Draw Classic", "7:00 PM", "Open to all", false],
+        [-21, "Switch Night", "7:00 PM", "Weekly league night", false],
+        [-45, "Fall Kickoff", "7:00 PM", "Season opener", false],
       ];
   return rows.map(([offset, title, time, tag, featured], i) => ({
     id: `mock-e${upcoming ? "u" : "p"}${i}`,
