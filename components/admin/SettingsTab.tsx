@@ -124,7 +124,7 @@ export default function SettingsTab({ password }: { password: string }) {
       </div>
 
       {message && (
-        <div className="mt-4 rounded-lg border border-white/10 bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
+        <div className="mt-4 rounded-2xl bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
           {message}
         </div>
       )}

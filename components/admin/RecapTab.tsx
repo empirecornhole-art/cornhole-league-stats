@@ -14,7 +14,7 @@ type Recap = {
 type Saved = { body: string; published: boolean; updated_at: string };
 
 const inputClass =
-  "mt-2 block w-full rounded-lg border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text";
+  "mt-2 block w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text";
 
 // Between the Switch recap and the Blind Draw recap in the combined post.
 const POST_DIVIDER = "\n\n━━━━━━━━━━━━\n\n";
@@ -246,16 +246,16 @@ export default function RecapTab({ password }: { password: string }) {
       )}
 
       {message && (
-        <div className="mt-5 whitespace-pre-wrap rounded-lg border border-white/10 bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
+        <div className="mt-5 whitespace-pre-wrap rounded-2xl bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
           {message}
         </div>
       )}
 
       {hasText && (
-        <div className="mt-6 rounded-xl border border-white/10 bg-brand-bg p-4">
+        <div className="mt-6 rounded-2xl bg-brand-bg p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h4 className="font-display text-base uppercase text-brand-orange">Week {week} recap</h4>
+              <h4 className="font-display text-lg uppercase text-brand-text">Week {week} recap</h4>
               <p className="mt-1 font-sans text-xs text-brand-textMuted">
                 {unsaved
                   ? saved

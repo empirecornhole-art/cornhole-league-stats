@@ -19,7 +19,7 @@ type Item = {
 const UNASSIGNED = "__unassigned";
 
 const inputClass =
-  "mt-2 block w-full rounded-lg border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text";
+  "mt-2 block w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text";
 
 // Phone photos are often 4000+ pixels wide and several MB. Shrink them before uploading (about
 // 2400px on the long edge) so the site, Facebook and Instagram all load them quickly. Also drops
@@ -386,7 +386,7 @@ export default function MediaTab({ password, role = "admin" }: { password: strin
                   handleFiles(e.target.files);
                   e.target.value = "";
                 }}
-                className="mt-2 block w-full rounded-lg border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text file:mr-4 file:rounded-full file:border-0 file:bg-brand-orange file:px-4 file:py-2 file:font-sans file:text-xs file:font-bold file:uppercase file:text-brand-bg"
+                className="mt-2 block w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text file:mr-4 file:rounded-full file:border-0 file:bg-brand-orange file:px-4 file:py-2 file:font-sans file:text-xs file:font-bold file:uppercase file:text-brand-bg"
               />
             </label>
           )}
@@ -404,7 +404,7 @@ export default function MediaTab({ password, role = "admin" }: { password: strin
       )}
 
       {message && (
-        <div className="mt-5 whitespace-pre-wrap rounded-lg border border-white/10 bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
+        <div className="mt-5 whitespace-pre-wrap rounded-2xl bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
           {message}
         </div>
       )}
@@ -412,7 +412,7 @@ export default function MediaTab({ password, role = "admin" }: { password: strin
       {/* Uploaders can't browse the library; they just see what they've added on this visit. */}
       {!isAdmin && sessionUploads.length > 0 && (
         <div className="mt-6">
-          <h4 className="font-display text-base uppercase text-brand-orange">Added this visit</h4>
+          <h4 className="font-display text-lg uppercase text-brand-text">Added this visit</h4>
           <ul className="mt-2 space-y-1 font-sans text-xs text-brand-textSecondary">
             {sessionUploads.map((u, i) => (
               <li key={`${u.name}-${i}`}>
@@ -425,7 +425,7 @@ export default function MediaTab({ password, role = "admin" }: { password: strin
 
       {isAdmin && loaded && pool.length > 0 && (
         <div className="mt-8 rounded-xl border border-brand-orange/40 bg-brand-bg p-4">
-          <h4 className="font-display text-base uppercase text-brand-orange">
+          <h4 className="font-display text-lg uppercase text-brand-text">
             Unassigned ({pool.length}) &mdash; waiting to be paired
           </h4>
           <p className="mt-1 font-sans text-xs text-brand-textMuted">

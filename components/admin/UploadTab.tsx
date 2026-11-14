@@ -104,7 +104,7 @@ export default function UploadTab({ password }: { password: string }) {
 
   return (
     <div>
-      <h3 className="font-display text-lg uppercase text-brand-orange">Weekly Scoreholio results</h3>
+      <h3 className="font-display text-xl uppercase text-brand-text">Weekly Scoreholio results</h3>
       <p className="mt-2 font-sans text-sm text-brand-textSecondary">
         Upload the week&apos;s Scoreholio exports at once: the Switch ScoreMagic and RoundRobin-Standings files, and the Blind Draw
         ScoreMagic and Bracket-Standings files. Add each event&apos;s Match Log too if you want game-by-game detail in the weekly recap. The week, event types, Blind Draw bonuses (3/2/1, both teammates) and each player&apos;s best 9
@@ -116,7 +116,7 @@ export default function UploadTab({ password }: { password: string }) {
         <input
           value={shSeason}
           onChange={(e) => setShSeason(e.target.value)}
-          className="mt-2 block w-full rounded-lg border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text"
+          className="mt-2 block w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text"
         />
       </label>
 
@@ -127,7 +127,7 @@ export default function UploadTab({ password }: { password: string }) {
           multiple
           accept=".csv,.xlsx,.xls"
           onChange={(e) => setShFiles(Array.from(e.target.files || []))}
-          className="mt-2 block w-full rounded-lg border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text file:mr-4 file:rounded-full file:border-0 file:bg-brand-orange file:px-4 file:py-2 file:font-sans file:text-xs file:font-bold file:uppercase file:text-brand-bg"
+          className="mt-2 block w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text file:mr-4 file:rounded-full file:border-0 file:bg-brand-orange file:px-4 file:py-2 file:font-sans file:text-xs file:font-bold file:uppercase file:text-brand-bg"
         />
       </label>
 
@@ -136,7 +136,7 @@ export default function UploadTab({ password }: { password: string }) {
       </button>
 
       {shMessage && (
-        <div className="mt-5 whitespace-pre-wrap rounded-lg border border-white/10 bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
+        <div className="mt-5 whitespace-pre-wrap rounded-2xl bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
           {shMessage}
         </div>
       )}
@@ -165,7 +165,7 @@ export default function UploadTab({ password }: { password: string }) {
               setMessage("");
             }
           }}
-          className="mt-2 block w-full rounded-lg border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text file:mr-4 file:rounded-full file:border-0 file:bg-brand-orange file:px-4 file:py-2 file:font-sans file:text-xs file:font-bold file:uppercase file:text-brand-bg"
+          className="mt-2 block w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-3 font-sans text-sm text-brand-text file:mr-4 file:rounded-full file:border-0 file:bg-brand-orange file:px-4 file:py-2 file:font-sans file:text-xs file:font-bold file:uppercase file:text-brand-bg"
         />
       </label>
 
@@ -179,7 +179,7 @@ export default function UploadTab({ password }: { password: string }) {
       </button>
 
       {message && (
-        <div className="mt-5 whitespace-pre-wrap rounded-lg border border-white/10 bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
+        <div className="mt-5 whitespace-pre-wrap rounded-2xl bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
           {message}
         </div>
       )}

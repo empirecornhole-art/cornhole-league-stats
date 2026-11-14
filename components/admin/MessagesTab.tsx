@@ -61,7 +61,7 @@ export default function MessagesTab({ password }: { password: string }) {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg border border-white/10 bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
+        <div className="mt-4 rounded-2xl bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
           {error}
         </div>
       )}
@@ -74,7 +74,7 @@ export default function MessagesTab({ password }: { password: string }) {
           <p className="font-sans text-sm text-brand-textMuted">No messages yet.</p>
         )}
         {messages?.map((m) => (
-          <article key={m.id} className="rounded-xl border border-white/10 bg-brand-bg p-4">
+          <article key={m.id} className="rounded-2xl bg-brand-bg p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h4 className="font-sans text-base font-bold text-brand-text">{m.name}</h4>
               <time className="font-sans text-xs text-brand-textMuted" dateTime={m.created_at}>

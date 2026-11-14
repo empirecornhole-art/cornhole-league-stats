@@ -242,7 +242,7 @@ export default function EventsTab({ password }: { password: string }) {
       </div>
 
       {message && (
-        <div className="mt-4 rounded-lg border border-white/10 bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
+        <div className="mt-4 rounded-2xl bg-brand-bg p-4 font-sans text-sm text-brand-textSecondary">
           {message}
         </div>
       )}
@@ -262,7 +262,7 @@ export default function EventsTab({ password }: { password: string }) {
                 type="date"
                 value={form.event_date}
                 onChange={(e) => setForm({ ...form, event_date: e.target.value })}
-                className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-2.5 font-sans text-sm text-brand-text focus:border-brand-orange focus:outline-none"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-2.5 font-sans text-sm text-brand-text focus:border-brand-orange focus:outline-none"
               />
             </label>
 
@@ -275,7 +275,7 @@ export default function EventsTab({ password }: { password: string }) {
                 value={form.time}
                 onChange={(e) => setForm({ ...form, time: e.target.value })}
                 placeholder="6:30 PM"
-                className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
               />
             </label>
 
@@ -288,7 +288,7 @@ export default function EventsTab({ password }: { password: string }) {
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Blind Draw Night — Week 13"
-                className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
               />
             </label>
 
@@ -301,7 +301,7 @@ export default function EventsTab({ password }: { password: string }) {
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
                 placeholder="Pittsfield Firehouse"
-                className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
               />
             </label>
 
@@ -314,7 +314,7 @@ export default function EventsTab({ password }: { password: string }) {
                 value={form.tag}
                 onChange={(e) => setForm({ ...form, tag: e.target.value })}
                 placeholder="Weekly"
-                className="mt-2 w-full rounded-lg border border-white/10 bg-brand-panel px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
               />
             </label>
 
@@ -352,7 +352,7 @@ export default function EventsTab({ password }: { password: string }) {
         {events?.map((event) => (
           <div
             key={event.id}
-            className="flex flex-col gap-3 rounded-xl border border-white/10 bg-brand-bg p-4 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-2xl bg-brand-bg p-4 sm:flex-row sm:items-center sm:justify-between"
           >
             <div>
               <div className="flex flex-wrap items-center gap-2">
