@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import EventCard from "./EventCard";
+import StaggerIn from "./StaggerIn";
 
 export type EventDisplay = {
   id: string;
@@ -53,7 +54,7 @@ export default function EventsListToggle({
         </button>
       </div>
 
-      <div key={view} className="tab-transition mt-10 flex flex-col gap-4">
+      <StaggerIn key={view} className="mt-10 flex flex-col gap-4">
         {events.length === 0 && (
           <p className="rounded-2xl border border-white/10 bg-brand-bg p-6 text-center font-sans text-sm text-brand-textSecondary">
             {view === "upcoming"
@@ -71,7 +72,7 @@ export default function EventsListToggle({
             showRegister={view === "upcoming"}
           />
         ))}
-      </div>
+      </StaggerIn>
     </div>
   );
 }

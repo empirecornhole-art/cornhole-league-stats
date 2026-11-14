@@ -4,6 +4,8 @@ import localFont from "next/font/local";
 import Nav from "../components/site/Nav";
 import Footer from "../components/site/Footer";
 import SmoothScroll from "../components/site/SmoothScroll";
+import ScrollCascade from "../components/site/ScrollCascade";
+import CascadeTuner from "../components/site/CascadeTuner";
 
 const anton = localFont({
   src: "./fonts/anton-400.woff2",
@@ -43,9 +45,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${anton.variable} ${barlow.variable}`}>
+    <html lang="en" className={`${anton.variable} ${barlow.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Sets html[data-cascade="on"] before first paint so scroll-in items start hidden (see ScrollCascade). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var d=document.documentElement;if(!matchMedia('(prefers-reduced-motion: reduce)').matches){d.dataset.cascade='on';setTimeout(function(){if(d.dataset.cascade==='on')d.dataset.cascade='off'},4000)}}catch(e){}})()",
+          }}
+        />
+      </head>
       <body className="font-sans">
         <SmoothScroll />
+        <ScrollCascade />
+        <CascadeTuner />
         <Nav />
         {children}
         <Footer />

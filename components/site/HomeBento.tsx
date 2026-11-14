@@ -63,7 +63,7 @@ export default function HomeBento({
   return (
     <section className="bg-brand-bg">
       <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-        <div className="reveal max-w-2xl">
+        <div data-cascade className="max-w-2xl">
           <span className="eyebrow">{weekLine || "This season"}</span>
           <h2 className="heading-section mt-4">Right now in the league.</h2>
         </div>
@@ -71,7 +71,7 @@ export default function HomeBento({
         <div className="mt-10 grid grid-cols-1 gap-4 md:mt-14 lg:grid-cols-12 lg:gap-5">
           {/* Standings */}
           {standings && (
-            <div className={`reveal ${TILE} flex flex-col p-6 md:p-8 ${next ? "lg:col-span-5 lg:row-span-2" : "lg:col-span-12"}`}>
+            <div data-cascade className={`${TILE} flex flex-col p-6 md:p-8 ${next ? "lg:col-span-5 lg:row-span-2" : "lg:col-span-12"}`}>
               <div className="flex items-baseline justify-between gap-4">
                 <h3 className="heading-card">Season standings</h3>
                 <span className="eyebrow">{standings.season}</span>
@@ -109,8 +109,8 @@ export default function HomeBento({
           {/* Next event */}
           {next && (
             <div
-              className={`reveal ${TILE} relative overflow-hidden p-6 md:p-8 ${standings ? "lg:col-span-7" : "lg:col-span-12"}`}
-              style={{ "--i": 1 } as React.CSSProperties}
+              data-cascade
+              className={`${TILE} relative overflow-hidden p-6 md:p-8 ${standings ? "lg:col-span-7" : "lg:col-span-12"}`}
             >
               <div
                 className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-orange/20 blur-[90px]"
@@ -156,11 +156,12 @@ export default function HomeBento({
             {QUICK_LINKS.map((link, i) => (
               <SpotlightCard
                 key={link.href}
-                style={{ "--i": i + 2, "--spotlight-card-surface": "#141210", "--spotlight-card-border": "rgba(255,255,255,0)" } as React.CSSProperties}
+                data-cascade=""
+                style={{ "--spotlight-card-surface": "#141210", "--spotlight-card-border": "rgba(255,255,255,0)" } as React.CSSProperties}
                 spotlightColor="#f04a22"
                 intensity={0.28}
                 spotlightSize={200}
-                className="reveal !rounded-3xl !p-0 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1"
+                className="!rounded-3xl !p-0 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1"
               >
                 <Link href={link.href} className="group flex h-full min-h-32 flex-col justify-between gap-6 p-5 active:scale-[0.98] md:p-6">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange text-brand-bg">{link.icon}</span>

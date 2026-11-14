@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import FluidBackground from "../components/site/FluidBackground";
 import SplitHeading from "../components/site/SplitHeading";
-import Marquee from "../components/site/Marquee";
 import HomeBento, { type BentoEvent } from "../components/site/HomeBento";
 import ExpandableRecap from "../components/site/ExpandableRecap";
 import RecapBody from "../components/site/RecapBody";
@@ -129,13 +128,11 @@ export default async function Home() {
 
       <HomeBento standings={standings} events={upcomingEvents} weekLine={weekLine} />
 
-      <Marquee />
-
       {/* Latest recap: the newest published recap with that week's photos */}
       {homeRecap && (homeRecap.body || shownPhotos.length > 0) && (
         <section className="bg-brand-bg">
           <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-            <div className="reveal flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+            <div data-cascade className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
               <div>
                 <span className="eyebrow">{homeRecap.season} &middot; Latest</span>
                 <h2 className="heading-section mt-4">Week {homeRecap.week} recap</h2>
@@ -148,7 +145,8 @@ export default async function Home() {
             <div className={`mt-12 grid grid-cols-1 gap-6 lg:gap-8 ${homeRecap.body && shownPhotos.length > 0 ? "lg:grid-cols-12" : ""}`}>
               {homeRecap.body && (
                 <div
-                  className={`reveal rounded-3xl bg-brand-panel p-6 md:p-8 ${
+                  data-cascade
+                  className={`rounded-3xl bg-brand-panel p-6 md:p-8 ${
                     shownPhotos.length > 0 ? "lg:col-span-7" : "mx-auto w-full max-w-3xl"
                   }`}
                 >
@@ -159,7 +157,7 @@ export default async function Home() {
               )}
 
               {shownPhotos.length > 0 && (
-                <div className={`reveal ${homeRecap.body ? "lg:sticky lg:top-24 lg:col-span-5 lg:self-start" : ""}`} style={{ "--i": 1 } as React.CSSProperties}>
+                <div data-cascade className={homeRecap.body ? "lg:sticky lg:top-24 lg:col-span-5 lg:self-start" : ""}>
                   <div className={`grid gap-2 sm:gap-3 ${mosaic ? "grid-cols-3" : "grid-cols-2"}`}>
                     {shownPhotos.map((photo, i) => {
                       const big = mosaic ? i === 0 : shownPhotos.length % 2 === 1 && i === 0;
@@ -211,8 +209,8 @@ export default async function Home() {
       {/* Store teaser */}
       <section className="bg-brand-panel">
         <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-          <div className="reveal grid grid-cols-1 items-center gap-10 md:grid-cols-2">
-            <div>
+          <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
+            <div data-cascade>
               <span className="eyebrow">
                 Repping The League
               </span>
@@ -233,6 +231,7 @@ export default async function Home() {
                   <Link
                     key={item.id}
                     href="/leagues?tab=store"
+                    data-cascade
                     className="group overflow-hidden rounded-2xl bg-brand-bg"
                   >
                     <div className="aspect-square overflow-hidden bg-white/5">

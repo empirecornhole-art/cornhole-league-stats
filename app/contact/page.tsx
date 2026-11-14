@@ -72,7 +72,7 @@ export default async function ContactPage() {
           <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
             <div className="flex flex-col gap-4">
               {infoCards.map((card) => (
-                <div key={card.label} className="flex gap-4 rounded-2xl border border-white/10 bg-brand-bg p-6">
+                <div key={card.label} data-cascade className="flex gap-4 rounded-2xl border border-white/10 bg-brand-bg p-6">
                   <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-orangeHover text-brand-bg">
                     {card.icon}
                   </div>
@@ -88,7 +88,7 @@ export default async function ContactPage() {
               ))}
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-brand-bg p-6 md:p-8">
+            <div data-cascade className="rounded-2xl border border-white/10 bg-brand-bg p-6 md:p-8">
               <ContactForm />
             </div>
           </div>

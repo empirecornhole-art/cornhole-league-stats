@@ -36,7 +36,8 @@ export default function EventCard({
   return (
     <div
       style={index === undefined ? undefined : ({ "--i": Math.min(index, 5) } as React.CSSProperties)}
-      className={`flex h-full flex-col gap-5 rounded-2xl border p-5 sm:p-6 ${index === undefined ? "" : "reveal "}${tone} ${
+      data-cascade={index === undefined ? undefined : ""}
+      className={`flex h-full flex-col gap-5 rounded-2xl border p-5 sm:p-6 ${tone} ${
         layout === "row" ? "sm:flex-row sm:items-center sm:justify-between" : ""
       }`}
     >
