@@ -6,6 +6,7 @@ import type { LeagueData } from "./types";
 import type { EventRow } from "./events";
 import type { StorePreviewItem } from "./storePreview";
 import type { HomeRecap } from "./homeRecap";
+import type { HomeStandings } from "./homeStandings";
 
 export function useDevMock(): boolean {
   return process.env.NODE_ENV === "development" && !process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -189,4 +190,12 @@ export function mockEvents(upcoming: boolean): EventRow[] {
     register_url: upcoming ? "#" : null,
     created_at: new Date().toISOString(),
   }));
+}
+
+export function mockHomeStandings(limit: number): HomeStandings {
+  return {
+    season: SEASON,
+    rows: NAMES.slice(0, limit).map((name, i) => ({ name, points: 220 - i * 7 - (i % 3) })),
+    playerCount: NAMES.length,
+  };
 }
