@@ -1619,9 +1619,9 @@ export default function LeagueClient() {
             )}
 
             {(filters.season || filters.player || filters.week) && (
-              <div className="flex flex-wrap items-end gap-x-3 gap-y-2.5">
+              <div className="grid grid-cols-2 items-end gap-x-3 gap-y-2.5 md:flex md:flex-wrap">
                 {filters.season && (
-                  <div className="min-w-[8rem] flex-1 md:flex-none">
+                  <div className="min-w-0 md:min-w-[8rem]">
                     <label htmlFor="filter-season" className="field-label mb-1 block">Season</label>
                     <select
                       id="filter-season"
@@ -1640,7 +1640,7 @@ export default function LeagueClient() {
                 )}
 
                 {filters.week && (
-                  <div className="min-w-[8rem] flex-1 md:flex-none">
+                  <div className="min-w-0 md:min-w-[8rem]">
                     <label htmlFor="filter-week" className="field-label mb-1 block">Week</label>
                     <select id="filter-week" className="field-control block w-full md:w-auto" value={dashboardWeek} onChange={(e) => setDashboardWeek(e.target.value)}>
                       {dashboardWeeks.map((w) => (
@@ -1651,7 +1651,7 @@ export default function LeagueClient() {
                 )}
 
                 {filters.player && (
-                  <div className="w-full md:w-64">
+                  <div className={`min-w-0 md:w-64 ${filters.week ? "col-span-2" : ""}`}>
                     <label htmlFor="filter-player" className="field-label mb-1 block">Player</label>
                     <PlayerCombobox id="filter-player" players={playerPickerOptions} value={player} onChange={setPlayer} allLabel="All Players" />
                   </div>
@@ -1952,15 +1952,12 @@ export default function LeagueClient() {
 
         {tab === "compare" && (
           <Card title="Compare Players">
-            <div className="mb-4 flex flex-wrap gap-3">
-              <div className="w-full sm:w-64">
-                <PlayerCombobox players={seasonPlayers} value={compareA} onChange={setCompareA} placeholder="Player A" />
-              </div>
-              <div className="w-full sm:w-64">
-                <PlayerCombobox players={seasonPlayers} value={compareB} onChange={setCompareB} placeholder="Player B" />
-              </div>
+            <div className="mb-4 grid gap-3 sm:grid-cols-[34%_1fr_1fr]">
+              <div className="hidden sm:block" />
+              <PlayerCombobox players={seasonPlayers} value={compareA} onChange={setCompareA} placeholder="Player A" />
+              <PlayerCombobox players={seasonPlayers} value={compareB} onChange={setCompareB} placeholder="Player B" />
             </div>
-            <CompareTable statA={statA} statB={statB} />
+            <CompareTable statA={statA} statB={statB} nameA={compareA} nameB={compareB} />
           </Card>
         )}
 
@@ -2430,8 +2427,20 @@ function BadgeGrid({ badges, highlightPlayer }: { badges: BadgeInfo[]; highlight
   );
 }
 
+// Badges everyone earns (attendance, games played) list the whole league; show
+// a handful and tuck the rest behind a toggle so the page isn't a wall of names.
+const BADGE_WINNERS_PREVIEW = 5;
+
 function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlayer?: string }) {
+  const [expanded, setExpanded] = useState(false);
   const tied = badge.winners.length > 1;
+  const highlightAt = highlightPlayer ? badge.winners.indexOf(highlightPlayer) : -1;
+  const collapsible = badge.winners.length > BADGE_WINNERS_PREVIEW + 1;
+  const winners =
+    !collapsible || expanded
+      ? badge.winners
+      : badge.winners.slice(0, BADGE_WINNERS_PREVIEW).concat(highlightAt >= BADGE_WINNERS_PREVIEW ? [highlightPlayer as string] : []);
+  const hidden = badge.winners.length - winners.length;
   return (
     <div className="rounded-xl border border-white/10 bg-brand-bg p-4">
       <div className="mb-1 flex items-center gap-2">
@@ -2440,7 +2449,7 @@ function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlay
       </div>
       <p className="mb-3 text-xs text-brand-textFaint">{badge.description}</p>
       <div className="space-y-1">
-        {badge.winners.map((name) => (
+        {winners.map((name) => (
           <div
             key={name}
             className={`rounded-lg px-2 py-1 text-sm ${
@@ -2450,6 +2459,15 @@ function BadgeCard({ badge, highlightPlayer }: { badge: BadgeInfo; highlightPlay
             {name}
           </div>
         ))}
+        {collapsible && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-1 min-h-9 px-2 text-sm font-semibold text-brand-textMuted hover:text-brand-text"
+          >
+            {expanded ? "Show fewer" : `+${hidden} more`}
+          </button>
+        )}
       </div>
       {badge.display && (
         <div className="mt-2 text-right text-xs font-bold text-brand-textMuted">
@@ -3065,14 +3083,19 @@ function ScenarioTable({
   );
 }
 
-function CompareTable({ statA, statB }: { statA: any; statB: any }) {
+function CompareTable({ statA, statB, nameA, nameB }: { statA: any; statB: any; nameA: string; nameB: string }) {
   const columns = visibleStatColumns([statA, statB]);
   return (
     <div className="scroll-shadow-x overflow-x-auto">
-      <table className="data-table">
+      <table className="data-table table-fixed">
+        <colgroup><col style={{ width: "34%" }} /><col /><col /></colgroup>
+        {/* On phones the pickers sit above the table, so the picked names head the columns. */}
+        <thead className="sm:hidden">
+          <tr><th /><th className="truncate text-brand-text">{nameA || "Player A"}</th><th className="truncate text-brand-text">{nameB || "Player B"}</th></tr>
+        </thead>
         <tbody>
           {columns.map((col) => (
-            <tr key={col.label}><td className="whitespace-nowrap text-brand-textSecondary">{col.label}</td><td>{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td>{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
+            <tr key={col.label}><td className="text-brand-textSecondary">{col.label}</td><td className="font-semibold text-brand-text">{formatValue(getStatValue(statA, col.keys), col.decimals)}</td><td className="font-semibold text-brand-text">{formatValue(getStatValue(statB, col.keys), col.decimals)}</td></tr>
           ))}
         </tbody>
       </table>
