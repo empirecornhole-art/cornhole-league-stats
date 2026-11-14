@@ -1394,10 +1394,47 @@ export default function LeagueClient() {
   }, [profileWeeklyRows]);
 
   const progressData = profileSeasonStats.map((row) => ({
-    season: getSeason(row),
+    label: getSeason(row),
     PPR: numberVal(getStatValue(row, ["Average PPR", "PPR"])),
     DPR: numberVal(getStatValue(row, ["Average DPR", "DPR"])),
   }));
+
+  // Where the player sits in the season they're viewing (not shown for "All Seasons").
+  const profileRank = useMemo(() => {
+    if (!selectedProfilePlayer || profileSeason === "All Seasons") return null;
+    const rows = (data?.standings || [])
+      .filter((row) => isValidPlayerName(getPlayer(row)) && getSeason(row, profileSeason) === profileSeason)
+      .map((row) => ({ name: getPlayer(row), points: pointValue(row) }))
+      .filter((row) => row.points > 0)
+      .sort((a, b) => b.points - a.points);
+    const index = rows.findIndex((row) => row.name === selectedProfilePlayer);
+    return index >= 0 ? { rank: index + 1, total: rows.length, points: rows[index].points } : null;
+  }, [data, selectedProfilePlayer, profileSeason]);
+
+  // The trend line: season by season across a career, or week by week inside one season.
+  // Needs at least two points to mean anything, so a lone season shows no chart.
+  const profileTrend = useMemo(() => {
+    if (!selectedProfilePlayer) return null;
+    if (profileSeason === "All Seasons") {
+      return progressData.length >= 2 ? { title: "Season by season", data: progressData } : null;
+    }
+    const byWeek = new Map<string, { ppr: number[]; dpr: number[] }>();
+    for (const row of allWeeklyMerged) {
+      if (getPlayer(row) !== selectedProfilePlayer || getSeason(row) !== profileSeason) continue;
+      const week = getWeek(row);
+      if (!week) continue;
+      const entry = byWeek.get(week) || { ppr: [], dpr: [] };
+      if (numberVal(row.PPR) > 0) entry.ppr.push(numberVal(row.PPR));
+      if (numberVal(row.DPR) !== 0) entry.dpr.push(numberVal(row.DPR));
+      byWeek.set(week, entry);
+    }
+    const mean = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : null);
+    const data = Array.from(byWeek.entries())
+      .sort(([a], [b]) => weekSort(a, b))
+      .map(([week, v]) => ({ label: `Wk ${numberVal(week)}`, PPR: mean(v.ppr), DPR: mean(v.dpr) }))
+      .filter((row) => row.PPR !== null);
+    return data.length >= 2 ? { title: `${profileSeason}, week by week`, data } : null;
+  }, [selectedProfilePlayer, profileSeason, allWeeklyMerged, progressData]);
 
 
   const scenarioSeasonScores = useMemo(
@@ -1845,75 +1882,47 @@ export default function LeagueClient() {
         )}
 
         {tab === "players" && (
-          <Card
-            title={selectedProfilePlayer ? `${selectedProfilePlayer} Profile` : "Player Profile"}
-            actions={selectedProfilePlayer && shareUrl ? <ShareButton url={shareUrl} /> : undefined}
-          >
-            {!selectedProfilePlayer ? (
-              <p className="text-brand-textMuted">Choose a player from the top Player dropdown to view their profile.</p>
-            ) : (
-              <div className="space-y-6">
-                <div className="flex flex-wrap gap-3">
-                  <select className="field-control" value={profileSeason} onChange={(e) => { setProfileSeason(e.target.value); setProfileWeek("All Weeks"); }}>
-                    <option>All Seasons</option>
-                    {seasons.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                  <select className="field-control" value={profileWeek} onChange={(e) => setProfileWeek(e.target.value)}>
-                    <option>All Weeks</option>
-                    {profileWeeks.map((w) => <option key={w}>{w}</option>)}
-                  </select>
-                  <select className="field-control" value={profileType} onChange={(e) => setProfileType(e.target.value as EventFilter)}>
-                    <option>All</option>
-                    <option value="Blind">Blind</option>
-                    <option value="Swap">Switch</option>
-                  </select>
-                </div>
-
-                {profileSeason === "All Seasons" ? (
-                  <CareerStatsSummary
-                    row={careerRows.find((r) => r.name === selectedProfilePlayer)}
-                    columns={careerColumns}
-                  />
-                ) : (
-                  <PlayerStatsSummary row={profileSeasonStats[profileSeasonStats.length - 1]} />
-                )}
-
-                <div>
-                  <h3 className="mb-3 font-display text-lg uppercase text-brand-textSecondary">Season Finishes</h3>
-                  <SeasonFinishesTable rows={profileSeasonStats} />
-                </div>
-
-                <div>
-                  <h3 className="mb-3 font-display text-lg uppercase text-brand-textSecondary">Progress Over Time</h3>
-                  <div className="h-72 rounded-xl border border-white/10 p-3">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={progressData}>
-                        <XAxis dataKey="season" {...CHART_AXIS} />
-                        <YAxis {...CHART_AXIS} />
-                        <Tooltip {...CHART_TOOLTIP} />
-                        <Legend wrapperStyle={{ color: "#c9c5bf", fontSize: 13 }} />
-                        <Line type="monotone" dataKey="DPR" stroke={CHART_COLORS.secondary} strokeWidth={2.5} dot={false} />
-                        <Line type="monotone" dataKey="PPR" stroke={CHART_COLORS.primary} strokeWidth={2.5} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="mb-3 font-display text-lg uppercase text-brand-textSecondary">Weekly Breakdown</h3>
-                  <div className="space-y-4">
-                    {groupedProfileWeeks.map(([label, rows]) => (
-                      <div key={label} className="rounded-xl border border-white/10 bg-brand-raised p-4">
-                        <h4 className="mb-3 font-display text-xl uppercase">{label}</h4>
-                        <WeeklyTable rows={rows} />
-                        <EventSummary rows={rows} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          selectedProfilePlayer ? (
+            <PlayerProfile
+              name={selectedProfilePlayer}
+              seasons={seasons}
+              profileSeason={profileSeason}
+              onSeasonChange={(value) => {
+                setProfileSeason(value);
+                setProfileWeek("All Weeks");
+              }}
+              rank={profileRank}
+              badges={profileSeason === season ? seasonBadges.filter((b) => b.winners.includes(selectedProfilePlayer)) : []}
+              seasonRow={profileSeasonStats[profileSeasonStats.length - 1]}
+              careerRow={careerRows.find((r) => r.name === selectedProfilePlayer)}
+              careerColumns={careerColumns}
+              seasonRows={profileSeasonStats}
+              trend={profileTrend}
+              weekOptions={profileWeeks}
+              week={profileWeek}
+              onWeekChange={setProfileWeek}
+              type={profileType}
+              onTypeChange={setProfileType}
+              logRows={profileWeeklyRows}
+              shareUrl={shareUrl}
+            />
+          ) : (
+            <Card title="Player Profile">
+              <p className="mb-5 text-brand-textSecondary">Pick a player above, or jump straight to one of the leaders.</p>
+              <div className="flex flex-wrap gap-2">
+                {dashboardStandings.slice(0, 12).map((row) => (
+                  <button
+                    key={row.name}
+                    type="button"
+                    onClick={() => openPlayerProfile(row.name)}
+                    className="min-h-11 rounded-full bg-white/[0.07] px-4 font-sans text-[0.9375rem] font-semibold text-brand-text transition-colors duration-150 hover:bg-white/[0.12]"
+                  >
+                    {row.name}
+                  </button>
+                ))}
               </div>
-            )}
-          </Card>
+            </Card>
+          )
         )}
 
         {tab === "scenarios" && (
@@ -1988,6 +1997,232 @@ export default function LeagueClient() {
       </nav>
     </main>
   );
+}
+
+// One player's page: who they are and where they stand, four headline numbers
+// (everything else a tap away), the trend, and a single log of every event
+// they played. Replaces the old stack of identical per-week cards.
+const HEADLINE_STATS: { label: string; career: string; season: string[]; decimals: number }[] = [
+  { label: "Points", career: "totalPts", season: ["Total Pts", "Total Points"], decimals: 0 },
+  { label: "PPR", career: "avgPPR", season: ["Average PPR", "PPR"], decimals: 2 },
+  { label: "DPR", career: "avgDPR", season: ["Average DPR", "DPR"], decimals: 2 },
+  { label: "Rounds", career: "totalRounds", season: ["Total Rounds"], decimals: 0 },
+];
+
+function PlayerProfile({
+  name,
+  seasons,
+  profileSeason,
+  onSeasonChange,
+  rank,
+  badges,
+  seasonRow,
+  careerRow,
+  careerColumns,
+  seasonRows,
+  trend,
+  weekOptions,
+  week,
+  onWeekChange,
+  type,
+  onTypeChange,
+  logRows,
+  shareUrl,
+}: {
+  name: string;
+  seasons: string[];
+  profileSeason: string;
+  onSeasonChange: (value: string) => void;
+  rank: { rank: number; total: number; points: number } | null;
+  badges: BadgeInfo[];
+  seasonRow: any;
+  careerRow: any;
+  careerColumns: { key: string; label: string; decimals: number }[];
+  seasonRows: any[];
+  trend: { title: string; data: { label: string; PPR: number | null; DPR: number | null }[] } | null;
+  weekOptions: string[];
+  week: string;
+  onWeekChange: (value: string) => void;
+  type: EventFilter;
+  onTypeChange: (value: EventFilter) => void;
+  logRows: any[];
+  shareUrl: string;
+}) {
+  const career = profileSeason === "All Seasons";
+  const hasData = career ? !!careerRow : !!seasonRow;
+  const [showAllEvents, setShowAllEvents] = useState(false);
+  const EVENT_PREVIEW = 10;
+  const visibleLog = showAllEvents ? logRows : logRows.slice(0, EVENT_PREVIEW);
+  const allStatTiles = career
+    ? careerColumns.map((col) => ({ label: col.label, value: formatValue(careerRow?.[col.key], col.decimals) }))
+    : visibleStatColumns([seasonRow]).filter((col) => col.label !== "Finish").map((col) => ({ label: col.label, value: formatValue(getStatValue(seasonRow, col.keys), col.decimals) }));
+
+  return (
+    <div className="space-y-4 md:space-y-5">
+      <section className="rounded-3xl bg-brand-panel p-5 md:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <span className="eyebrow">{career ? "Career" : profileSeason}</span>
+            <h2 className="mt-2 break-words font-display text-5xl uppercase leading-[0.95] text-brand-text md:text-7xl">{name}</h2>
+          </div>
+          {shareUrl && <ShareButton url={shareUrl} />}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          {rank && (
+            <span className="rounded-full bg-brand-orange px-3.5 py-1.5 font-sans text-sm font-bold text-brand-bg">
+              {ordinal(rank.rank)} of {rank.total}
+            </span>
+          )}
+          {rank && <span className="font-sans text-sm font-semibold text-brand-textSecondary">{formatValue(rank.points, 0)} league points</span>}
+          {badges.map((badge) => (
+            <span key={badge.id} title={badge.description} className="rounded-full bg-white/[0.07] px-3 py-1.5 font-sans text-sm font-semibold text-brand-text">
+              <span aria-hidden>{badge.icon}</span> {badge.title}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-5 max-w-xs">
+          <label htmlFor="profile-season" className="field-label mb-1 block">Viewing</label>
+          <select id="profile-season" className="field-control block w-full" value={profileSeason} onChange={(e) => onSeasonChange(e.target.value)}>
+            <option>All Seasons</option>
+            {seasons.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+      </section>
+
+      {!hasData ? (
+        <section className="rounded-3xl bg-brand-panel p-5 md:p-8">
+          <p className="text-brand-textMuted">No stats on record for {name}{career ? "" : ` in ${profileSeason}`}.</p>
+        </section>
+      ) : (
+        <>
+          <StaggerIn className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+            {HEADLINE_STATS.map((stat) => (
+              <div key={stat.label} className="rounded-3xl bg-brand-panel p-5 md:p-6">
+                <div className="eyebrow">{stat.label}</div>
+                <div className="mt-2 font-display text-5xl leading-none tabular-nums text-brand-text md:text-6xl">
+                  <AnimatedNumber value={formatValue(career ? careerRow?.[stat.career] : getStatValue(seasonRow, stat.season), stat.decimals)} />
+                </div>
+              </div>
+            ))}
+          </StaggerIn>
+
+          <details className="group rounded-3xl bg-brand-panel p-5 md:p-6">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between font-display text-lg uppercase text-brand-textSecondary [&::-webkit-details-marker]:hidden">
+              All stats
+              <svg viewBox="0 0 20 20" className="h-4 w-4 transition-transform duration-200 group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+                <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </summary>
+            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
+              {allStatTiles.map((tile) => (
+                <div key={tile.label} className="rounded-2xl bg-brand-bg p-4">
+                  <div className="text-xs font-semibold text-brand-textMuted">{tile.label}</div>
+                  <div className="mt-1 text-xl font-bold tabular-nums text-brand-text">{tile.value}</div>
+                </div>
+              ))}
+            </div>
+          </details>
+
+          {trend && (
+            <section className="rounded-3xl bg-brand-panel p-5 md:p-8">
+              <h3 className="font-display text-2xl uppercase text-brand-text">{trend.title}</h3>
+              <div className="mt-5 h-64 md:h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trend.data} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+                    <XAxis dataKey="label" {...CHART_AXIS} />
+                    <YAxis {...CHART_AXIS} />
+                    <Tooltip {...CHART_TOOLTIP} />
+                    <Legend wrapperStyle={{ color: "#c9c5bf", fontSize: 13 }} />
+                    <Line type="monotone" dataKey="DPR" stroke={CHART_COLORS.secondary} strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
+                    <Line type="monotone" dataKey="PPR" stroke={CHART_COLORS.primary} strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          )}
+
+          {career && seasonRows.length > 0 && (
+            <section className="rounded-3xl bg-brand-panel p-5 md:p-8">
+              <h3 className="mb-4 font-display text-2xl uppercase text-brand-text">Seasons</h3>
+              <SeasonFinishesTable rows={seasonRows} />
+            </section>
+          )}
+
+          <section className="rounded-3xl bg-brand-panel p-5 md:p-8">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <h3 className="font-display text-2xl uppercase text-brand-text">Every event</h3>
+              <div className="flex flex-wrap items-end gap-3">
+                <select aria-label="Week" className="field-control" value={week} onChange={(e) => onWeekChange(e.target.value)}>
+                  <option>All Weeks</option>
+                  {weekOptions.map((w) => <option key={w}>{w}</option>)}
+                </select>
+                <Segmented<EventFilter>
+                  label="Event type"
+                  items={[{ id: "All", label: "All" }, { id: "Swap", label: "Switch" }, { id: "Blind", label: "Blind" }]}
+                  value={type}
+                  onChange={onTypeChange}
+                />
+              </div>
+            </div>
+
+            {logRows.length === 0 ? (
+              <p className="mt-5 text-brand-textMuted">No events match those filters.</p>
+            ) : (
+              <div className="scroll-shadow-x mt-5 overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-brand-panel">{career ? "Season / week" : "Week"}</th>
+                      <th>Event</th>
+                      <th>Pts</th>
+                      <th>PPR</th>
+                      <th>OPPR</th>
+                      <th>DPR</th>
+                      <th>Rounds</th>
+                      <th>4-Bag</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleLog.map((row, index) => (
+                      <tr key={`${getSeason(row)}-${getWeek(row)}-${getType(row)}-${index}`}>
+                        <td className="sticky left-0 z-10 whitespace-nowrap bg-brand-panel font-semibold text-brand-text">
+                          {career ? `${getSeason(row)} · ` : ""}{getWeek(row)}
+                        </td>
+                        <td className="whitespace-nowrap">{getType(row) === "Swap" ? "Switch" : getType(row) === "Blind" ? "Blind draw" : getType(row)}</td>
+                        <td className="font-bold text-brand-text">{formatValue(row.Points, 0)}</td>
+                        <td>{formatValue(row.PPR, 2)}</td>
+                        <td>{formatValue(row.OPPR, 2)}</td>
+                        <td>{formatValue(row.DPR, 2)}</td>
+                        <td>{formatValue(row.Rounds, 0)}</td>
+                        <td>{formatValue(row["4 Baggers"], 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {logRows.length > EVENT_PREVIEW && (
+              <button
+                type="button"
+                onClick={() => setShowAllEvents((v) => !v)}
+                className="mt-4 min-h-11 w-full rounded-full border border-white/15 px-5 text-[0.9375rem] font-semibold text-brand-textSecondary transition-colors duration-150 hover:border-white/35 hover:text-brand-text"
+              >
+                {showAllEvents ? "Show fewer" : `Show all ${logRows.length} events`}
+              </button>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ordinal(n: number) {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  return `${n}${["th", "st", "nd", "rd"][n % 10 > 3 ? 0 : n % 10]}`;
 }
 
 type MediaFeedItem = { id: string; season: string; week: number; kind: "photo" | "video"; url: string; caption: string };
