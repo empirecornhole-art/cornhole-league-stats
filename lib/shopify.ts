@@ -12,7 +12,14 @@ function shopifyEndpoint() {
   return `https://${domain}/api/${SHOPIFY_API_VERSION}/graphql.json`;
 }
 
-export async function shopifyFetch<T = any>(query: string, variables?: Record<string, any>): Promise<T> {
+// By default every call bypasses Next's fetch cache (carts must always be live).
+// Read-only callers that feed a cached page can pass { revalidate } so the page
+// isn't forced into per-request rendering by a no-store fetch.
+export async function shopifyFetch<T = any>(
+  query: string,
+  variables?: Record<string, any>,
+  options?: { revalidate?: number }
+): Promise<T> {
   const token = process.env.SHOPIFY_STOREFRONT_TOKEN;
   if (!token) {
     throw new Error("Missing SHOPIFY_STOREFRONT_TOKEN environment variable");
@@ -30,7 +37,7 @@ export async function shopifyFetch<T = any>(query: string, variables?: Record<st
       "Shopify-Storefront-Private-Token": token,
     },
     body: JSON.stringify({ query, variables }),
-    cache: "no-store",
+    ...(options?.revalidate ? { next: { revalidate: options.revalidate } } : { cache: "no-store" as const }),
   });
 
   if (!response.ok) {

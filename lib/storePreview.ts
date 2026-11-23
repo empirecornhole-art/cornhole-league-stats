@@ -41,7 +41,7 @@ function formatPrice(amount: string, currencyCode: string) {
 export async function getStorePreview(count: number): Promise<StorePreviewItem[]> {
   if (useDevMock() && !process.env.SHOPIFY_STOREFRONT_TOKEN) return mockStorePreview(count);
   try {
-    const data = await shopifyFetch<any>(STORE_PREVIEW_QUERY, { first: count * 3 });
+    const data = await shopifyFetch<any>(STORE_PREVIEW_QUERY, { first: count * 3 }, { revalidate: 300 });
     const nodes: any[] = data?.products?.edges?.map((e: any) => e.node) ?? [];
 
     return nodes
