@@ -300,7 +300,7 @@ export default function EventsTab({ password }: { password: string }) {
                 type="text"
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
-                placeholder="Pittsfield Firehouse"
+                placeholder="Pittsfield Fire Department"
                 className="mt-2 w-full rounded-xl border border-white/10 bg-brand-bg px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
               />
             </label>

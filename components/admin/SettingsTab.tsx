@@ -25,7 +25,7 @@ const EMPTY_SETTINGS: SettingsForm = {
 };
 
 const FIELDS: { key: keyof SettingsForm; label: string; placeholder: string }[] = [
-  { key: "venue_name", label: "Venue Name", placeholder: "Pittsfield Firehouse" },
+  { key: "venue_name", label: "Venue Name", placeholder: "Pittsfield Fire Department" },
   { key: "venue_address", label: "Venue Address", placeholder: "167 State Route 80, New Berlin, NY" },
   { key: "contact_email", label: "Contact Email", placeholder: "info@empirecornhole.com" },
   { key: "facebook_url", label: "Facebook URL", placeholder: "https://facebook.com/empirecornhole" },
