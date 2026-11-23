@@ -5,6 +5,7 @@ import { getSiteSettings } from "../../lib/settings";
 const EXPLORE_LINKS = [
   { href: "/", label: "Home" },
   { href: "/leagues", label: "League" },
+  { href: "/recaps", label: "Recaps" },
   { href: "/events", label: "Events" },
   { href: "/contact", label: "Contact" },
 ];

@@ -12,6 +12,7 @@ import { getUpcomingEvents } from "../lib/events";
 import { getSiteSettings } from "../lib/settings";
 import { getLatestImportedWeek } from "../lib/dataStamp";
 import { getHomeRecap, type HomeRecap } from "../lib/homeRecap";
+import { recapPath } from "../lib/recapPages";
 import { getHomeStandings, type HomeStandings } from "../lib/homeStandings";
 import { formatEventDateParts, formatEventDateShort } from "../lib/format";
 
@@ -147,9 +148,16 @@ export default async function Home() {
                 <span className="eyebrow">{homeRecap.season} &middot; Latest</span>
                 <h2 className="heading-section mt-4">Week {homeRecap.week} recap</h2>
               </div>
-              <Link href={recapHref} className="btn-secondary">
-                Full results
-              </Link>
+              <div className="flex flex-wrap gap-3">
+                {homeRecap.body && (
+                  <Link href={recapPath(homeRecap.season, homeRecap.week)} className="btn-primary">
+                    Read the full recap
+                  </Link>
+                )}
+                <Link href={recapHref} className="btn-secondary">
+                  Full results
+                </Link>
+              </div>
             </div>
 
             <div className={`mt-12 grid grid-cols-1 gap-6 lg:gap-8 ${homeRecap.body && shownPhotos.length > 0 ? "lg:grid-cols-12" : ""}`}>
