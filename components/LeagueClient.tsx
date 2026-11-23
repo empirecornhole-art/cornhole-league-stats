@@ -2271,7 +2271,7 @@ function PhotosPanel({ items, season, week, compact = false }: { items: MediaFee
             <StaggerIn className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" each={0.04}>
               {visible
                 .filter((i) => i.week === w)
-                .map((item) => (
+                .map((item, photoIndex) => (
                   <button
                     key={item.id}
                     type="button"
@@ -2287,7 +2287,7 @@ function PhotosPanel({ items, season, week, compact = false }: { items: MediaFee
                         </span>
                       </>
                     ) : (
-                      <PhotoThumb src={item.url} alt={item.caption || `Week ${w} photo`} width={384} />
+                      <PhotoThumb src={item.url} alt={item.caption || `Empire Cornhole League ${item.season} Week ${w} game night in New Berlin, NY, photo ${photoIndex + 1}`} width={384} />
                     )}
                   </button>
                 ))}
@@ -2320,7 +2320,7 @@ function PhotosPanel({ items, season, week, compact = false }: { items: MediaFee
               <img
                 key={current.id}
                 src={thumbUrl(current.url, 1920)}
-                alt={current.caption || `Week ${current.week} photo`}
+                alt={current.caption || `Empire Cornhole League ${current.season} Week ${current.week} game night in New Berlin, NY, photo ${index + 1} of ${visible.length}`}
                 onError={(e) => {
                   // If the optimized copy can't be made, show the original file.
                   if (e.currentTarget.dataset.fallback !== "1") {

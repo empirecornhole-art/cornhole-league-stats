@@ -93,19 +93,12 @@ export default async function Footer() {
               Get Season Updates
             </h3>
             <p className="mt-4 font-sans text-sm text-brand-textSecondary">
-              Standings recaps and event reminders, straight to your inbox.
+              Week recaps and event reminders are posted on Facebook and Instagram. Want them by email? Send us a note and
+              we&apos;ll add you.
             </p>
-            {/* TODO: wire up newsletter signup */}
-            <form className="mt-4 flex items-center gap-2">
-              <input
-                type="email"
-                placeholder="you@email.com"
-                className="w-full rounded-full border border-white/10 bg-brand-bg px-4 py-2.5 font-sans text-sm text-brand-text placeholder:text-brand-textFaint focus:border-brand-orange focus:outline-none"
-              />
-              <button type="button" className="btn-nav-cta whitespace-nowrap">
-                Join
-              </button>
-            </form>
+            <Link href="/contact" className="btn-nav-cta mt-4 inline-flex whitespace-nowrap">
+              Get on the list
+            </Link>
           </div>
         </div>
 

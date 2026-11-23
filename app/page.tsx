@@ -187,7 +187,7 @@ export default async function Home() {
                         >
                           <PhotoThumb
                             src={photo.url}
-                            alt={photo.caption || `Week ${homeRecap.week} photo ${i + 1}`}
+                            alt={photo.caption || `Empire Cornhole League ${homeRecap.season} Week ${homeRecap.week} game night in New Berlin, NY, photo ${i + 1}`}
                             width={big ? 640 : 384}
                             className="object-[50%_25%]"
                           />
