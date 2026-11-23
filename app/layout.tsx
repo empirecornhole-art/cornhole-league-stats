@@ -1,5 +1,8 @@
 import "./globals.css";
+import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import JsonLd from "../components/site/JsonLd";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, organizationJsonLd } from "../lib/site";
 import localFont from "next/font/local";
 import Nav from "../components/site/Nav";
 import Footer from "../components/site/Footer";
@@ -30,9 +33,29 @@ export const viewport = {
   viewportFit: "cover",
 };
 
-export const metadata = {
-  title: "League Stats",
-  description: "Empire Cornhole League Stats",
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Empire Cornhole League | Weekly Cornhole in New Berlin, NY",
+    template: "%s | Empire Cornhole League",
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  manifest: "/manifest.json",
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_US",
+    title: "Empire Cornhole League | Weekly Cornhole in New Berlin, NY",
+    description: SITE_DESCRIPTION,
+    images: [{ url: "/og", width: 1200, height: 630, alt: "Empire Cornhole League: weekly cornhole in New Berlin, NY" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Empire Cornhole League | Weekly Cornhole in New Berlin, NY",
+    description: SITE_DESCRIPTION,
+    images: ["/og"],
+  },
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",
@@ -62,6 +85,7 @@ export default function RootLayout({
         <Nav />
         {children}
         <Footer />
+        <JsonLd data={organizationJsonLd()} />
         <Analytics />
       </body>
     </html>

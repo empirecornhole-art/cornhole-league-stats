@@ -1,7 +1,7 @@
 {
-  "name": "League Stats",
-  "short_name": "League Stats",
-  "description": "Empire Cornhole League Stats",
+  "name": "Empire Cornhole League",
+  "short_name": "Empire Cornhole",
+  "description": "Weekly cornhole in New Berlin, NY. League standings, results and events.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#070707",

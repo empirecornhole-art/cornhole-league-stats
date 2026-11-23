@@ -1,8 +1,18 @@
+import type { Metadata } from "next";
 import HeroThreads from "../../components/site/HeroThreads";
+import JsonLd from "../../components/site/JsonLd";
+import { SITE_NAME, SITE_URL, eventStartDate } from "../../lib/site";
 import FadeIn from "../../components/site/FadeIn";
 import EventsView, { EventDisplay } from "../../components/site/EventsView";
 import { getPastEvents, getUpcomingEvents, EventRow } from "../../lib/events";
 import { daysUntilDate, formatEventDateParts, formatMonthYear, formatWeekday } from "../../lib/format";
+
+export const metadata: Metadata = {
+  title: "Cornhole Events & Schedule in New Berlin, NY",
+  description:
+    "Upcoming blind draw and switch nights, registration links and past results for Empire Cornhole League in New Berlin, NY.",
+  alternates: { canonical: "/events" },
+};
 
 export const dynamic = "force-dynamic";
 
@@ -28,17 +38,37 @@ function toDisplay(event: EventRow): EventDisplay {
 export default async function EventsPage() {
   let upcoming: EventDisplay[] = [];
   let past: EventDisplay[] = [];
+  let upcomingRaw: EventRow[] = [];
 
   try {
     const [upcomingRows, pastRows] = await Promise.all([getUpcomingEvents(), getPastEvents()]);
+    upcomingRaw = upcomingRows;
     upcoming = upcomingRows.map(toDisplay);
     past = pastRows.map(toDisplay);
   } catch (error) {
     console.error("Failed to load events:", error);
   }
 
+  // One SportsEvent per upcoming night so Google can show them as event results.
+  const eventsJsonLd = upcomingRaw.slice(0, 10).map((event) => ({
+    "@context": "https://schema.org",
+    "@type": "SportsEvent",
+    name: event.title,
+    startDate: eventStartDate(event.event_date, event.time),
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    sport: "Cornhole",
+    url: `${SITE_URL}/events`,
+    location: event.location
+      ? { "@type": "Place", name: event.location.split(",")[0].trim(), address: event.location }
+      : undefined,
+    organizer: { "@type": "SportsOrganization", name: SITE_NAME, url: SITE_URL },
+    offers: event.register_url ? { "@type": "Offer", url: event.register_url, availability: "https://schema.org/InStock" } : undefined,
+  }));
+
   return (
     <main className="bg-brand-bg">
+      {eventsJsonLd.length > 0 && <JsonLd data={eventsJsonLd} />}
       <section className="relative overflow-hidden">
         <div
           className="pointer-events-none absolute -top-32 left-1/2 h-[300px] w-[360px] -translate-x-1/2 rounded-full bg-brand-orange/20 blur-[90px] md:h-[420px] md:w-[720px] md:blur-[120px]"

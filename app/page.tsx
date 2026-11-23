@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import FluidBackground from "../components/site/FluidBackground";
@@ -14,7 +15,16 @@ import { getHomeRecap, type HomeRecap } from "../lib/homeRecap";
 import { getHomeStandings, type HomeStandings } from "../lib/homeStandings";
 import { formatEventDateParts, formatEventDateShort } from "../lib/format";
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: { absolute: "Empire Cornhole League | Weekly Cornhole in New Berlin, NY" },
+  description:
+    "Weekly blind draw and switch cornhole nights in New Berlin, NY. See live league standings, the latest week recap, photos and upcoming events.",
+  alternates: { canonical: "/" },
+};
+
+// Served from the edge cache and rebuilt at most once a minute, instead of
+// hitting Supabase on every request. Admin edits show up within ~60 seconds.
+export const revalidate = 60;
 
 export default async function Home() {
   let upcomingEvents: BentoEvent[] = [];

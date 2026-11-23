@@ -1074,7 +1074,9 @@ const CHART_TOOLTIP = {
   cursor: { stroke: "rgba(255,255,255,0.2)" },
 } as const;
 
-export default function LeagueClient() {
+// initialView is the server-rendered standings shown until the season data
+// arrives, so the page isn't an empty skeleton to crawlers or first paint.
+export default function LeagueClient({ initialView }: { initialView?: React.ReactNode } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -1613,7 +1615,7 @@ export default function LeagueClient() {
   }, [tab, media]);
 
   if (!data) {
-    return <LoadingSkeleton />;
+    return <>{initialView ?? <LoadingSkeleton />}</>;
   }
 
   const activeGroup = TAB_GROUPS.find((g) => g.tabs.some((t) => t.id === tab)) || TAB_GROUPS[0];

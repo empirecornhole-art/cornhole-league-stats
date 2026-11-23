@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import HeroThreads from "../../components/site/HeroThreads";
 import FadeIn from "../../components/site/FadeIn";
 import ContactForm from "../../components/site/ContactForm";
 import { getSiteSettings } from "../../lib/settings";
 import { MailIcon, PinIcon, UsersIcon } from "../../components/site/Icons";
+
+export const metadata: Metadata = {
+  title: "Join the League & Contact",
+  description:
+    "Join Empire Cornhole League, sign up as a sub, or sponsor an event. Find our New Berlin, NY venue, email and social links.",
+  alternates: { canonical: "/contact" },
+};
 
 export const dynamic = "force-dynamic";
 
