@@ -43,7 +43,7 @@ export default async function Footer() {
           </div>
 
           <div>
-            <h3 className="eyebrow">Explore</h3>
+            <h2 className="eyebrow">Explore</h2>
             <ul className="mt-4 space-y-2">
               {EXPLORE_LINKS.map((link) => (
                 <li key={link.href}>
@@ -59,7 +59,7 @@ export default async function Footer() {
           </div>
 
           <div>
-            <h3 className="eyebrow">Connect</h3>
+            <h2 className="eyebrow">Connect</h2>
             <ul className="mt-4 space-y-2">
               <li>
                 <a
@@ -90,9 +90,9 @@ export default async function Footer() {
           </div>
 
           <div>
-            <h3 className="eyebrow">
+            <h2 className="eyebrow">
               Get Season Updates
-            </h3>
+            </h2>
             <p className="mt-4 font-sans text-sm text-brand-textSecondary">
               Week recaps and event reminders are posted on Facebook and Instagram. Want them by email? Send us a note and
               we&apos;ll add you.

@@ -16,7 +16,7 @@ const config: Config = {
           text: '#f5f5f0',
           textSecondary: '#c9c5bf',
           textMuted: '#9a9a9a',
-          textFaint: '#7a7772',
+          textFaint: '#8a8782',
           raised: '#1c1a17',
           // Podium + trend colors, tuned to sit on the warm near-black surfaces.
           gold: '#f2c14e',

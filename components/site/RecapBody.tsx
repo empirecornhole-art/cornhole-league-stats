@@ -86,7 +86,10 @@ function LinkLine({ line }: { line: string }) {
   );
 }
 
-export default function RecapBody({ text }: { text: string }) {
+export default function RecapBody({ text, headingLevel = 3 }: { text: string; headingLevel?: 2 | 3 }) {
+  // Pages that put an h1 directly above the recap pass 2 so headings never skip a level.
+  const Title = `h${headingLevel}` as "h2" | "h3";
+  const Section = `h${headingLevel + 1}` as "h3" | "h4";
   const sections = parse(text);
   return (
     <div className="max-w-[68ch] space-y-6">
@@ -95,9 +98,9 @@ export default function RecapBody({ text }: { text: string }) {
 
         if (s.kind === "title") {
           return (
-            <h3 key={i} className="font-display text-xl uppercase leading-tight text-brand-text md:text-2xl">
+            <Title key={i} className="font-display text-xl uppercase leading-tight text-brand-text md:text-2xl">
               {s.heading}
-            </h3>
+            </Title>
           );
         }
 
@@ -106,7 +109,7 @@ export default function RecapBody({ text }: { text: string }) {
           const bullets = s.lines.filter((l) => l.startsWith("•"));
           return (
             <section key={i} className="space-y-2">
-              <h4 className="font-display text-base uppercase tracking-wide text-brand-orange">{s.heading}</h4>
+              <Section className="font-display text-base uppercase tracking-wide text-brand-orange">{s.heading}</Section>
               {isStats && bullets.length === s.lines.length ? (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {bullets.map((b, j) => {

@@ -132,7 +132,7 @@ export default async function RecapPageRoute({ params }: { params: Promise<Param
 
       <section className="mx-auto max-w-4xl px-4 pb-10 md:px-6">
         <div className="rounded-3xl bg-brand-panel p-6 md:p-10">
-          <RecapBody text={recap.body} />
+          <RecapBody text={recap.body} headingLevel={2} />
         </div>
       </section>
 

@@ -100,7 +100,7 @@ export default async function Home() {
           style={{ transform: "rotate(16deg)" }}
           aria-hidden
         >
-          <Image src="/ec-logo-full.png" alt="" fill className="object-contain" />
+          <Image src="/ec-logo-full.png" alt="" fill sizes="900px" quality={40} className="object-contain" />
         </div>
 
         {/* Watermark layer 3: primary mark, edge-masked */}
@@ -113,7 +113,7 @@ export default async function Home() {
           }}
           aria-hidden
         >
-          <Image src="/ec-logo-full.png" alt="" fill className="object-contain" />
+          <Image src="/ec-logo-full.png" alt="" fill sizes="(min-width: 896px) 896px, 100vw" quality={40} loading="eager" fetchPriority="high" className="object-contain" />
         </div>
 
         <div className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-16 text-center sm:py-24 md:px-6 md:py-32">
