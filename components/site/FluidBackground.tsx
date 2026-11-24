@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Slow, liquid ember-colored flow behind the hero. One fullscreen fragment
 // shader (domain-warped noise), no library. Cheap on purpose: rendered at a
@@ -55,12 +55,9 @@ void main(){
 }
 `;
 
-export default function FluidBackground({ className = "" }: { className?: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+// Compiles the shader and runs the flow; returns a cleanup, or undefined if WebGL isn't available.
+function startFlow(canvas: HTMLCanvasElement): (() => void) | undefined {
+  {
     const gl = canvas.getContext("webgl", { antialias: false, alpha: false, powerPreference: "low-power" });
     if (!gl) return;
 
@@ -157,7 +154,52 @@ export default function FluidBackground({ className = "" }: { className?: string
       document.removeEventListener("visibilitychange", update);
       reduced.removeEventListener("change", update);
     };
+  }
+}
+
+export default function FluidBackground({ className = "" }: { className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [ready, setReady] = useState(false);
+
+  // The flow is decoration, so it starts once the page has loaded and the browser
+  // is idle. Compiling the shader and drawing frames during load competes with
+  // hydration and the first paint of the hero (the page's largest paint).
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let cancelled = false;
+    let stop: (() => void) | undefined;
+    let idleId: number | undefined;
+    let timerId: number | undefined;
+
+    const start = () => {
+      if (cancelled) return;
+      stop = startFlow(canvas);
+      if (stop) setReady(true);
+    };
+    const schedule = () => {
+      if (typeof window.requestIdleCallback === "function") idleId = window.requestIdleCallback(start, { timeout: 2500 });
+      else timerId = window.setTimeout(start, 800);
+    };
+
+    if (document.readyState === "complete") schedule();
+    else window.addEventListener("load", schedule, { once: true });
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", schedule);
+      if (idleId !== undefined) window.cancelIdleCallback(idleId);
+      if (timerId !== undefined) window.clearTimeout(timerId);
+      stop?.();
+    };
   }, []);
 
-  return <canvas ref={canvasRef} aria-hidden className={`pointer-events-none ${className}`} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      className={`pointer-events-none ${className}`}
+      style={{ opacity: ready ? undefined : 0, transition: "opacity 1200ms ease-out" }}
+    />
+  );
 }
