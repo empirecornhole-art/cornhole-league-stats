@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/leagues", label: "League" },
+  { href: "/recaps", label: "Recaps" },
   { href: "/events", label: "Events" },
   { href: "/contact", label: "Contact" },
 ];
@@ -95,7 +96,7 @@ export default function Nav() {
 
         <nav className="hidden items-center gap-8 md:flex">
           {NAV_LINKS.map((link) => {
-            const active = pathname === link.href;
+            const active = link.href === "/" ? pathname === "/" : pathname === link.href || pathname.startsWith(`${link.href}/`);
             return (
               <Link
                 key={link.href}
@@ -142,7 +143,7 @@ export default function Nav() {
         >
           <nav className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => {
-              const active = pathname === link.href;
+              const active = link.href === "/" ? pathname === "/" : pathname === link.href || pathname.startsWith(`${link.href}/`);
               return (
                 <Link
                   key={link.href}
