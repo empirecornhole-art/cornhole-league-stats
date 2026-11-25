@@ -38,7 +38,7 @@ export default async function Footer() {
               </span>
             </div>
             <p className="mt-4 font-sans text-sm text-brand-textSecondary">
-              connect &middot; compete &mdash; the home for Empire Cornhole League standings, events, and community.
+              Connect &middot; compete. Standings, events, and recaps for Empire Cornhole League.
             </p>
           </div>
 

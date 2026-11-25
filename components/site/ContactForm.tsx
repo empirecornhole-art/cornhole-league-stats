@@ -66,7 +66,7 @@ export default function ContactForm() {
         </div>
         <h3 className="heading-card">Message sent</h3>
         <p className="font-sans text-sm text-brand-textSecondary">
-          Thanks for reaching out — we&apos;ll get back to you within a couple of days.
+          Thanks for reaching out. We&apos;ll get back to you within a couple of days.
         </p>
         <button type="button" onClick={() => setStatus("idle")} className="btn-secondary mt-2">
           Send another

@@ -124,7 +124,7 @@ export default async function Home() {
             Where every <span className="text-brand-orange">bag</span> counts.
           </SplitHeading>
           <p style={{ "--i": 2 } as React.CSSProperties} className="hero-step mt-6 max-w-2xl font-sans text-base text-brand-textSecondary sm:text-lg">
-            Weekly blind draws, switch nights, and the standings that decide who&apos;s really got game. This is home.
+            Weekly blind draw and switch nights in New Berlin, NY, with standings that show who&apos;s got game.
           </p>
           <div style={{ "--i": 3 } as React.CSSProperties} className="hero-step mt-8 flex w-full flex-col gap-3 sm:mt-10 sm:w-auto sm:flex-row sm:gap-4">
             <Link href="/leagues" className="btn-primary">
@@ -236,7 +236,7 @@ export default async function Home() {
                 Gear up for game night.
               </h2>
               <p className="mt-4 max-w-md font-sans text-brand-textSecondary">
-                League tees, hoodies, and bags &mdash; show up looking like you belong on the board.
+                League tees, hoodies, and bags. Wear them to the next game night.
               </p>
               <Link href="/leagues?tab=store" className="btn-primary mt-8 inline-flex">
                 Shop the Store

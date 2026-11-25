@@ -291,8 +291,8 @@ export function buildBlindRecap(i: RecapInputs): string {
   const opener = i.week === 1 ? "The first Blind Draw of the season" : `The Week ${i.week} Blind Draw`;
   lines.push(
     reset
-      ? `${opener} delivered a ${teamCount}-team double-elimination bracket, and the finals came down to a bracket reset.`
-      : `${opener} delivered a ${teamCount}-team double-elimination bracket and a champion to show for it.`,
+      ? `${opener} was a ${teamCount}-team double-elimination bracket, and the finals came down to a bracket reset.`
+      : `${opener} was a ${teamCount}-team double-elimination bracket.`,
     ""
   );
   if (i.notes.trim()) lines.push(i.notes.trim(), "");
@@ -323,7 +323,7 @@ export function buildBlindRecap(i: RecapInputs): string {
       const afterLoss = champGames.filter((g) => g.order > firstLoss.order && g.winner === champion.key);
       lines.push("💪 Loser's Bracket Grind");
       lines.push(
-        `That ${firstLoss.winner === runnerUp?.key ? "opening " : ""}loss didn't end the night for ${champion.label}, it fueled it. They went on a ${afterLoss.length}-game elimination run:`
+        `After ${firstLoss.winner === runnerUp?.key ? "that opening " : "that "}loss, ${champion.label} went on a ${afterLoss.length}-game elimination run:`
       );
       afterLoss.forEach((g, idx) => {
         const isLosersFinal = idx === afterLoss.length - 1;

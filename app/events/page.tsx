@@ -79,7 +79,7 @@ export default async function EventsPage() {
           <span className="eyebrow">Schedule</span>
           <h1 className="heading-page mt-4">Events</h1>
           <p className="mx-auto mt-5 max-w-xl font-sans text-lg text-brand-textSecondary">
-            Blind draws, switch nights, and the events that decide who takes home the season.
+            Upcoming blind draw and switch nights, with sign-up links and past results.
           </p>
         </FadeIn>
       </section>

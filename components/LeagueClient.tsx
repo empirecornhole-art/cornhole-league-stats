@@ -1840,7 +1840,7 @@ export default function LeagueClient({ initialView }: { initialView?: React.Reac
               </div>
             </Card>
 
-            <Card title="Career Stats — All Players">
+            <Card title="Career Stats: All Players">
               <CareerStatsTable
                 rows={sortedCareerRows}
                 columns={careerColumns}
@@ -1863,8 +1863,8 @@ export default function LeagueClient({ initialView }: { initialView?: React.Reac
           <>
             <Card title={`${season} Season Badges`}>
               <p className="mb-4 text-sm text-brand-textMuted">
-                Auto-awarded from this season&apos;s stats so far — these can change hands as more weeks get added, right up
-                until the season wraps up.
+                Awarded automatically from this season&apos;s stats so far. Badges can change hands as more weeks are added,
+                until the season ends.
               </p>
               <BadgeGrid badges={seasonBadges} highlightPlayer={selectedProfilePlayer} />
             </Card>
