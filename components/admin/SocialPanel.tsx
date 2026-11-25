@@ -9,9 +9,10 @@ const IG_MAX_ITEMS = 10;
 type MediaItem = { id: string; kind: "photo" | "video"; url: string; caption: string };
 type Platform = "facebook" | "instagram";
 type VideoMode = "skip" | "main" | "separate";
+type PlatformStatus = { configured: boolean; ok: boolean; name?: string; error?: string; expiresAt?: string; neverExpires?: boolean };
 type Status = {
-  facebook: { configured: boolean; ok: boolean; name?: string; error?: string };
-  instagram: { configured: boolean; ok: boolean; name?: string; error?: string };
+  facebook: PlatformStatus;
+  instagram: PlatformStatus;
 };
 type Prior = { platform: Platform; post_id: string; permalink: string; posted_at: string };
 
@@ -178,9 +179,17 @@ export default function SocialPanel({
     }
     if (!s.ok) return <div className="text-red-400">{label}: connection problem. {s.error}</div>;
     return (
-      <div className="text-green-400">
-        {label}: connected to {platform === "instagram" ? "@" : ""}
-        {s.name}
+      <div>
+        <div className="text-green-400">
+          {label}: connected to {platform === "instagram" ? "@" : ""}
+          {s.name}
+          {s.neverExpires && <span className="text-green-400/80"> &middot; token never expires</span>}
+        </div>
+        {s.expiresAt && (
+          <div className="mt-0.5 text-amber-400">
+            This token is temporary and stops working {formatWhen(s.expiresAt)}. Replace it with a never-expiring Page token in Vercel.
+          </div>
+        )}
       </div>
     );
   }

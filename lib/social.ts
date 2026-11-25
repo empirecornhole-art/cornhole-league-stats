@@ -24,9 +24,13 @@ export type PostMedia = { url: string; kind: "photo" | "video" };
 //   separate recap + photos in one post, then each video as its own post
 export type VideoMode = "skip" | "main" | "separate";
 
+// expiresAt: when a temporary token stops working. neverExpires: Meta reports no expiry.
+// Both are left out if Meta won't say, so the panel just shows nothing extra.
+type PlatformStatus = { configured: boolean; ok: boolean; name?: string; error?: string; expiresAt?: string; neverExpires?: boolean };
+
 export type SocialStatus = {
-  facebook: { configured: boolean; ok: boolean; name?: string; error?: string };
-  instagram: { configured: boolean; ok: boolean; name?: string; error?: string };
+  facebook: PlatformStatus;
+  instagram: PlatformStatus;
 };
 
 export type PriorPost = { platform: "facebook" | "instagram"; post_id: string; permalink: string; posted_at: string };
@@ -72,6 +76,21 @@ export async function getSocialStatus(): Promise<SocialStatus> {
     instagram: { configured: !!(igId && token), ok: false },
   };
 
+  // How long the token lasts. A temporary token (about two hours) looks fine until it dies, so say so up front.
+  const lifetime: { expiresAt?: string; neverExpires?: boolean } = {};
+  if (token) {
+    try {
+      const dbg = await graph("debug_token", { input_token: token }, "GET");
+      const expiresAt = dbg?.data?.expires_at;
+      if (typeof expiresAt === "number") {
+        if (expiresAt > 0) lifetime.expiresAt = new Date(expiresAt * 1000).toISOString();
+        else lifetime.neverExpires = true;
+      }
+    } catch {
+      /* an already-expired token fails here and is reported by the checks below */
+    }
+  }
+
   if (status.facebook.configured) {
     try {
       const page = await graph(pageId, { fields: "name" }, "GET");
@@ -84,6 +103,7 @@ export async function getSocialStatus(): Promise<SocialStatus> {
           "META_PAGE_ACCESS_TOKEN is a personal (user) token, not the Page's own token. In the Graph API Explorer, run me/accounts?fields=name,id,access_token and copy the access_token from the Empire Cornhole entry instead.";
       } else {
         status.facebook.ok = true;
+        Object.assign(status.facebook, lifetime);
       }
     } catch (e: any) {
       status.facebook.error = e.message;
@@ -94,6 +114,7 @@ export async function getSocialStatus(): Promise<SocialStatus> {
       const ig = await graph(igId, { fields: "username" }, "GET");
       status.instagram.ok = true;
       status.instagram.name = ig.username;
+      Object.assign(status.instagram, lifetime);
     } catch (e: any) {
       status.instagram.error = e.message;
     }
