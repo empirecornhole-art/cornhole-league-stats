@@ -5,6 +5,7 @@ import FluidBackground from "../components/site/FluidBackground";
 import SplitHeading from "../components/site/SplitHeading";
 import HomeBento, { type BentoEvent } from "../components/site/HomeBento";
 import ExpandableRecap from "../components/site/ExpandableRecap";
+import ShareButton from "../components/site/ShareButton";
 import RecapBody from "../components/site/RecapBody";
 import PhotoThumb from "../components/site/PhotoThumb";
 import { getStorePreview, StorePreviewItem } from "../lib/storePreview";
@@ -157,6 +158,14 @@ export default async function Home() {
                 <Link href={recapHref} className="btn-secondary">
                   Full results
                 </Link>
+                {homeRecap.body && (
+                  <ShareButton
+                    path={recapPath(homeRecap.season, homeRecap.week)}
+                    title={`${homeRecap.season} Week ${homeRecap.week} Recap | Empire Cornhole League`}
+                    text="Results and photos from game night at Empire Cornhole League."
+                    align="right"
+                  />
+                )}
               </div>
             </div>
 

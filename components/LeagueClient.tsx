@@ -14,6 +14,9 @@ import {
 import StoreTab from "./StoreTab";
 import RecapBody from "./site/RecapBody";
 import PhotoThumb from "./site/PhotoThumb";
+import ShareMenu from "./site/ShareButton";
+import SavePhotoButton from "./site/SavePhotoButton";
+import { recapPath } from "../lib/recapPath";
 import StaggerIn from "./site/StaggerIn";
 import { thumbUrl } from "../lib/imageUrl";
 
@@ -1591,7 +1594,7 @@ export default function LeagueClient({ initialView }: { initialView?: React.Reac
       : "";
 
   useEffect(() => {
-    if (tab !== "weeks" || recaps !== null) return;
+    if ((tab !== "weeks" && tab !== "photos") || recaps !== null) return;
     let cancelled = false;
     fetch("/api/recaps")
       .then((res) => (res.ok ? res.json() : { items: [] }))
@@ -1712,7 +1715,17 @@ export default function LeagueClient({ initialView }: { initialView?: React.Reac
         <div key={tab} className="tab-transition space-y-6">
         {tab === "dashboard" && (
           <>
-            <Card title={dashboardWeek === "All Weeks" ? "Season Standings" : `${dashboardWeek} Points`}>
+            <Card
+              title={dashboardWeek === "All Weeks" ? "Season Standings" : `${dashboardWeek} Points`}
+              actions={
+                <ShareMenu
+                  path={`/leagues?tab=dashboard&season=${encodeURIComponent(season)}${dashboardWeek !== "All Weeks" ? `&week=${encodeURIComponent(dashboardWeek)}` : ""}`}
+                  title={`${season} Standings | Empire Cornhole League`}
+                  text="Live standings from Empire Cornhole League."
+                  align="right"
+                />
+              }
+            >
               <Leaderboard
                 rows={dashboardStandings}
                 weekPoints={dashboardWeek === "All Weeks" ? latestWeekPoints : undefined}
@@ -1733,7 +1746,19 @@ export default function LeagueClient({ initialView }: { initialView?: React.Reac
         )}
 
         {tab === "weeks" && (
-          <Card title="Weekly Results">
+          <Card
+            title="Weekly Results"
+            actions={
+              week && !(recaps || []).some((r) => r.season === season && `Week ${r.week}` === week) ? (
+                <ShareMenu
+                  path={`/leagues?tab=weeks&season=${encodeURIComponent(season)}&week=${encodeURIComponent(week)}`}
+                  title={`${season} ${week} Results | Empire Cornhole League`}
+                  text="Results from game night at Empire Cornhole League."
+                  align="right"
+                />
+              ) : undefined
+            }
+          >
             <div className="mb-4 flex flex-wrap gap-3">
               <select className="field-control" value={type} onChange={(e) => { setType(e.target.value as "Blind" | "Swap"); setWeek(""); }}>
                 <option value="Swap">Switch</option>
@@ -1766,7 +1791,7 @@ export default function LeagueClient({ initialView }: { initialView?: React.Reac
 
         {tab === "photos" && (
           <Card title={`${season} Photos & Video`}>
-            <PhotosPanel items={media} season={season} week={dashboardWeek} />
+            <PhotosPanel items={media} season={season} week={dashboardWeek} recaps={recaps} />
           </Card>
         )}
 
@@ -2229,7 +2254,19 @@ function ordinal(n: number) {
 
 type MediaFeedItem = { id: string; season: string; week: number; kind: "photo" | "video"; url: string; caption: string };
 
-function PhotosPanel({ items, season, week, compact = false }: { items: MediaFeedItem[] | null; season: string; week: string; compact?: boolean }) {
+function PhotosPanel({
+  items,
+  season,
+  week,
+  compact = false,
+  recaps = null,
+}: {
+  items: MediaFeedItem[] | null;
+  season: string;
+  week: string;
+  compact?: boolean;
+  recaps?: RecapFeedItem[] | null;
+}) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const weekNumber = week === "All Weeks" ? 0 : Number((week.match(/\d+/) || [])[0]) || 0;
@@ -2312,6 +2349,25 @@ function PhotosPanel({ items, season, week, compact = false }: { items: MediaFee
           >
             Close
           </button>
+          <div className="absolute left-4 top-4 flex flex-wrap items-center gap-2">
+            {current.kind === "photo" && (
+              <SavePhotoButton
+                tone="overlay"
+                url={current.url}
+                fileName={`empire-cornhole-${current.season.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-week-${current.week}-photo-${index + 1}`}
+              />
+            )}
+            <ShareMenu
+              tone="overlay"
+              path={
+                (recaps || []).some((r) => r.season === current.season && r.week === current.week)
+                  ? recapPath(current.season, current.week)
+                  : `/leagues?tab=photos&season=${encodeURIComponent(current.season)}&week=${encodeURIComponent(`Week ${current.week}`)}`
+              }
+              title={`${current.season} Week ${current.week} | Empire Cornhole League`}
+              text="Photos from game night at Empire Cornhole League."
+            />
+          </div>
           <div className="flex max-h-[80vh] w-full max-w-5xl items-center justify-center" onClick={(e) => e.stopPropagation()}>
             {current.kind === "video" ? (
               <video key={current.id} src={current.url} controls autoPlay playsInline className="max-h-[80vh] max-w-full rounded-lg" />
@@ -2380,11 +2436,21 @@ function WeekRecapCard({
   if (!recap && !hasMedia) return null;
 
   return (
-    <Card title={`${week} Recap`}>
+    <Card
+      title={`${week} Recap`}
+      actions={
+        <ShareMenu
+          path={recap ? recapPath(season, weekNumber) : `/leagues?tab=photos&season=${encodeURIComponent(season)}&week=${encodeURIComponent(week)}`}
+          title={`${season} ${week} ${recap ? "Recap" : "Photos"} | Empire Cornhole League`}
+          text={recap ? "Results and photos from game night at Empire Cornhole League." : "Photos from game night at Empire Cornhole League."}
+          align="right"
+        />
+      }
+    >
       {recap && <RecapBody text={recap.body} />}
       {hasMedia && (
         <div className={recap ? "mt-6" : ""}>
-          <PhotosPanel items={media} season={season} week={week} compact />
+          <PhotosPanel items={media} season={season} week={week} compact recaps={recaps} />
         </div>
       )}
     </Card>

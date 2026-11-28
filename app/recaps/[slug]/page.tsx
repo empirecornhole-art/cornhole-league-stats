@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import RecapBody from "../../../components/site/RecapBody";
 import PhotoThumb from "../../../components/site/PhotoThumb";
 import JsonLd from "../../../components/site/JsonLd";
+import ShareButton from "../../../components/site/ShareButton";
 import { getRecapPage, listRecapPages, type RecapPage } from "../../../lib/recapPages";
 import { SITE_NAME, SITE_URL } from "../../../lib/site";
 
@@ -41,7 +42,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const description =
     recap.excerpt ||
     `${recap.season} Week ${recap.week} results and recap from Empire Cornhole League in New Berlin, NY.`;
-  const image = ogPhoto(recap) || "/og";
+  // A designed card for this week (week + winners). The version in the URL changes when the recap is
+  // republished, so Facebook and others fetch a fresh card instead of a cached one.
+  const image = `/og/recap/${recap.slug}${recap.updated ? `?v=${new Date(recap.updated).getTime()}` : ""}`;
 
   return {
     title,
@@ -127,6 +130,11 @@ export default async function RecapPageRoute({ params }: { params: Promise<Param
               All photos
             </Link>
           )}
+          <ShareButton
+            path={`/recaps/${recap.slug}`}
+            title={`${recap.title} | ${SITE_NAME}`}
+            text={recap.excerpt || `${recap.season} Week ${recap.week} results from ${SITE_NAME}.`}
+          />
         </div>
       </section>
 

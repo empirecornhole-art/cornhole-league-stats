@@ -1,6 +1,7 @@
 import { listPublishedRecaps } from "./recapStore";
 import { listMedia } from "./media";
 import { seasonOrderKey } from "./recap";
+import { recapSlug } from "./recapPath";
 import { useDevMock, mockHomeRecap } from "./devMock";
 
 /**
@@ -25,14 +26,8 @@ export type RecapPage = {
   photos: RecapPhoto[];
 };
 
-export function recapSlug(season: string, week: number): string {
-  const s = season.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return `${s}-week-${week}`;
-}
-
-export function recapPath(season: string, week: number): string {
-  return `/recaps/${recapSlug(season, week)}`;
-}
+// The address helpers live in ./recapPath so client components can import them without pulling in the database code.
+export { recapSlug, recapPath } from "./recapPath";
 
 const EMOJI_START = /^\p{Extended_Pictographic}/u;
 
